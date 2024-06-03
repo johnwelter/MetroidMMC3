@@ -13,6 +13,8 @@
 
 ;Graphics data (memory page 6)
 
+.require "GameEngineDeclarations.asm"
+
 .org $8000
 
 ;-------------------------------------------[ Defines ]----------------------------------------------
@@ -28,8 +30,8 @@
 
 ;--------------------------------------[ Forward declarations ]--------------------------------------
 
-.alias startup			$C01A
-.alias NMI			$C0D9
+;.alias startup			$C01A
+;.alias NMI			$C0D9
 
 ;----------------------------------------[ Start of code ]-------------------------------------------
 
@@ -1096,7 +1098,7 @@ LBFA0:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $0
 
 ;----------------------------------------------[ RESET ]--------------------------------------------
 
-RESET:
+GRAHPICSRESET:
 LBFB0:	SEI				;Disables interrupt.
 LBFB1:	CLD				;Sets processor to binary mode.
 LBFB2:	LDX #$00			;

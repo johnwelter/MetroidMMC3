@@ -1,4 +1,4 @@
-map,code/GameEngine.asm,code/GameEngineDeclarations.asm,C000,FFFF
+map,code/GameEngine.asm,code/GameEngineDeclarations.asm,DFFF,FFFF
 prg,Title,0
 prg,Brinstar,1
 prg,Norfair,2

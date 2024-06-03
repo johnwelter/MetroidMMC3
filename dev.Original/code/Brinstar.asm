@@ -18,46 +18,47 @@
 
 .org $8000
 
-.include "Defines.asm"
+.require "Defines.asm"
+.require "GameEngineDeclarations.asm"
 
 ;--------------------------------------[ Forward declarations ]--------------------------------------
 
-.alias startup			$C01A
-.alias NMI			$C0D9
-.alias ChooseRoutine		$C27C
-.alias Adiv32			$C2BE
-.alias Amul16			$C2C5
-.alias TwosCompliment		$C3D4
-.alias Base10Subtract		$C3FB
-.alias SubtractHealth		$CE92
-.alias SetProjectileAnim	$D2FA
-.alias UpdateEnemyAnim		$E094
-.alias VerticalRoomCentered	$E21B
+;.alias startup			$C01A
+;.alias NMI			$C0D9
+;.alias ChooseRoutine		$C27C
+;.alias Adiv32			$C2BE
+;.alias Amul16			$C2C5
+;.alias TwosCompliment		$C3D4
+;.alias Base10Subtract		$C3FB
+;.alias SubtractHealth		$CE92
+;.alias SetProjectileAnim	$D2FA
+;.alias UpdateEnemyAnim		$E094
+;.alias VerticalRoomCentered	$E21B
 
 ;-----------------------------------------[ Start of code ]------------------------------------------
 
-L8000:	JMP $F410
-L8003:	JMP $F438
-L8006:	JMP $F416
-L8009:	JMP $F852
+L8000:	JMP UpdateEnemyAnim0 
+L8003:	JMP UpdateEnemyAnim1   
+L8006:	JMP CheckObjectAttribs 
+L8009:	JMP GetRandom_EnIdxFrCnt
 L800C:	JMP UpdateEnemyAnim		;($E094)
-L800F:	JMP $F68D
-L8012:	JMP $F83E
-L8015:	JMP $F85A
-L8018:	JMP $FBB9
-L801B:	JMP $FB88
-L801E:	JMP $FBCA
-L8021:	JMP $F870
+L800F:	JMP ResetAnimIndex 
+L8012:	JMP UnknownF83E
+L8015:	JMP UnknownF85A
+L8018:	JMP UnknownFBB9
+L801B:	JMP UnknownFB88
+L801E:	JMP UnknownFBCA
+L8021:	JMP UnknownF870
 L8024:	JMP ChooseRoutine		;($C27C)
-L8027:	JMP $FD8F
-L802A:	JMP $EB6E
+L8027:	JMP UnknownFD8F
+L802A:	JMP UnknownEB6E
 L802D:	JMP $8244
 L8030:	JMP $8318
-L8033:	JMP $FA1E
+L8033:	JMP EnemyBGCrashDetection
 L8036:	JMP $833F
 L8039:	JMP $8395
-L803C:	JMP $DD8B
-L803F:	JMP $FEDC
+L803C:	JMP ClrObjCntrlIfFrameIsF7
+L803F:	JMP DrawTileBlast
 L8042:	JMP SubtractHealth		;($CE92)
 L8045:	JMP Base10Subtract		;($C3FB)
 
@@ -224,7 +225,7 @@ L81B4:	STA $6AFE,X
 L81B7:	RTS
 
 L81B8:	LDA #$20
-L81BA:	JSR $F744
+L81BA:	JSR UnknownF744
 L81BD:	LDA #$00
 L81BF:	RTS
 
@@ -237,7 +238,7 @@ L81CA:	BNE $81F5
 L81CC:	LDA #$01
 L81CE:	JSR $856B
 L81D1:	LDA $6AFF,X
-L81D4:	JSR $C3D4
+L81D4:	JSR TwosCompliment
 L81D7:	STA $6AFF,X
 
 L81DA:	JSR $81F6
@@ -253,7 +254,7 @@ L81EF:	SBC $0403,X
 L81F2:	STA $0403,X
 L81F5:	RTS
 
-L81F6:	JSR $F74B
+L81F6:	JSR UnknownF74B
 L81F9:	AND #$20
 L81FB:	RTS
 
@@ -262,7 +263,7 @@ L81FF:	BNE $81F5
 L8201:	LDA #$04
 L8203:	JSR $856B
 L8206:	LDA $6AFE,X
-L8209:	JSR $C3D4
+L8209:	JSR TwosCompliment
 L820C:	STA $6AFE,X
 
 L820F:	JSR $81F6
@@ -352,10 +353,10 @@ L82B2:	RTS
 
 L82B3:	LDA $6B03,X
 L82B6:	BPL $82BE
-L82B8:	JSR $E770
+L82B8:	JSR UnknownE770
 L82BB:	JMP $82C3
 L82BE:	BEQ $82D2
-L82C0:	JSR $E77B
+L82C0:	JSR UnknownE77B
 L82C3:	LDX PageIndex
 L82C5:	BCS $82D2
 L82C7:	LDY EnCounter,X
@@ -375,10 +376,10 @@ L82E0:	TYA
 L82E1:	STA EnCounter,X
 L82E4:	LDA $6B03,X
 L82E7:	BPL $82EF
-L82E9:	JSR $E770
+L82E9:	JSR UnknownE770
 L82EC:	JMP $82F4
 L82EF:	BEQ $82FB
-L82F1:	JSR $E77B
+L82F1:	JSR UnknownE77B
 L82F4:	LDX PageIndex
 L82F6:	BCC $82FB
 L82F8:	JMP $8258
@@ -410,7 +411,7 @@ L8333:	TXA
 L8334:	AND #$07
 L8336:	PLP 
 L8337:	BEQ $833C
-L8339:	JSR $C3D4
+L8339:	JSR TwosCompliment
 L833C:	STA $00
 L833E:	RTS
 
@@ -424,10 +425,10 @@ L834D:	LDA $0402,X
 L8350:	ADC #$00
 L8352:	STA $0402,X
 L8355:	BPL $8376
-L8357:	JSR $C3D4
+L8357:	JSR TwosCompliment
 L835A:	LDY #$F2
 L835C:	BNE $8376
-L835E:	JSR $C3D4
+L835E:	JSR TwosCompliment
 L8361:	SEC 
 L8362:	STA $00
 L8364:	LDA EnCounter,X
@@ -478,7 +479,7 @@ L83C5:	STA $04
 L83C7:	LDA #$00
 L83C9:	SBC $0403,X
 L83CC:	TAY 
-L83CD:	JSR $E449
+L83CD:	JSR UnknownE449
 L83D0:	LDA $04
 L83D2:	CMP $02
 L83D4:	TYA 
@@ -504,7 +505,7 @@ L83FB:	SBC EnRadY,X
 L83FE:	AND #$07
 L8400:	SEC 
 L8401:	BNE $8406
-L8403:	JSR $E770
+L8403:	JSR UnknownE770
 L8406:	LDY #$00
 L8408:	STY $00
 L840A:	LDX PageIndex
@@ -547,7 +548,7 @@ L8451:	ADC EnRadY,X
 L8454:	AND #$07
 L8456:	SEC 
 L8457:	BNE $845C
-L8459:	JSR $E77B
+L8459:	JSR UnknownE77B
 L845C:	LDY #$00
 L845E:	STY $00
 L8460:	LDX PageIndex
@@ -592,7 +593,7 @@ L84AD:	SBC EnRadX,X
 L84B0:	AND #$07
 L84B2:	SEC 
 L84B3:	BNE $84B8
-L84B5:	JSR $E8F1
+L84B5:	JSR UnknownE8F1
 L84B8:	LDY #$00
 L84BA:	STY $00
 L84BC:	LDX PageIndex
@@ -633,7 +634,7 @@ L8504:	ADC EnRadX,X
 L8507:	AND #$07
 L8509:	SEC 
 L850A:	BNE $850F
-L850C:	JSR $E8FC
+L850C:	JSR UnknownE8FC
 L850F:	LDY #$00
 L8511:	STY $00
 L8513:	LDX PageIndex
@@ -1464,7 +1465,7 @@ L8B87:	STX PageIndex
 L8B89:	LDA ObjAction,X
 L8B8C:	JSR ChooseRoutine		;($C27C)
 
-L8B8F:	.word $C45C
+L8B8F:	.word ExitSub
 L8B91:	.word $8B9D
 L8B93:	.word $8BD5
 L8B95:	.word $8C01
@@ -1493,7 +1494,7 @@ L8BC6:	EOR #$10
 L8BC8:	ORA $6B
 L8BCA:	STA $6B
 L8BCC:	LDA #$06
-L8BCE:	JMP $DE47
+L8BCE:	JMP AnimDrawObject
 
 L8BD1:	.byte $05, $01, $0A, $01
 
@@ -1546,11 +1547,11 @@ L8C3E:	LDA $030C,X
 L8C41:	STA $08
 L8C43:	LDY $50
 L8C45:	TXA 
-L8C46:	JSR $C2C5
+L8C46:	JSR Amul16
 L8C49:	BCC $8C4C
 L8C4B:	DEY 
 L8C4C:	TYA 
-L8C4D:	JSR $DC1E
+L8C4D:	JSR UnknownDC1E
 L8C50:	LDA #$00
 L8C52:	STA $0300,X
 L8C55:	BEQ $8C73
@@ -1571,8 +1572,8 @@ L8C76:	LDA #$30
 L8C78:	STA $0305,X
 L8C7B:	SEC 
 L8C7C:	SBC #$02
-L8C7E:	JSR $D2FD
-L8C81:	JMP $CBDA
+L8C7E:	JSR UnknownD2FD
+L8C81:	JMP SFX_Door
 L8C84:	LDA DoorStatus
 L8C86:	CMP #$05
 L8C88:	BCS $8CC3
@@ -1582,7 +1583,7 @@ L8C90:	LDX PageIndex
 L8C92:	LDA $91
 L8C94:	BEQ $8CA7
 L8C96:	TXA 
-L8C97:	JSR $C2BF
+L8C97:	JSR Adiv16
 L8C9A:	EOR $91
 L8C9C:	LSR 
 L8C9D:	BCC $8CA7
@@ -1597,11 +1598,11 @@ L8CAE:	LDA $0307,X
 L8CB1:	CMP #$03
 L8CB3:	BNE $8CC3
 L8CB5:	TXA 
-L8CB6:	JSR $C2C5
+L8CB6:	JSR Amul16
 L8CB9:	BCS $8CC0
-L8CBB:	JSR $CC07
+L8CBB:	JSR TourianMusic
 L8CBE:	BNE $8CC3
-L8CC0:	JSR $CC03
+L8CC0:	JSR MotherBrainMusic
 L8CC3:	JMP $8C71
 L8CC6:	LDA DoorStatus
 L8CC8:	CMP #$05
@@ -1615,9 +1616,9 @@ L8CD5:	LDA #$2C
 L8CD7:	STA $0305,X
 L8CDA:	SEC 
 L8CDB:	SBC #$03
-L8CDD:	JSR $D2FD
-L8CE0:	JSR $CBDA
-L8CE3:	JSR $CB73
+L8CDD:	JSR UnknownD2FD
+L8CE0:	JSR SFX_Door
+L8CE3:	JSR SelectSamusPal
 L8CE6:	LDX PageIndex
 L8CE8:	LDA #$02
 L8CEA:	STA $0300,X
@@ -1632,14 +1633,14 @@ L8CFD:	PHA
 L8CFE:	LDA #$50
 L8D00:	STA $02
 L8D02:	TXA 
-L8D03:	JSR $C2BF
+L8D03:	JSR Adiv16
 L8D06:	AND #$01
 L8D08:	TAY 
 L8D09:	LDA $8D3A,Y
 L8D0C:	STA $03
 L8D0E:	LDA $030C,X
 L8D11:	STA $0B
-L8D13:	JSR $E96A
+L8D13:	JSR MakeWRAMPtr
 L8D16:	LDY #$00
 L8D18:	PLA 
 L8D19:	STA ($04),Y
@@ -1653,7 +1654,7 @@ L8D22:	CPY #$C0
 L8D24:	BNE $8D19
 L8D26:	LDX PageIndex
 L8D28:	TXA 
-L8D29:	JSR $C2C0
+L8D29:	JSR Adiv8
 L8D2C:	AND #$06
 L8D2E:	TAY 
 L8D2F:	LDA $04
@@ -6170,7 +6171,7 @@ LBFA6:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 
 ;----------------------------------------------[ RESET ]--------------------------------------------
 
-RESET:
+BRINSTARRESET:
 LBFB0:	SEI				;Disables interrupt.
 LBFB1:	CLD				;Sets processor to binary mode.
 LBFB2:	LDX #$00			;

@@ -38,6 +38,10 @@ namespace GetLabels
                     if (tokens[1][0] == 'l' && tokens[1].Length == 5 && OnlyHexInString(tokens[1].Substring(1)))
                         continue;
 
+                    //add a stupid exception
+                    if (tokens[1].Contains("mmc1reg"))
+                        continue;
+
                     int address_decimal;
                     string address_hex_string = tokens[0].Substring(1);
 

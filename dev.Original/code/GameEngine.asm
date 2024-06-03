@@ -20,7 +20,7 @@
 
 .org $C000
 
-.include "Defines.asm"
+.require "Defines.asm"
 
 ;-------------------------------------[ Forward declarations ]--------------------------------------
 
@@ -273,7 +273,7 @@ LC141:	.word AreaInit			;($C801)Area init.
 LC143:	.word MoreInit			;($C81D)More area init.
 LC145:	.word SamusInit			;($C8D1)Samus init.
 LC147:	.word GameEngine  		;($C92B)Game engine.
-LC149:	.word GameOver			;($C9A6)Display GAME OVER.
+LC149:	.word EngineGameOver			;($C9A6)Display GAME OVER.
 LC14B:	.word PauseMode   		;($C9B1)Pause game.
 LC14D:	.word GoPassword		;($C9C4)Display password.
 LC14F:	.word IncrementRoutine		;($C155)Just advances to next routine in table.
@@ -1551,10 +1551,18 @@ LC8DC:	ldy #sa_FadeIn0			;
 	lda PPUCNT0ZP			;
 	and #$01			;Set Samus' name table position to current name table-->
 	sta ObjectHi			;active in PPU.
-	lda #$00			;
-	sta HealthLo			;Starting health is-->
-	lda #$03			;set to 30 units.
-	sta HealthHi			;
+	
+	lda TankCount
+	jsr Amul16
+	ora #$09
+	sta HealthHi
+	lda #$99
+	sta HealthLo
+	
+	;lda #$00			;
+	;sta HealthLo			;Starting health is-->
+	;lda #$03			;set to 30 units.
+	;sta HealthHi			;
 *       rts				;
 
 ;------------------------------------[ Main game engine ]--------------------------------------------
@@ -1630,7 +1638,7 @@ LC9A5:*	rts				;major age too. Else exit.
 
 ;-------------------------------------------[ Game over ]--------------------------------------------
 
-GameOver:
+EngineGameOver:
 LC9A6:	lda #$1C			;GameOver is the next routine to run.
 LC9A8:	sta TitleRoutine		;
 LC9AA:	lda #$01			;
@@ -1739,127 +1747,6 @@ LCA34:	.byte $06			;Ridley hideout.
 
 ;----------------------------------[ Saved game routines (not used) ]--------------------------------
 
-AccessSavedGame:
-LCA35:	pha				;Save two copies of A. Why? Who knows. This code is-->
-LCA36:	pha				;Never implemented. A contains data slot to work on.
-LCA37:	jsr GetGameDataIndex		;($CA96)Get index to this save game Samus data info.
-LCA3A:	lda EraseGame			;
-LCA3D:	bpl +				;Is MSB set? If so, erase saved game data. Else branch.
-LCA3F:	and #$01			;
-LCA41:	sta EraseGame			;Clear MSB so saved game data is not erased again.
-LCA44:	jsr EraseAllGameData		;($CAA1)Erase selected saved game data.
-LCA47:	lda #$01			;Indicate this saved game has been erased.-->
-LCA49:	sta $7800,y			;Saved game 0=$780C, saved game 1=$781C, saved game 2=$782C. 
-LCA4C:*	lda MainRoutine			;
-LCA4E:	cmp #$01			;If initializing the area at the start of the game, branch-->
-LCA50:	beq +++				;to load Samus' saved game info.
-
-SaveGameData:
-LCA52:	lda InArea			;Save game based on current area Samus is in. Don't know why.
-LCA54:	jsr SavedDataBaseAddr		;($CAC6)Find index to unique item history for this saved game.
-LCA57:	ldy #$3F			;Prepare to save unique item history which is 64 bytes in length.
-LCA59:*	lda NumberOfUniqueItems,y	;
-LCA5C:	sta ($00),y			;Save unique item history in appropriate saved game slot.
-LCA5E:	dey				;
-LCA5F:	bpl -				;Loop until unique item history transfer complete.
-LCA61:	ldy SamusDataIndex		;Prepare to save Samus' data.
-LCA64:	ldx #$00			;
-LCA66:*	lda SamusStat00,x		;
-LCA69:	sta SamusData,y			;Save Samus' data in appropriate saved game slot.
-LCA6C:	iny				;
-LCA6D:	inx				;
-LCA6E:	cpx #$10			;
-LCA70:	bne -				;Loop until Samus' data transfer complete.
-
-LoadGameData:
-LCA72:*	pla				;Restore A to find appropriate saved game to load.
-LCA73:	jsr SavedDataBaseAddr		;($CAC6)Find index to unique item history for this saved game.
-LCA76:	ldy #$3F			;Prepare to load unique item history which is 64 bytes in length.
-LCA78:*	lda ($00),y			;
-LCA7A:	sta NumberOfUniqueItems,y	;Loop until unique item history is loaded.
-LCA7D:	dey				;
-LCA7E:	bpl -				;
-LCA80:	bmi +				;Branch always.
-LCA82:	pha				;
-LCA83:*	ldy SamusDataIndex		;Prepare to load Samus' data.
-LCA86:	ldx #$00			;
-LCA88:*	lda SamusData,y			;
-LCA8B:	sta SamusStat00,x		;Load Samus' data from appropriate saved game slot.
-LCA8E:	iny				;
-LCA8F:	inx				;
-LCA90:	cpx #$10			;
-LCA92:	bne -				;Loop until Samus' data transfer complete.
-LCA94:	pla				;
-LCA95:	rts				;
-
-GetGameDataIndex:
-LCA96:	lda DataSlot			;
-LCA99:	asl				;A contains the save game slot to work on (0 1 or 2).-->
-LCA9A:	asl				;This number is transferred to the upper four bits to-->
-LCA9B:	asl				;find the offset for Samus' data for this particular-->
-LCA9C:	asl				;saved game (#$00, #$10 or #$20).
-LCA9D:	sta SamusDataIndex		;
-LCAA0:	rts				;
-
-EraseAllGameData:
-LCAA1:	lda #$00			;Always start at saved game 0. Erase all 3 saved games.
-LCAA3:	jsr SavedDataBaseAddr		;($CAC6)Find index to unique item history for this saved game.
-LCAA6:	inc $03				;Prepare to erase saved game info at $6A00 and above.						
-LCAA8:	ldy #$00			;Fill saved game data with #$00.
-LCAAA:	tya				;
-LCAAB:*	sta ($00),y			;Erase unique item histories from $69B4 to $69FF. 
-LCAAD:	cpy #$40			;
-LCAAF:	bcs +				;IF 64 bytes alrady erased, no need to erase any more-->
-LCAB1:	sta ($02),y			;in the $6A00 and above range.
-LCAB3:*	iny				;
-LCAB4:	bne --				;Lop until all saved game data is erased.
-LCAB6:	ldy SamusDataIndex		;Load proper index to desired Samus data to erase.
-LCAB9:	ldx #$00			;
-LCABB:	txa				;
-LCABC:*	sta SamusData,y			;Erase Samus' data.
-LCABF:	iny				;
-LCAC0:	inx				;
-LCAC1:	cpx #$0C			;
-LCAC3:	bne -				;Loop until all data is erased.
-LCAC5:	rts				;
-
-;This routine finds the base address of the unique item history for the desired saved game (0, 1 or 2).
-;The memory set aside for each unique item history is 64 bytes and occupies memory addresses $69B4 thru
-;$6A73.
-
-SavedDataBaseAddr:
-LCAC6:	pha				;Save contents of A.
-LCAC7:	lda DataSlot			;Load saved game data slot to load.
-LCACA:	asl				;*2. Table values below are two bytes.
-LCACB:	tax				;
-LCACC:	lda SavedDataTable,x		;
-LCACF:	sta $00				;Load $0000 and $0002 with base addresses from-->
-LCAD1:	sta $02				;table below($69B4).
-LCAD3:	lda SavedDataTable+1,x		;
-LCAD6:	sta $01				;
-LCAD8:	sta $03				;
-LCADA:	pla				;Restore A.
-LCADB:	and #$0F			;Discard upper four bits in A.
-LCADD:	tax				;X used for counting loop.
-LCADE:	beq +++				;Exit if at saved game 0.  No further calculations required.
-LCAE0:*	lda $00				;
-LCAE2:	clc				;
-LCAE3:	adc #$40			;
-LCAE5:	sta $00				;Loop to add #$40 to base address of $69B4 in order to find-->
-LCAE7:	bcc +				;the proper base address for this saved game data. (save-->
-LCAE9:	inc $01				;slot 0 = $69B4, save slot 1 = $69F4, save slot 2 = $6A34).
-LCAEB:*	dex				;
-LCAEC:	bne --				;
-LCAEE:*	rts				;
-
-;Table used by above subroutine to find base address to load saved game data from. The slot 0
-;starts at $69B4, slot 1 starts at $69F4 and slot 2 starts at $6A34.
-
-SavedDataTable:
-LCAEF:	.word ItmeHistory		;($69B4)Base for save game slot 0.
-LCAF1:	.word ItmeHistory		;($69B4)Base for save game slot 1.
-LCAF3:	.word ItmeHistory		;($69B4)Base for save game slot 2.
-
 ;----------------------------------------[ Choose ending ]-------------------------------------------
 
 ;Determine what type of ending is to be shown, based on Samus' age
@@ -1911,7 +1798,7 @@ LCB33:	jsr UpdateSamus			;($CC0D)Display/movement of Samus.
 LCB36:	jsr AreaRoutine			;($95C3)Area specific routine.
 LCB39:	jsr UpdateElevator		;($D7B3)Display of elevators.
 LCB3C:	jsr UpdateStatues		;($D9D4)Display of Ridley & Kraid statues.
-LCB3F:	jsr $FA9D       ; destruction of enemies
+LCB3F:	jsr LFA9D       ; destruction of enemies
 LCB42:	jsr LFC65       ; update of Mellow/Memu enemies
 LCB45:	jsr LF93B
 LCB48:	jsr LFBDD       ; destruction of green spinners
@@ -2662,7 +2549,7 @@ LCFF3:  ldy #$18	; gravity (high value -> low jump)
 	lda SamusGear
 	and #gr_HIGHJUMP
 	beq +	   ; branch if Samus doesn't have High Jump
-	ldy #$12	; lower gravity value -> high jump!
+	ldy #$10	; lower gravity value -> high jump!
 *       sty SamusGravity
 	rts
 
@@ -2914,13 +2801,13 @@ LD147:  ldy #$00
 
 ; Pointer table to code
 
-	.word $CF55
-	.word $CC98
+	.word LCF55
+	.word LCC98
 	.word ExitSub       ;($C45C)rts
-	.word $D0B5
+	.word LD0B5
 	.word ExitSub       ;($C45C)rts
 	.word ExitSub       ;($C45C)rts
-	.word $CFBE
+	.word LCFBE
 	.word ExitSub       ;($C45C)rts
 	.word ExitSub       ;($C45C)rts
 	.word ExitSub       ;($C45C)rts
@@ -3074,7 +2961,8 @@ LD2EB:  tya
 
 SetProjectileAnim:
 LD2FA:	sta AnimResetIndex,x
-	sta AnimIndex,x
+UnknownD2FD:
+LD2FD: sta AnimIndex,x
 	lda #$00
 	sta AnimDelay,x
 *       rts
@@ -3329,12 +3217,12 @@ LD4D5:	.word UpdateBullet ; regular beam
 	.word UpdateWaveBullet      ; wave beam
 	.word UpdateIceBullet       ; ice beam
 	.word BulletExplode    ; bullet/missile explode
-	.word $D65E       ; lay bomb
-	.word $D670       ; lay bomb
-	.word $D691       ; lay bomb
-	.word $D65E       ; lay bomb
-	.word $D670       ; bomb countdown
-	.word $D691       ; bomb explode
+	.word LD65E       ; lay bomb
+	.word LD670       ; lay bomb
+	.word LD691       ; lay bomb
+	.word LD65E       ; lay bomb
+	.word LD670       ; bomb countdown
+	.word LD691       ; bomb explode
 	.word UpdateBullet  ; missile
 
 UpdateBullet:
@@ -3480,7 +3368,10 @@ Table0D:
 	UpdateIceBullet:
 	lda #$81
 	sta ObjectCntrl
+	bit SamusGear
+	bvs +
 	jmp UpdateBullet
+*	jmp UpdateWaveBullet
 
 ; BulletExplode
 ; =============
@@ -3749,12 +3640,12 @@ LD798:  and #$07
 
 	.word ExitSub       ;($C45C) rts
 	.word ElevatorIdle
-	.word $D80E
+	.word LD80E
 	.word ElevatorMove
 	.word ElevatorScroll
-	.word $D8A3
-	.word $D8BF
-	.word $D8A3
+	.word LD8A3
+	.word LD8BF
+	.word LD8A3
 	.word ElevatorMove
 	.word ElevatorStop
 
@@ -4321,7 +4212,8 @@ Exit9:  rts
 	bne -----	   ; branch always
 
 LDC1C:  lda MapPosX
-	sta $07
+UnknownDC1E:
+LDC1E:  sta $07
 	lda MapPosY
 	sta $06
 	lda ScrollDir
@@ -4565,6 +4457,7 @@ LDD75:  jsr PowerUpMusic
 	jsr AddToMaxMissiles
 	bne LDD5B
 
+ClrObjCntrlIfFrameIsF7:
 LDD8B:  ldx PageIndex
 	lda EnAnimFrame,x
 	cmp #$F7
@@ -5638,6 +5531,7 @@ LE3E5:  lda SamusHorzSpeedMax
 	sta $00				;$00 stores temp copy of current horizontal speed.
 	rts				;
 
+UnknownE449:
 LE449:  lda #$00
 	sec
 	sbc $00
@@ -6128,12 +6022,14 @@ LE76F:*	rts				;
 
 ;-----------------------------------------------------------------------------------------------------
 
+UnknownE770:
 LE770:	ldx PageIndex
 	lda EnRadY,x
 	clc
 	adc #$08
 	jmp LE783
 
+UnknownE77B:
 LE77B:  ldx PageIndex
 	lda #$00
 	sec
@@ -6346,12 +6242,14 @@ LE8CE:  eor #$FF
 	adc $04
 	rts
 
+UnknownE8F1:
 LE8F1:  ldx PageIndex
 	lda EnRadX,x
 	clc
 	adc #$08
 	jmp LE904
 
+UnknownE8FC:
 LE8FC:  ldx PageIndex
 	lda #$00
 	sec
@@ -6751,7 +6649,9 @@ LEB4D:  tay				;Save enemy position data in Y.
 	sta $0404,x
 	jsr GetNameTable		;($EB85)Get name table to place enemy on.
 	sta EnNameTable,x		;Store name table.
-	ldy EnDataIndex,x		;Load A with index to enemy data.
+
+UnknownEB6E:
+LEB6E:	ldy EnDataIndex,x		;Load A with index to enemy data.
 	asl $0405,x			;*2
 	jsr LFB7B
 	jmp LF85A
@@ -6826,7 +6726,7 @@ LEB92:  iny
 	rol
 	and #$03
 	tay
-	ldx $EC00,y
+	ldx LEC00,y
 	pla	     ; retrieve door info
 	and #$03
 	sta $0307,x     ; door palette
@@ -7987,12 +7887,12 @@ LF351:	stx PageIndex		;PageIndex starts at $50 and is subtracted by $F each iter
 ; Pointer table to code
 
 	.word ExitSub       ;($C45C) rts
-	.word $F3BE
-	.word $F3E6
-	.word $F40D
-	.word $F43E
-	.word $F483
-	.word $F4EE
+	.word LF3BE
+	.word LF3E6
+	.word LF40D
+	.word LF43E
+	.word LF483
+	.word LF4EE
 
 *       jmp KillObject			;($FA18)Free enemy data slot.
 
@@ -8062,10 +7962,12 @@ LF3E6:  lda $0405,x
 	jsr LF75B
 	jsr LF51E
 LF40A:*	jsr LF536
-	jmp $95E5
+LF40D:	jmp $95E5
 
+UpdateEnemyAnim0:
 LF410:	jsr UpdateEnemyAnim
 	jsr $8058
+CheckObjectAttribs:
 LF416:  ldx PageIndex
 	lda EnSpecialAttribs,x
 	bpl +
@@ -8082,6 +7984,7 @@ LF42D:  ldx PageIndex
 	sta $040E,x
 	rts
 
+UpdateEnemyAnim1:
 LF438:  jsr UpdateEnemyAnim
 LF43B:  jmp LF416
 
@@ -8134,7 +8037,7 @@ LF483:  lda $0404,x
 	pla
 	cmp #$81
 	bne +
-	ldx #$00			;Increase HealthHi by 0.
+	ldx #$01			;Increase HealthHi by 1.
 	ldy #$50			;Increase HealthLo by 5.
 *       pha
 *	pla				
@@ -8198,10 +8101,10 @@ LF518:  lda #$04
 LF51E:  lda ScrollDir
 	ldx PageIndex
 	cmp #$02
-	bcc ++
+	bcc +++		; added plus for new damage code
 	lda EnYRoomPos,x     ; Y coord
 	cmp #$EC
-	bcc ++
+	bcc +++		; added plus for new damage code
 	jmp KillObject			;($FA18)Free enemy data slot.
 
 *       jsr SFX_MetroidHit
@@ -8211,29 +8114,52 @@ LF536:  lda EnSpecialAttribs,x
 	sta $0A
 	lda $0404,x
 	and #$20
-	beq +
+	beq ++		;added plus
 	lda $040E,x
 	cmp #$03
-	bne +++
+	bne ++++	;added plus
 	bit $0A
-	bvs +++
+	bvs ++++	;added plus
 	lda EnStatus,x
 	cmp #$04
-	beq +++
+	beq ++++	;added plus
+	
+	;here's some new damage code for the ice beam to work more like super metroid 
+	
+	
+		jsr $80B0				
+        and #$20						
+		bne +				
+		clc
+		lda SamusGear
+		and #gr_WAVEBEAM
+		asl						
+		asl						
+		adc #$01				
+		sec						
+		sbc EnHitPoints, x
+		;if damage was grater, then this will be positive - freeze
+		bpl +
+		bmi ++++
+		
+*		lda EnStatus,x
+	
+
+	;end of new damage code
 	jsr LF515
 	lda #$40
 	sta $040D,x
 	jsr $80B0
 	and #$20
 	beq +
-	lda #$05
+	lda #$01	;making this one so the metroid only takes one misile instead of 5
 	sta EnHitPoints,x
 	jmp $95A8
 *       rts
 
 *	jsr $80B0
 	and #$20
-	bne ---
+	bne ---- ;added minus
 	jsr SFX_Metal
 	jmp LF42D
 
@@ -8291,8 +8217,10 @@ PlaySnd3:
 	bvc +
 	lda #$03
 *       sta EnSpecialAttribs,x
-	cpy #$02
-	beq +
+	;cpy #$02
+	;beq +
+	bit SamusGear
+	bvs +
 	bit $0A
 	bvc ++
 	ldy $040E,x
@@ -8363,6 +8291,7 @@ LF682:  jsr LF844
 	lda $963B,y
 	cmp EnResetAnimIndex,x
 	beq +
+ResetAnimIndex:
 LF68D:  sta EnResetAnimIndex,x
 LF690:  sta EnAnimIndex,x
 LF693:  lda #$00
@@ -8453,10 +8382,12 @@ LF6B9:  lda #$00
 	bpl +
 	jmp $820F
 
+UnknownF744:
 LF744:  ora $0405,x
 	sta $0405,x
 *       rts
 
+UnknownF74B:
 LF74B:  ldy EnDataIndex,x
 	lda $968B,y
 	rts
@@ -8573,6 +8504,7 @@ LF7BA:  dec EnDelay,x
 *	lda #$DF
 	jmp LF7B3
 
+UnknownF83E:
 LF83E:  lda $0405,x
 LF841:  jmp +
 
@@ -8586,6 +8518,7 @@ LF844:  lda $0405,x
 	tay
 	rts
 
+GetRandom_EnIdxFrCnt:
 LF852:  txa
 	lsr
 	lsr
@@ -8594,6 +8527,7 @@ LF852:  txa
 	lsr
 	rts
 
+UnknownF85A:
 LF85A:  ldy EnDataIndex,x
 	lda $969B,y
 	sta $040D,x
@@ -8604,6 +8538,7 @@ LF85A:  ldy EnDataIndex,x
 *       sta EnHitPoints,x
 *       rts
 
+UnknownF870:
 LF870:  lda $0405,x
 	and #$10
 	beq -
@@ -8727,11 +8662,11 @@ LF949:  stx PageIndex
 ; Pointer table to code
 
 	.word ExitSub     ;($C45C) rts
-	.word $F96A
+	.word LF96A
 	.word LF991       ; spit dragon's fireball
 	.word ExitSub     ;($C45C) rts
-	.word $FA6B
-	.word $FA91
+	.word LFA6B
+	.word LFA91
 
 Exit19: rts
 
@@ -8817,7 +8752,7 @@ LFA1A:	sta EnStatus,x			;Store #$00 as enemy status(enemy slot is open).
 LFA1D:	rts				;
 
 ; enemy<-->background crash detection
-
+EnemyBGCrashDetection:
 LFA1E:  lda InArea
 	cmp #$11
 	bne +
@@ -8991,6 +8926,7 @@ LFB7B:  jsr $80B0
 Exit13: 
 	rts				;Exit from multiple routines.
 
+UnknownFB88:
 LFB88:  ldx PageIndex
 	jsr LF844
 	lda $6B01,x
@@ -9013,7 +8949,9 @@ LFB88:  ldx PageIndex
 	beq Exit13
 	sta EnAnimIndex,x
 	dec EnAnimIndex,x
-	sta EnResetAnimIndex,x
+
+UnknownFBB9:
+LFBB9:	sta EnResetAnimIndex,x
 	jmp LF693
 
 *       lda $963B,y
@@ -9021,6 +8959,7 @@ LFB88:  ldx PageIndex
 	beq Exit13
 	jmp LF68D
 
+UnknownFBCA:
 LFBCA:  ldx PageIndex
 	jsr LF844
 	lda $965B,y
@@ -9141,9 +9080,9 @@ LFC98:  lda $B0,x
 ; Pointer table to code
 
 	.word ExitSub       ;($C45C) rts
-	.word $FCA5
-	.word $FCB1
-	.word $FCBA
+	.word LFCA5
+	.word LFCB1
+	.word LFCBA
 
 LFCA5:  jsr LFD84
 	jsr LFD08
@@ -9275,6 +9214,7 @@ LFD84:  lda $B6,x
 	sta $B0,x
 *       rts
 
+UnknownFD8F:
 LFD8F:  lda ScrollDir
 	and #$02
 	sta $02
@@ -9372,11 +9312,11 @@ LFE05:  lda $0758,x
 ; Pointer table to code
 
 	.word ExitSub       ;($C45C) rts
-	.word $FE3D
-	.word $FE54
-	.word $FE59
-	.word $FE54
-	.word $FE83
+	.word LFE3D
+	.word LFE54
+	.word LFE59
+	.word LFE54
+	.word LFE83
 
 LFE3D:  inc TileRoutine,x
 	lda #$00
@@ -9456,7 +9396,7 @@ LFE83:  lda #$00
 	sta $03
 Exit23: rts
 
-	DrawTileBlast:
+DrawTileBlast:
 	lda PPUStrIndex
 	cmp #$1F
 	bcs Exit23
@@ -9585,10 +9525,10 @@ LFFCF:	STA MMC1Reg3			;
 LFFD2:	JMP Startup			;($C01A)Do preliminary housekeeping.
 
 ;Not used.
-LFFD5:	.byte $FF, $FF, $FF, $4C, $E4, $B3, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-LFFE5:	.byte $FF, $FF, $FF, $FF, $4D, $45, $54, $52, $4F, $49, $44, $E4, $8D, $00, $00, $38
-LFFF5:	.byte $04, $01, $06, $01, $BC
-
+;LFFD5:	.byte $FF, $FF, $FF, $4C, $E4, $B3, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
+;LFFE5:	.byte $FF, $FF, $FF, $FF, $4D, $45, $54, $52, $4F, $49, $44, $E4, $8D, $00, $00, $38
+;LFFF5:	.byte $04, $01, $06, $01, $BC
+.advance $FFFA
 ;-----------------------------------------[ Interrupt vectors ]--------------------------------------
 
 LBFFA: 	.word NMI			;($C0D9)NMI vector.

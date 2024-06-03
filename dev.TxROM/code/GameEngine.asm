@@ -367,7 +367,8 @@ LC8DC:  ldy #sa_FadeIn0                 ;
         lda PPUCNT0ZP                   ;
         and #$01                        ;Set Samus' name table position to current name table-->
         sta ObjectHi                    ;active in PPU.
-        lda #$00                        ;
+        	
+		lda #$00                        ;
         sta HealthLo                    ;Starting health is-->
         lda #$03                        ;set to 30 units.
         sta HealthHi                    ;
@@ -456,6 +457,9 @@ LC9AE:  jmp ScreenOff                   ;Turn screen off.
 ;------------------------------------------[ Pause mode ]--------------------------------------------
 
 PauseMode:
+;BOOKMARK - PAUSE MODE
+;we can add some stuff here to check if select is pressed, and toggle ice/wave beams- if we have them. since the weapons power ups can 
+
 LC9B1:  lda Joy2Status                  ;Load buttons currently being pressed on joypad 2.
 LC9B3:  and #$88                        ;
 LC9B5:  eor #$88                        ;both A & UP pressed?-->
@@ -1209,7 +1213,8 @@ LCFF3:  ldy #$18        ; gravity (high value -> low jump)
         lda SamusGear
         and #gr_HIGHJUMP
         beq +      ; branch if Samus doesn't have High Jump
-        ldy #$12        ; lower gravity value -> high jump!
+        ;ldy #$12        ; lower gravity value -> high jump!
+		ldy #$10		; get us a multiple of 8 that gives Samus the ability to jump more comfortably to high ledges, including getting out of the lava pit in front of mother brain
 *       sty SamusGravity
         rts
 
@@ -1481,62 +1486,62 @@ Table07:
 
 FireWeapon:
 LD1EE:  lda Joy1Status
-        and #$08
-        beq LD210
-        jmp LD275
+        and #$08	;pointing up?
+        beq LD210	;if not, fire normal
+        jmp LD275	;else, fire up
 
-LD1F7:  ldy #$D0
-*       lda ObjAction,y
-        beq +
-        jsr Yplus16
-        bne -
-        iny
+LD1F7:  ldy #$D0		;load the object action offset
+*       lda ObjAction,y	;load the object action at that offset
+        beq +			;if we found an inactive object, jump down 
+        jsr Yplus16		;else, go to the next possible empty object
+        bne -			; if y didn't flip to 0, loop- we only get 3 slots to check
+        iny				;if we DID flip, no slots avaialbe- set y to 1 and return
         rts
 
-*       sta $030A,y
-        lda MissileToggle
-        beq +
-        cpy #$D0
+*       sta AnimDelay ,y		;store 0 into the anim delay, since A should be 0 for an inactive object
+        lda MissileToggle	
+        beq +					;if missle toggle is off, just return
+        cpy #$D0				;else, comp the action offset with y, then return
 *       rts
 
 LD210:  lda MetroidOnSamus
-        bne +
-        jsr LD1F7
-        bne +
-        jsr LD2EB
-        jsr LD359
-        jsr LD38E
-        lda #$0C
-        sta $030F,y
-        ldx SamusDir
+        bne +				;skip all the next stuff id there is a metroid on samus
+        jsr LD1F7			;find the next empty bullet slot
+        bne +				;didn't find am empty slot, or the first slot already has a missle (if we're fireing missles), skip
+        jsr LD2EB			;activate the bullet
+        jsr LD359			;do initial setup, and set up for a wave bullet if we launched one
+        jsr LD38E			;overwrite with ice bullet stuff instead (sprite was decided earlier)
+        lda #$0C			;load a life time of 0c
+        sta $030F,y			;store that in the life timer
+        ldx SamusDir		
         lda Table99,x   ; get bullet speed
         sta ObjHorzSpeed,y     ; -4 or 4, depending on Samus' direction
-        lda #$00
+        lda #$00			
         sta ObjVertSpeed,y
         lda #$01
         sta ObjectOnScreen,y
-        jsr CheckMissileLaunch
-        lda ObjAction,y
-        asl
-        ora SamusDir
-        and #$03
-        tax
-        lda Table08,x
-        sta $05
-        lda #$FA
+        jsr CheckMissileLaunch	;fire a missle if we're doing that
+        lda ObjAction,y		;load action type (1 = normal bullets, 2 = wave, 3 = ice... C = missle
+        asl					;shift over to the left 1 (0000 0010, 0000 0100, 0000 0110, 0001 1000)
+        ora SamusDir		;or with our direction	(will set bit 0 to 0 (right) or 1 (left))
+        and #$03			;mask out the lower bits (001x, 000x, 001x, 000x)
+        tax					;and load that into X (for normal and ice, bit 1 will be set)
+        lda Table08,x		;normal/ice bullets will be F4 or F8, wave will be 0C or 08
+        sta $05				;store value into $05
+        lda #$FA			;load FA into $04 - looks like we're setting up an address 
         sta $04
-        jsr LD306
+        jsr LD306			
         lda SamusGear
         and #gr_LONGBEAM
         lsr 
         lsr
         lsr
-        ror
-        ora $061F
-        sta $061F
+        ror	;if we have a long beam, we should end up with #80 here
+        ora HasBeamSFX
+        sta HasBeamSFX	;set bit 
         ldx ObjAction,y
         dex
-        bne +
+        bne +	;if it wasn;t a normal bullet, skip normal bullet fire sound- we already did sounds earlier for non normal bullets
         jsr SFX_BulletFire
 *       ldy #$09
 LD26B:  tya
@@ -1552,7 +1557,7 @@ Table99:
         .byte $04
         .byte $FC
 
-LD275:  lda MetroidOnSamus
+LD275:  lda MetroidOnSamus	;fire upwards instead. seems like a waste to copy paste
         bne +
         jsr LD1F7
         bne +
@@ -1611,13 +1616,13 @@ Table09:
         .byte $EC
         .byte $F0
 
-LD2EB:  tya
-        tax
-        inc ObjAction,x
-        lda #$02
-        sta ObjRadY,y
-        sta ObjRadX,y
-        lda #an_Bullet
+LD2EB:  tya				;move the newly activated bullet slot index offset into A
+        tax				;then from A to x
+        inc ObjAction,x ;turn the object on
+        lda #$02		
+        sta ObjRadY,y	;set the bounding box
+        sta ObjRadX,y	;
+        lda #an_Bullet	;load the normal bullet anim 
 
 SetProjectileAnim:
 LD2FA:  sta AnimResetIndex,x
@@ -1628,13 +1633,13 @@ SetProjectileAnim2:
 *       rts
 
 LD306:  ldx #$00
-        jsr LE8BE
-        tya
-        tax
-        jsr LFD8F
-        txa
-        tay
-        jmp LD638
+        jsr LE8BE	; get Samus nametable and room position
+        tya			; y = current bullet slot
+        tax			; move that slot into x
+        jsr LFD8F	;do some weird stuff with those (position converstion? ) and store out the values
+        txa			;get x back into a
+        tay			;put a back into y - the current bullet slot
+        jmp LD638	;use the valeus stored earlier to set on the new bullet objects
 
 CheckMissileLaunch:
         lda MissileToggle
@@ -1673,38 +1678,38 @@ SetBulletAnim:
         sta AnimDelay,y
 Exit4:  rts
 
-LD359:  lda SamusDir
-*       sta $0502,y
-        bit SamusGear
+LD359:  lda SamusDir	;load samus' direction
+*       sta $0502,y		;the defines say this has to do with tile stuff, but in the case of weapons, I think it's something else. store the firing direction here
+        bit SamusGear	
         bvc Exit4       ; branch if Samus doesn't have Wave Beam
-        lda MissileToggle
-        bne Exit4
-        lda #$00
-        sta $0501,y
-        sta $0304,y
-        tya
-        jsr Adiv32      ; / 32
-        lda #$00
-        bcs +
-        lda #$0C
-*       sta $0500,y
+        lda MissileToggle	;if we have the suit, check for missle use
+        bne Exit4			;if we're using missles, return to the original fire routine
+        lda #$00			;store 0 into 
+        sta $0501,y			;the 501 address
+        sta AnimDelay,y		;the anim delay
+        tya					;put the index back into a
+        jsr Adiv32      	;shift the bits over 
+        lda #$00			;
+        bcs +				;if we pushed out a 1 from our index, we're in bullet slot 1 or 3- no offset, jump to the store
+        lda #$0C			;if we didn't, because we're in bullet slot 2, offset by C - this causes the wave bullets to have a phase shift
+*       sta $0500,y			;store the value into the start of the 500 value
         lda #wa_WaveBeam
-        sta ObjAction,y
-        lda #an_WaveBeam
-        jsr SetBulletAnim
-        jmp SFX_WaveFire
+        sta ObjAction,y		;1 is a normal bullet- but we can change it based on the weapon type. set it to 2 to match the wave
+        lda #an_WaveBeam	;load up the wave beam anim 
+        jsr SetBulletAnim	;set the bullet anim
+        jmp SFX_WaveFire	;play wave fire sound
 
-LD38A:  lda #$02
-        bne --
+LD38A:  lda #$02			;do this one if we fired upwards to go to the above wave shot logic... again, seems like a waste and unecessary
+        bne --				;will always branch, unless a neutrino decides otherwise- seems like we're tempting fate here
 LD38E:  lda MissileToggle
         bne Exit4
         lda SamusGear
         bpl Exit4       ; branch if Samus doesn't have Ice Beam
-        lda #wa_IceBeam
+		lda #wa_IceBeam
         sta ObjAction,y
-        lda $061F
-        ora #$01
-        sta $061F
+        lda HasBeamSFX	;
+        ora #$01		;set the 0 bit of has beam SFX to 1, denotes we have ice FX
+        sta HasBeamSFX	;
         jmp SFX_BulletFire
 
 ; SamusDoor
@@ -1870,7 +1875,7 @@ jsr DoOneProjectile
 DoOneProjectile:
         stx PageIndex
         lda ObjAction,x
-LD4D0:  jsr ChooseRoutine
+LD4D0:  jsr ChooseRoutine ; pick projectile routine based on object action 
 
 LD4D3:  .word ExitSub               ; rts
 LD4D5:  .word UpdateBullet          ; regular beam
@@ -1922,15 +1927,15 @@ UpdateWaveBullet:
         sta UpdatingProjectile
         jsr LD5FC
         jsr LD5DA
-        lda $0502,x
-        and #$FE
-        tay
-        lda Table0A,y
-        sta $0A
-        lda Table0A+1,y
-        sta $0B
-*       ldy $0500,x
-        lda ($0A),y
+        lda $0502,x	;get our facing direction we stored away - 0 and one are horizontal, 2 is vertical
+        and #$FE	; this will be 0 on left/right, and 2 on up
+        tay			; put that in y
+        lda Table0A,y	;horizontal shots use table 0C, vert shots use table 0D
+        sta $0A			;store the low byte into 0A
+        lda Table0A+1,y	
+        sta $0B			;store the high byte into 0B
+*       ldy $0500,x		;load our curent 500 val
+        lda ($0A),y		;get the first value on the table
         cmp #$FF
         bne +
         sta $0500,x
@@ -2027,7 +2032,10 @@ Table0D:
         UpdateIceBullet:
         lda #$81
         sta ObjectCntrl
+		bit SamusGear
+		bvs +			;since we have a wave bullet, update it like one
         jmp UpdateBullet
+*		jmp UpdateWaveBullet
 
 ; BulletExplode
 ; =============
@@ -2086,14 +2094,14 @@ LD624:  ldx PageIndex
         sta $05
         lda ObjVertSpeed,x
         sta $04
-        jsr LE8BE
+        jsr LE8BE		;load up object position
         jsr LFD8F
         bcc --
-LD638:  lda $08
-        sta ObjectY,x
+LD638:  lda $08			;load up positions from our conversions
+        sta ObjectY,x	;store those out
         lda $09
         sta ObjectX,x
-        lda $0B
+        lda $0B			
         and #$01
         bpl +      ; branch always
         ToggleObjectHi:
@@ -2730,7 +2738,8 @@ Exit0:  rts
 ; ==================
 ; Toggles between bullets/missiles (if Samus has any missiles).
 
-        CheckMissileToggle:
+;BOOKMARK - SWAP CHANGE TOGGLE MISSLE
+        CheckMissileToggle:		;does this run on pause?
         lda MissileCount
         beq Exit0       ; exit if Samus has no missiles
         lda Joy1Change
@@ -2768,7 +2777,7 @@ UpdateItems:
 CheckOneItem:
 LDB42:  stx ItemIndex                   ;First or second item slot index(#$00 or #$08).
         ldy PowerUpType,x               ;
-        iny                             ;Is no item present in item slot(#$FF)?-->
+        iny                             ;Is no item present in item slot(#$FF)
         beq -                           ;If so, branch to exit.
 
         lda PowerUpYCoord,x
@@ -2778,67 +2787,67 @@ LDB42:  stx ItemIndex                   ;First or second item slot index(#$00 or
         lda PowerUpNameTable,x
         sta $034C
         jsr GetObjCoords
-        ldx ItemIndex
-        ldy #$00
-        lda ($04),y
-        cmp #$A0
-        bcc -
-        lda PowerUpType,x
-        and #$0F
-        ora #$50
-        sta $0343
-        lda FrameCount
-        lsr
-        and #$03
+        ldx ItemIndex					;reset the X to the item index again, for... some reason
+        ldy #$00						;reset y value
+        lda ($04),y						;load value at address stored at $04/$05- this should be (one of? looks to be bottom right tile) the tiles in the Room ram corresponding to the power up case
+        cmp #$A0						;
+        bcc -							;if the bottom right tile of the item case in room ram is less than tile A0 (the end of the list of possible item hiding tiles), then the item is hidden- branch to exit
+        lda PowerUpType,x				;else, get the power up loaded again
+        and #$0F			;all the stuff up tp the that exit 9 check is the flashing animation, I assume. 
+        ora #$50			;I also assume we're storing out a value for indexing the tiles? or something
+        sta $0343			;store the value into the anim frame table for this, equivalent to LDA AnimFrame, (PageIndex)
+        lda FrameCount		;
+        lsr					;
+        and #$03			;
         ora #$80
         sta ObjectCntrl
         lda SpritePagePos
-        pha
+        pha					;sotre out the page position
         lda $074F,x
         jsr DrawFrame       ; display special item
-        pla
-        cmp SpritePagePos
-        beq Exit9
-        tax
+        pla					;load in the page position
+        cmp SpritePagePos	;
+        beq Exit9			;if they're the same, exit... seems odd. 
+        tax					;
         ldy ItemIndex
         lda PowerUpType,y
-        ldy #$01
-        cmp #$07
+        ldy #$01			;second (ice) palette by default
+        cmp #$07			;check if we're the ice beam
+        beq +				;if we're the ice beam, jump to beam idicator palette set
+        dey					;else, load up the samus palette
+        cmp #$06			;wave beam
         beq +
-        dey
-        cmp #$06
-        beq +
-        cmp #$02
+        cmp #$02			;long beam
         bne ++
-*       tya
-        sta Sprite01RAM+2,x
-        lda #$FF
-*       pha
-        ldx #$00
-        ldy #$40
-        jsr LDC7F
-        pla
-        bcs Exit9
-        tay
+*       tya					
+        sta Sprite01RAM+2,x	;regardless of the animation, force the beam type sprite to a solid color based on the beam type (0 for Laser/wave, 1 for ice)
+        lda #$FF			;load FF to A
+*       pha					;store A away
+        ldx #$00			;	
+        ldy #$40			;check collision for this power up- will return an empty carry flag if collision is true
+        jsr LDC7F			;
+        pla					;restore A
+        bcs Exit9			;collision should set the carry flag- if it's set, no collision. if it's not, continue to the power up collection
+        tay					;put A into Y - will be either the power up type, or FF for a beam
         jsr PowerUpMusic
         ldx ItemIndex
-        iny
-        beq +
-        lda PowerUpNameTable,x
+        iny					;increment y- if it's a beam, this will change to 0
+        beq +				;this a beam? move down 
+        lda PowerUpNameTable,x	;else... not cure. something to do with map scroll/maybe unique item updates
         sta $08
         lda PowerUpType,x
         sta $09
         jsr LDC1C
 *       lda PowerUpType,x
         tay
-        cpy #$08
-        bcs ++++
-        cpy #$06
-        bcc +
-        lda SamusGear
-        and #$3F
-        sta SamusGear
-*       jsr MakeBitMask
+        cpy #$08	;missle tank
+        bcs ++++	;missle or higher, jump down to missle/tank updates
+		;cpy #$06	;or comp to wave
+        ;bcc +		;less than wave, jump down
+        ;lda SamusGear
+        ;and #$3F		;if it's a wave or ice beam, take samus's gear and clear the beam flags to allow one to override the other
+        ;sta SamusGear
+*       jsr MakeBitMask	;allow ice and wave to coexist
         ora SamusGear
         sta SamusGear
 *       lda #$FF
@@ -3042,14 +3051,14 @@ LDCF5:  jsr ClearObjectCntrl            ;Clear object control byte.
         pla
         ldx PageIndex
 LDCFC:  lda InArea
-        cmp #$13
-        bne +
-        lda EnDataIndex,x
-        cmp #$04
+        cmp #$13			
+        bne +				;if we're not in torian, jump down to normal drop checks
+        lda EnDataIndex,x	;else, get the current enemy data index 
+        cmp #$04			;if we're index 4...
         beq +++++
-        cmp #$02
-        beq +++++
-*       lda $040C,x
+        cmp #$02			;or 2...
+        beq +++++			;kill the object outright, no drops. this must be for the not metroids in the level. this should change so as not to be so hard coded, but eh
+*       lda $040C,x			
         asl
         bmi LDD75
         jsr GetEnemy8BValue
@@ -3179,7 +3188,7 @@ AddToMaxMissiles:
         ora ExplodeRotationTbl,x
         sta $05
         pla
-        cmp #$19
+        cmp #$19				;;here's where we take the explosion and roll for drops
         bne +
         jmp LDCF5
 
@@ -4877,11 +4886,11 @@ LF2BF:  lda $B6,x
 
 LF2CA:  bcs +++
         lda ObjAction,y
-        sta $040E,x
-        jsr LF279
-*       jsr LF332
-*       ora $0404,x
-        sta $0404,x
+        sta $040E,x			;store the missle type we hit into 40E
+        jsr LF279			;load the value at $10, which should be realted to room position. ora with the missile hit status, then store that back into the hit status
+*       jsr LF332			;load the value at $10 again related to room position, eor with 3, then mult by 8. this *should* mean that the lower half is always 8, or 12(C)
+*       ora $0404,x			;or with the hit status of the enemy
+        sta $0404,x			;then store on the hit status
 *       rts
 
 LF2DF:  lda $10
@@ -5062,11 +5071,11 @@ LF423:  sta ObjectCntrl
 *       lda EnStatus,x
         beq LF42D
         jsr ClrObjCntrlIfFrameIsF7
-LF42D:  ldx PageIndex
-        lda #$00
+LF42D:  ldx PageIndex	;reload the current enemy back into X
+        lda #$00		;store 0 into 404, 40E for that enemy
         sta $0404,x
         sta $040E,x
-        rts
+        rts				;return to last JSR location
 
 UpdateEnemyAnim1:
         jsr UpdateEnemyAnim
@@ -5121,7 +5130,7 @@ LF483:  lda $0404,x
         pla
         cmp #$81
         bne +
-        ldx #$00                        ;Increase HealthHi by 0.
+        ldx #$01                        ;Increase HealthHi by 1.
         ldy #$50                        ;Increase HealthLo by 5.
 *       pha
 *       pla                             
@@ -5185,62 +5194,79 @@ LF518:  lda #$04
 LF51E:  lda ScrollDir
         ldx PageIndex
         cmp #$02
-        bcc ++
+        bcc +++
         lda EnYRoomPos,x     ; Y coord
         cmp #$EC
-        bcc ++
+        bcc +++
         jmp KillObject                  ;Free enemy data slot.
 
 *       jsr SFX_MetroidHit
         jmp GetPageIndex
-
-LF536:  lda EnSpecialAttribs,x
-        sta $0A
-        lda $0404,x
-        and #$20
-        beq +
-        lda $040E,x
-        cmp #$03
-        bne +++
-        bit $0A
-        bvs +++
-        lda EnStatus,x
-        cmp #$04
-        beq +++
-        jsr LF515
-        lda #$40
-        sta $040D,x
-        jsr Unknown80B0
-        and #$20
-        beq +
-        lda #$05
-        sta EnHitPoints,x
-        jmp $95A8
+								; $F450 in the current compilated
+LF536:  lda EnSpecialAttribs,x	; load the special attributes of an enemy, ;Bit 7 set=tough version of enemy, bit 6 set=mini boss. 
+        sta $0A					; store the value into $000A for safe keeping
+        lda $0404,x				; load up the shot/collision status 
+        and #$20				; and with mask out 0010 0000, to check if it's a shot 
+        beq ++					; equal to 0? jump to the RTS - no shot detected
+        lda $040E,x				; 	40E is the type of laser we were hit by (01 = laser, 02 = wave, 03 = ice, 0A = bomb, 0B = missle
+        cmp #$03				; 	this value is loaded into here from samus' 0300 page ram (from 3D0 down)
+        bne ++++					; 	not equal? jump to the hit points checktwo chunks down
+        bit $0A					; 		take the enemy status we loaded.  
+        bvs ++++					;		if bit 6 is set IE, we're a miniboss, jump down to the hit point check; ice lasers don't freeze the bosses
+        lda EnStatus,x			;		if NOT, then load the current status
+        cmp #$04				;			compare to frozen
+        beq ++++					;			frozen? jump to hit point stuff
+		
+		jsr Unknown80B0				
+        and #$20						
+		bne +				
+		clc
+		lda SamusGear
+		and #gr_WAVEBEAM
+		asl						
+		asl						
+		adc #$01				
+		sec						
+		sbc EnHitPoints, x
+		;if damage was grater, then this will be positive - freeze
+		bpl +
+		bmi ++++
+		
+*		lda EnStatus,x
+        jsr LF515				;				else, jump back up to where we store whatever we ended up with into 040C, I assume a previous status then load 4 into A, and store that in the enemy status- AKA, freeze it
+        lda #$40				;				load up #40 frames
+        sta $040D,x				; 				store that into the enemy's freezer delay timer
+        jsr Unknown80B0			;				load the enemy info from the current room, bit shifted left 1
+        and #$20				;				compare to metroids
+        beq +					;				if it's not a metroid, return
+        lda #$01				;					if we froze a metroid, give it health
+        sta EnHitPoints,x		;					jump to 95A8, which does stuff to the metroid on samus flag, among other things
+        jmp $95A8				;				
 *       rts
 
-*       jsr Unknown80B0
-        and #$20
-        bne ---
+*       jsr Unknown80B0			; get the enemy from the index list in the area
+        and #$20				; check bit 6 - we're not bitting these because, well, we didn;t save these in memory
+        bne ----					; if it's a metroid, go play the metroid hit sound
         jsr SFX_Metal
-        jmp LF42D
+        jmp LF42D				;reset enemy hit status and damage source
 
-*       lda EnHitPoints,x
-        cmp #$FF
-        beq --
-        bit $0A
-        bvc +
-        jsr SFX_BossHit
-        bne ++
-*       jsr GetEnemy8BValue
-        and #$0C
-        beq PlaySnd1
-        cmp #$04
-        beq PlaySnd2
-        cmp #$08
-        beq PlaySnd3
-        jsr SFX_MetroidHit
+*       lda EnHitPoints,x		;load up the hit points
+        cmp #$FF				;if it's FF
+        beq --					;jump backwards to the invincible SFX calls, then leave the damage subroutine
+		bit $0A					;if not, load up the enemy status from $000A
+        bvc +					;if it's still not a boss, jump to just checking the normal SFX
+        jsr SFX_BossHit			;if it was a boss, play the boss hit sfx
+        bne ++					;then, jump to damage dealing
+*       jsr GetEnemy8BValue		;else, play whatever other enemy it was- 
+        and #$0C				;check with 0000 1100 to see if we do sound 2 or 3
+        beq PlaySnd1			;neither bit flipped? play sound 1
+        cmp #$04				;
+        beq PlaySnd2			;0100 flipped? play sound 2
+        cmp #$08				;
+        beq PlaySnd3			;1000 flipped? play sound 3
+        jsr SFX_MetroidHit		;BOTH flipped? it was a metroid
         bne +       ; branch always
-PlaySnd1:
+PlaySnd1:			;snd 1 and 2, according to this, are the same enemy sound. seems like a goof
         jsr SFX_EnemyHit
         bne +       ; branch always
 PlaySnd2:
@@ -5248,80 +5274,80 @@ PlaySnd2:
         bne +       ; branch always
 PlaySnd3:
         jsr SFX_BigEnemyHit             ;
-*       ldx PageIndex
-        jsr Unknown80B0
-        and #$20
+*       ldx PageIndex					; load up the enemy back into x
+        jsr Unknown80B0					; get the data about if it's a metroid
+        and #$20						; if it's *not a metroid*, jump to enemy status- we can only get here id the metroid is frozen
         beq +
-        lda $040E,x
-        cmp #$0B
-        bne ----
-*       lda EnStatus,x
-        cmp #$04
-        bne +
-        lda $040C,x
-*       ora $0A
-        sta $040C,x
-        asl
-        bmi +
-        jsr Unknown80B0
+        lda $040E,x						;else, load up the damage source
+        cmp #$0B						;check if it's a missle
+        bne ----						;not equal, play the metal sfx and pop out- no damage to deal
+*       lda EnStatus,x					; 	load up that stat
+        cmp #$04						; 	check if we're frozen
+        bne +							; 	not frozen? use the status as is and jump to oring with the special attribute
+        lda $040C,x						; 		else, if frozen, load up the previous state we saved out earlier from being frozen
+*       ora $0A							; 		or with that stored enemy attribute
+        sta $040C,x						;		then store that in back into the previous state data
+        asl								;		shift the previous state data left- check the 
+        bmi +							;jump down if our multiplication nagated the value
+        jsr Unknown80B0					;
         and #$20
-        bne +
-        ldy $040E,x
-        cpy #$0B
-        beq +++++
-        cpy #$81
-        beq +++++
-*       lda #$06
-        sta EnStatus,x
-        lda #$0A
-        bit $0A
-        bvc +
-        lda #$03
-*       sta EnSpecialAttribs,x
-        cpy #$02
-        beq +
-        bit $0A
-        bvc ++
-        ldy $040E,x
-        cpy #$0B
-        bne ++
-        dec EnHitPoints,x
+        bne +							; it's a metroid, jump to the load 6 - missles do one hit each, so we treat them like normal lasers
+        ldy $040E,x						; if not set, load the missle type into y
+        cpy #$0B						; was it a missle?
+        beq +++++						; if it's equal, skip normal damage - instant kill
+        cpy #$81						; what about whatever the fuck this is?
+        beq +++++						; if equal, skip normal damage - instant kill
+*       lda #$06						; load 6
+        sta EnStatus,x					; store that into the status, probably "hit"
+        lda #$0A						; 10 to A
+        bit $0A							; check the mini boss tag again
+        bvc +							; if it is the boss,
+        lda #$03						; load 3 to A instead
+*       sta EnSpecialAttribs,x			; store in the special attributes as a freeze timer
+        bit SamusGear
+        bvs +							; if a wave beam, 2 damage
+        bit $0A							; not a wave beam? check if we're a boss
+        bvc ++							; not a boss? sub just 1 health
+        ldy $040E,x						; load the missle type
+        cpy #$0B						; if it's a missle, do a full 4 hits on the boss
+        bne ++							
+        dec EnHitPoints,x				;sub up to 4 health
         beq +++
-        dec EnHitPoints,x
+        dec EnHitPoints,x				;sub up to 3 health
         beq +++
-*       dec EnHitPoints,x
+*       dec EnHitPoints,x				;sub up to 2 health
         beq ++
-*       dec EnHitPoints,x
-        bne GetPageIndex
-*       lda #$03
-        sta EnStatus,x
-        bit $0A
-        bvs +
-        lda $040E,x
-        cmp #$02
-        bcs +
-        lda #$00
-        jsr LDCFC
-        ldx PageIndex
-*       jsr LF844
-        lda $960B,y
+*       dec EnHitPoints,x				;sub 1 health
+        bne GetPageIndex				;does DEC load up the
+*       lda #$03						;go in for the kill
+        sta EnStatus,x					;load 03 into the status - enemy is dying
+        bit $0A							;check if we're a miniboss
+        bvs +							;if so, jump down to the mystery load
+        lda $040E,x						;check the damage type
+        cmp #$02						;compare to wave
+        bcs +							;if greater than OR equal to, jump down to the mystery load
+        lda #$00						;otherwise, load 0 and jump to 
+        jsr LDCFC						;the enemy kill/item drop routine - for normal explosions
+        ldx PageIndex					;I THINK THE REST OF THIS IS FINDING AND POPULATING AN EXPLOSION SLOT 
+*       jsr LF844						;gets us some kinda index into 960B- by loading up the eney data, bit shifting down (based on the neg flag), then roling the carry left onto the enemy index
+        lda $960B,y						;load that value at the index, and take it to the reset anim index
         jsr ResetAnimIndex
-        sta EnCounter,x
-        ldx #$C0
-*       lda EnStatus,x
-        beq +
-        txa
-        clc
-        adc #$08
-        tax
-        cmp #$E0
-        bne -
-        beq GetPageIndex
-*       lda $95DD
+        sta EnCounter,x					;store whatever we got out of that into the en counter
+        ldx #$C0						;load a specific enemy status, the one at offset #C0- 6BB4, or something
+*       lda EnStatus,x					
+        beq +							;if it's 0, jump to loading the mystery value in 95DD
+        txa								;put x into a for a bit
+        clc								;clear carry
+        adc #$08						;add 8
+        tax								;put a back into x
+        cmp #$E0						;compare with #E0, three rows down 
+        bne -							;if we haven't reached that max index, keep looping- this time, checking the 6BBC value, etc
+        beq GetPageIndex				;if we reached that max index and never found a 0, get the page index or whatever and leave the subroutine
+*       lda $95DD						
         jsr ResetAnimIndex
         lda #$0A
         sta EnCounter,x
-        inc EnStatus,x
+        inc EnStatus,x					;set the found explosion to active
         lda #$00
         bit $0A
         bvc +

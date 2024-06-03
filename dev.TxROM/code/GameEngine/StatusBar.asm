@@ -123,7 +123,6 @@ LE18E:  sec                             ;
 LE18F:  sbc #$0A                        ;Find x coord of next energy tank.
 LE191:  sta $00                         ;
 		jmp Xplus4
-		rts
 ;-------------------------------------[ Status bar sprite data ]-------------------------------------
 
 ;Sprite data for Samus' data display
