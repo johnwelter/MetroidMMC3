@@ -21,44 +21,6 @@
 .require "Defines.asm"
 .require "GameEngineDeclarations.asm"
 
-;-------------------------------------[ Forward declarations ]--------------------------------------
-
-;.alias startup			$C01A
-;.alias NMI			$C0D9
-;.alias ClearNameTables		$C158
-;.alias ClearNameTable0		$C16D
-;.alias EraseAllSprites		$C1A3
-;.alias RemoveIntroSprites	$C1BC
-;.alias ClearRAM_33_DF		$C1D4
-;.alias PreparePPUProcess_	$C20E
-;.alias ChooseRoutine		$C27C
-;.alias AddYToPtr02		$C2B3
-;.alias Adiv16			$C2BF
-;.alias Adiv8			$C2C0
-;.alias Amul16			$C2C5
-;.alias Amul8			$C2C6
-;.alias ProcessPPUString		$C30C
-;.alias EraseTile		$C328
-;.alias WritePPUByte		$C36B
-;.alias PrepPPUPaletteString	$C37E
-;.alias TwosCompliment		$C3D4
-;.alias WaitNMIPass		$C42C
-;.alias ScreenOff		$C439
-;.alias WaitNMIPass_		$C43F
-;.alias ScreenOn			$C447
-;.alias ExitSub			$C45C
-;.alias ScreenNmiOff		$C45D
-;.alias VBOffAndHorzWrite	$C47D
-;.alias NmiOn			$C487
-;.alias SetTimer			$C4AA
-;.alias ClearSamusStats		$C578
-;.alias InitEndGFX		$C5D0
-;.alias LoadSamusGFX		$C5DC
-;.alias InitGFX7			$C6D6
-;.alias BankTable		$CA30
-;.alias ChooseEnding		$CAF5
-;.alias SilenceMusic		$CB8E
-
 ;-----------------------------------------[ Start of code ]------------------------------------------
 
 L8000:	lda TitleRoutine		;
@@ -8089,7 +8051,7 @@ LBFA6:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 
 ;----------------------------------------------[ RESET ]--------------------------------------------
 
-TITLERESET:
+AREARESET:
 LBFB0:	SEI				;Disables interrupt.
 LBFB1:	CLD				;Sets processor to binary mode.
 LBFB2:	LDX #$00			;
