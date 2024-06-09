@@ -735,7 +735,7 @@
 ;				$6B03
 
 ;-------------------------------------[ Intro sprite defines ]---------------------------------------
-
+.alias IntroStarSpriteMem 	$6DFF
 .alias IntroStarSprite00	$6E00	;thru $6E9F
 .alias IntroStarSprite01	$6E04	;
 .alias IntroStarSprite02	$6E08	;
