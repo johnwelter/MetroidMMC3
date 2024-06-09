@@ -35,6 +35,7 @@
 
 ;-----------------------------------------[ Start of code ]------------------------------------------
 
+AreaUpdate:
 L8000:	JMP UpdateEnemyAnim0 
 L8003:	JMP UpdateEnemyAnim1   
 L8006:	JMP CheckObjectAttribs 
