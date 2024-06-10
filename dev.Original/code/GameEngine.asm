@@ -94,7 +94,7 @@ Startup:
 	sta MMC1Reg2			;Clear bit 2
 	sta MMC1Reg2			;Clear bit 3
 	sta MMC1Reg2			;Clear bit 4 
-	jsr MMCWriteReg3		;($C4FA)Swap to PRG bank #0 at $8000
+	jsr MMCWriteReg3		;Swap to PRG bank #0 at $8000
 	dex						;X = $FF
 	txs						;S points to end of stack page
 
@@ -146,8 +146,8 @@ ClearSRAM:
 	sty PPUScroll			;Clear hardware scroll y
 	iny						;Y = #$01
 	sty GameMode			;Title screen mode
-	jsr ClearNameTables		;($C158)
-	jsr EraseAllSprites		;($C1A3)
+	jsr ClearNameTables		;
+	jsr EraseAllSprites		;
 
 	lda #%10010000			;NMI = enabled
 							;Sprite size = 8x8
@@ -167,7 +167,7 @@ ClearSRAM:
 
 	lda #$47				;
 	sta MirrorCntrl			;Prepare to set PPU to vertical mirroring.
-	jsr PrepVertMirror		;($C4B2)
+	jsr PrepVertMirror		;
 
 	lda #$00				;
 	sta DMCCntrl1			;PCM volume = 0 - disables DMC channel
@@ -184,7 +184,7 @@ ClearSRAM:
 
 	iny						;Y = 1
 	sty SwitchPending		;Prepare to switch page 0 into lower PRGROM.
-	jsr CheckSwitch			;($C4DE)
+	jsr CheckSwitch			;
 	bne WaitNMIEnd			;Branch always
 
 ;-----------------------------------------[ Main loop ]----------------------------------------------
@@ -192,9 +192,9 @@ ClearSRAM:
 ;The main loop runs all the routines that take place outside of the NMI.
 
 MainLoop:
-	jsr CheckSwitch			;($C4DE)Check to see if memory page needs to be switched.
-	jsr UpdateTimer			;($C266)Update Timers 1, 2 and 3.
-	jsr GoMainRoutine		;($C114)Go to main routine for updating game.
+	jsr CheckSwitch			;Check to see if memory page needs to be switched.
+	jsr UpdateTimer			;Update Timers 1, 2 and 3.
+	jsr GoMainRoutine		;Go to main routine for updating game.
 	inc FrameCount			;Increment frame counter.
 	lda #$00				;
 	sta NMIStatus			;Wait for next NMI to end.
@@ -231,15 +231,15 @@ NMI:
 	bne ++					;Skip if the frame couldn't finish in time.
 	lda GameMode			;
 	beq +					;Branch if mode=Play.
-	jsr NMIScreenWrite		;($9A07)Write end message on screen(If appropriate).
-*	jsr CheckPalWrite		;($C1E0)Check if palette data pending.
-	jsr CheckPPUWrite		;($C2CA)check if data needs to be written to PPU.
-	jsr WritePPUCtrl		;($C44D)Update $2000 & $2001.
-	jsr WriteScroll			;($C29A)Update h/v scroll reg.
-	jsr ReadJoyPads			;($C215)Read both joypads.
-* 	jsr SoundEngine			;($B3B4)Update music and SFX.
-	jsr UpdateAge			;($C97E)Update Samus' age.
-	ldy #$01				; NMI = finished.
+	jsr NMIScreenWrite		;Write end message on screen(If appropriate).
+*	jsr CheckPalWrite		;Check if palette data pending.
+	jsr CheckPPUWrite		;check if data needs to be written to PPU.
+	jsr WritePPUCtrl		;Update $2000 & $2001.
+	jsr WriteScroll			;Update h/v scroll reg.
+	jsr ReadJoyPads			;Read both joypads.
+* 	jsr SoundEngine			;Update music and SFX.
+	jsr UpdateAge			;Update Samus' age.
+	ldy #$01				;NMI = finished.
 	sty NMIStatus			;
 	pla						;Restore Y.
 	tay						;
@@ -278,10 +278,10 @@ GoMainRoutine:
 	lda GamePaused			;
 	eor #$01				;Toggle game paused.
 	sta GamePaused			;
-	jsr PauseMusic			;($CB92)Silences music while game paused.
+	jsr PauseMusic			;Silences music while game paused.
 
 *	lda MainRoutine			;
-	jsr ChooseRoutine		;($C27C)Use MainRoutine as index into routine table below.
+	jsr ChooseRoutine		;Use MainRoutine as index into routine table below.
 
 ;Pointer table to code.
 
@@ -315,60 +315,60 @@ ClearNameTables:
 	bne ++					;Branch always.
 
 ClearNameTable0:
-*	lda #$01			;Name table to clear + 1 (name table 0).
-*	sta $01				;Stores name table to clear.
-	lda #$FF			;
-	sta $00				;Value to fill with.
+*	lda #$01				;Name table to clear + 1 (name table 0).
+*	sta $01					;Stores name table to clear.
+	lda #$FF				;
+	sta $00					;Value to fill with.
 
 ClearNameTable:
 	ldx PPUStatus			;Reset PPU address latch.
 	lda PPUCNT0ZP			;
-	and #$FB			;PPU increment = 1.
+	and #$FB				;PPU increment = 1.
 	sta PPUCNT0ZP			;
 	sta PPUControl0			;Store control bits in PPU.
-	ldx $01				;
-	dex				;Name table = X - 1.
+	ldx $01					;
+	dex						;Name table = X - 1.
 	lda HiPPUTable,x		;get high PPU address.  pointer table at $C19F.
 	sta PPUAddress			;
-	lda #$00			;Set PPU start address (High byte first).
+	lda #$00				;Set PPU start address (High byte first).
 	sta PPUAddress			;
-	ldx #$04			;Prepare to loop 4 times.
-	ldy #$00			;Inner loop value.
-	lda $00				;Fill-value.
+	ldx #$04				;Prepare to loop 4 times.
+	ldy #$00				;Inner loop value.
+	lda $00					;Fill-value.
 *	sta PPUIOReg			;
-	dey				;
-	bne -				;Loops until the desired name table is cleared.-->
-	dex				;It also clears the associated attribute table.
-	bne -				;
-	rts				;
+	dey						;
+	bne -					;Loops until the desired name table is cleared.-->
+	dex						;It also clears the associated attribute table.
+	bne -					;
+	rts						;
 
 ;The following table is used by the above routine for finding
 ;the high byte of the proper name table to clear.
 
 HiPPUTable:
- 	.byte $20			;Name table 0.
-	.byte $24			;Name table 1.
-	.byte $28			;Name table 2.
-	.byte $2C			;Name table 3.
+ 	.byte $20				;Name table 0.
+	.byte $24				;Name table 1.
+	.byte $28				;Name table 2.
+	.byte $2C				;Name table 3.
 
 ;-------------------------------------[ Erase all sprites ]------------------------------------------
 
 EraseAllSprites:
-	ldy #$02			;
-	sty $01				;Loads locations $00 and $01 with -->
-	ldy #$00			;#$00 and #$02 respectively
-	sty $00				;
-	ldy #$00			;
-	lda #$F0			;
-*	sta ($00),y			;Stores #$F0 in memory addresses $0200 thru $02FF.
-	iny				; 
-	bne -				;Loop while more sprite RAM to clear.
+	ldy #$02				;
+	sty $01					;Loads locations $00 and $01 with -->
+	ldy #$00				;#$00 and #$02 respectively
+	sty $00					;
+	ldy #$00				;
+	lda #$F0				;
+*	sta ($00),y				;Stores #$F0 in memory addresses $0200 thru $02FF.
+	iny						; 
+	bne -					;Loop while more sprite RAM to clear.
 	lda GameMode			;
-	beq Exit101			;Exit subroutine if GameMode=Play(#$00)
+	beq Exit101				;Exit subroutine if GameMode=Play(#$00)
 	jmp DecSpriteYCoord		;($988A)Find proper y coord of sprites.
 
 Exit101:
-	rts				;Return used by subroutines above and below.
+	rts						;Return used by subroutines above and below.
 
 ;---------------------------------------[ Remove intro sprites ]-------------------------------------
 
@@ -377,17 +377,17 @@ Exit101:
 ;sprite to the bottom right of the screen and uses a blank graphic for the sprite.
 
 RemoveIntroSprites:
-	ldy #$02			;Start at address $200.
-	sty $01				;
-	ldy #$00			;
-	sty $00				;($00) = $0200 (sprite page)
-	ldy #$5F			;Prepare to clear RAM $0200-$025F
-	lda #$F4			;
-*	sta ($00),y			;
-	dey				;Loop unitl $200 thru $25F is filled with #$F4.
-	bpl -				;
+	ldy #$02				;Start at address $200.
+	sty $01					;
+	ldy #$00				;
+	sty $00					;($00) = $0200 (sprite page)
+	ldy #$5F				;Prepare to clear RAM $0200-$025F
+	lda #$F4				;
+*	sta ($00),y				;
+	dey						;Loop unitl $200 thru $25F is filled with #$F4.
+	bpl -					;
 	lda GameMode			;
-	beq Exit101			; branch if mode = Play.
+	beq Exit101				; branch if mode = Play.
 	jmp DecSpriteYCoord		;($988A)Find proper y coord of sprites.
 
 ;-------------------------------------[Clear RAM $33 thru $DF]---------------------------------------
@@ -395,102 +395,102 @@ RemoveIntroSprites:
 ;The routine below clears RAM associated with rooms and enemies.
 
 ClearRAM_33_DF:
-	ldx #$33			;
-	lda #$00			;
-*	sta $00,x			;Clear RAM addresses $33 through $DF.
-	inx				;
-	cpx #$E0			;
-	bcc -				;Loop until all desired addresses are cleared.
-	rts				;
+	ldx #$33				;
+	lda #$00				;
+*	sta $00,x				;Clear RAM addresses $33 through $DF.
+	inx						;
+	cpx #$E0				;
+	bcc -					;Loop until all desired addresses are cleared.
+	rts						;
 
 ;--------------------------------[ Check and prepare palette write ]---------------------------------
 
 CheckPalWrite:
 	lda GameMode			;
-	beq +				;Is game being played? If so, branch to exit.
+	beq +					;Is game being played? If so, branch to exit.
 	lda TitleRoutine		;
-	cmp #$1D			;Is Game at ending sequence? If not, branch
-	bcc +				;
+	cmp #$1D				;Is Game at ending sequence? If not, branch
+	bcc +					;
 	jmp EndGamePalWrite		;($9F54)Write palette data for ending.
 *	ldy PalDataPending		;
-	bne ++				;Is palette data pending? If so, branch.
+	bne ++					;Is palette data pending? If so, branch.
 	lda GameMode			;
-	beq +	   			;Is game being played? If so, branch to exit.
+	beq +	   				;Is game being played? If so, branch to exit.
 	lda TitleRoutine		;
-	cmp #$15			;Is intro playing? If not, branch.
-	bcs +				;
+	cmp #$15				;Is intro playing? If not, branch.
+	bcs +					;
 	jmp StarPalSwitch		;($8AC7)Cycles palettes for intro stars twinkle.
-*	rts				;Exit when no palette data pending.
+*	rts						;Exit when no palette data pending.
 
 ;Prepare to write palette data to PPU.
 
-*	dey					;Palette # = PalDataPending - 1.
-	tya					;
-	asl					;* 2, each pal data ptr is 2 bytes (16-bit).
-	tay					;
-	ldx Unknown9560,y	;X = low byte of PPU data pointer.
-	lda Unknown9561,y	;
-	tay					;Y = high byte of PPU data pointer.
-	lda #$00			;Clear A.
-	sta PalDataPending	;Reset palette data pending byte.
-
+*	dey						;Palette # = PalDataPending - 1.
+	tya						;
+	asl						;* 2, each pal data ptr is 2 bytes (16-bit).
+	tay						;
+	ldx Unknown9560,y		;X = low byte of PPU data pointer.
+	lda Unknown9561,y		;
+	tay						;Y = high byte of PPU data pointer.
+	lda #$00				;Clear A.
+	sta PalDataPending		;Reset palette data pending byte.
+	
 PreparePPUProcess_:
-	stx $00				;Lower byte of pointer to PPU string.
-	sty $01				;Upper byte of pointer to PPU string.
-	jmp ProcessPPUString		;($C30C)Write data string to PPU.
+	stx $00					;Lower byte of pointer to PPU string.
+	sty $01					;Upper byte of pointer to PPU string.
+	jmp ProcessPPUString	;Write data string to PPU.
 
 ;----------------------------------------[Read joy pad status ]--------------------------------------
 
 ;The following routine reads the status of both joypads
 
 ReadJoyPads:
-	ldx #$00			;Load x with #$00. Used to read status of joypad 1.
-	stx $01				;
+	ldx #$00				;Load x with #$00. Used to read status of joypad 1.
+	stx $01					;
 	jsr ReadOnePad			;
-	inx				;Load x with #$01. Used to read status of joypad 2.
-	inc $01				;
+	inx						;Load x with #$01. Used to read status of joypad 2.
+	inc $01					;
 
 ReadOnePad:
-	ldy #$01			;These lines strobe the -->       
+	ldy #$01				;These lines strobe the -->       
 	sty CPUJoyPad1   		;joystick to enable the -->
-	dey				;program to read the -->
+	dey						;program to read the -->
 	sty CPUJoyPad1  		;buttons pressed.
 	
-	ldy #$08			;Do 8 buttons.
-*	pha				;Store A.
+	ldy #$08				;Do 8 buttons.
+*	pha						;Store A.
 	lda CPUJoyPad1,x		;Read button status. Joypad 1 or 2.
-	sta $00				;Store button press at location $00.
-	lsr				;Move button push to carry bit.
-	ora $00				;If joystick not connected, -->
-	lsr				;fills Joy1Status with all 1s.
-	pla				;Restore A.
-	rol				;Add button press status to A.
-	dey     			;Loop 8 times to get -->
-	bne -				;status of all 8 buttons.
+	sta $00					;Store button press at location $00.
+	lsr						;Move button push to carry bit.
+	ora $00					;If joystick not connected, -->
+	lsr						;fills Joy1Status with all 1s.
+	pla						;Restore A.
+	rol						;Add button press status to A.
+	dey     				;Loop 8 times to get -->
+	bne -					;status of all 8 buttons.
 
-	ldx $01				;Joypad #(0 or 1).
+	ldx $01					;Joypad #(0 or 1).
 	ldy Joy1Status,x		;Get joypad status of previous refresh.
-	sty $00				;Store at $00.
+	sty $00					;Store at $00.
 	sta Joy1Status,x		;Store current joypad status.
-	eor $00				;
-	beq +	   			;Branch if no buttons changed.
-	lda $00				;			
-	and #$BF			;Remove the previous status of the B button.
-	sta $00				;
+	eor $00					;
+	beq +	   				;Branch if no buttons changed.
+	lda $00					;			
+	and #$BF				;Remove the previous status of the B button.
+	sta $00					;
 	eor Joy1Status,x		;
 *	and Joy1Status,x		;Save any button changes from the current frame-->
 	sta Joy1Change,x		;and the last frame to the joy change addresses.
 	sta Joy1Retrig,x		;Store any changed buttons in JoyRetrig address.
-	ldy #$20			;
+	ldy #$20				;
 	lda Joy1Status,x		;Checks to see if same buttons are being-->
-	cmp $00				;pressed this frame as last frame.-->
-	bne +				;If none, branch.
+	cmp $00					;pressed this frame as last frame.-->
+	bne +					;If none, branch.
 	dec RetrigDelay1,x		;Decrement RetrigDelay if same buttons pressed.
-	bne ++				;		
+	bne ++					;		
 	sta Joy1Retrig,x		;Once RetrigDelay=#$00, store buttons to retrigger.
-	ldy #$08			;
+	ldy #$08				;
 *	sty RetrigDelay1,x		;Reset retrigger delay to #$20(32 frames)-->
-*	rts				;or #$08(8 frames) if already retriggering.
+*	rts						;or #$08(8 frames) if already retriggering.
 
 ;-------------------------------------------[ Update timer ]-----------------------------------------
 
