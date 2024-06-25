@@ -197,6 +197,7 @@ L95A2:	.word EnemyFramePtrTbl2		;($9EE0)tables needed to accommodate all entries
 L95A4:	.word EnemyPlacePtrTbl		;($9F0E)Pointers to enemy frame placement data.
 L95A6:	.word EnemyAnimIndexTbl		;($9D6A)index to values in addr tables for enemy animations.
 
+;empty nothings here, jump routines in tourian
 L95A8:	.byte $60, $EA, $EA, $60, $EA, $EA, $60, $EA, $EA, $60, $EA, $EA, $60, $EA, $EA, $60 
 L95B8:	.byte $EA, $EA, $60, $EA, $EA, $60, $EA, $EA, $60, $EA, $EA
 
@@ -291,6 +292,7 @@ L977B:	.byte $64, $6C, $21, $01, $04, $00, $4C, $40, $04, $00, $00, $40, $40, $0
 L978B:	.byte $00, $00, $64, $67, $69, $69, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 L979B:	.byte $0C, $F4, $00, $00, $00, $00, $00, $00, $F4, $00, $00, $00
 
+;enemy movement tables
 L97A7:	.word $9965, $9974, $9983, $9992, $9D36, $9D3B, $9D40, $9D45
 L97B7:	.word $9D4A, $9D4F, $9D54, $9D59, $9D5E, $9D63, $9D6A, $9D6A
 L97C7:	.word $9D6A, $9D6A, $9D6A, $9D6A, $9D6A

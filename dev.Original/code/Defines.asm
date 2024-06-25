@@ -26,6 +26,15 @@
 ;The bits of the change and status addresses represent the following joypad buttons:
 ;bit 7=A, bit 6=B, bit 5=SELECT, bit 4=START, bit 3=Up, bit 2=Down, bit 1=Left, bit 0=Right.
 
+.alias AButton  $80
+.alias BButton  $40
+.alias SelectButton $20
+.alias StartButton $10
+.alias UpButton $08
+.alias DownButton $04
+.alias LeftButton $02
+.alias RightButton $01
+
 .alias Joy1Change   		$12	;These addresses store any button changes-->
 .alias Joy2Change		$13	;that happened since last frame(pads 1 and 2).
 .alias Joy1Status   		$14	;These two addresses store all buttons-->
@@ -349,16 +358,18 @@
 .alias ObjVertSpeed		$0308	;MSB set=moving up(#$FA max), MSB clear=moving down(#$05 max).
 .alias ObjHorzSpeed		$0309	;MSB set=moving lft(#$FE max), MSB clear=moving rt(#$01 max).
 .alias SamusHit			$030A	;Samus hit by enemy.
-.alias ObjectOnScreen		$030B	;1=Object on screen, 0=Object beyond screen boundaries.
+.alias ObjectHit 		$030A 	;object registered a hit
+.alias ObjectOnScreen	$030B	;1=Object on screen, 0=Object beyond screen boundaries.
 .alias ObjectHi			$030C	;0=Object on nametable 0, 1=Object on nametable 3.
 .alias ObjectY			$030D	;Object y position in room(not actual screen position).
 .alias ObjectX			$030E	;Object x position in room(not actual screen position).
 .alias SamusJumpDsplcmnt	$030F	;Number of pixels vertically displaced from jump point.
+.alias ObjectTimer 			$030F
 .alias VertCntrNonLinear	$0310	;Verticle movement counter. Exponential change in speed.
 .alias HorzCntrNonLinear	$0311	;Horizontal movement counter. Exponential change in speed.
 .alias VertCntrLinear		$0312	;Verticle movement counter. Linear change in speed.
 .alias HorzCntrLinear		$0313	;Horizontal movement counter. Linear change in speed.
-.alias SamusGravity		$0314	;Value used in calculating vertical acceleration on Samus.
+.alias SamusGravity			$0314	;Value used in calculating vertical acceleration on Samus.
 .alias SamusHorzAccel		$0315	;Value used in calculating horizontal acceleration on Samus.
 .alias SamusHorzSpeedMax	$0316	;Used to calc maximum horizontal speed Samus can reach.
 
@@ -406,6 +417,12 @@
 .alias TileWRAMLo		$0508
 .alias TileWRAMHi		$0509
 .alias TileType			$050A
+
+;---------------------------------[Projectile Memory Addresses]--------------------------------------
+
+.alias ProjectileWaveTableIndex	$0500
+.alias ProjectileWaveSpeedTimer	$0501
+.alias ProjectileDirection 		$0502
 
 ;---------------------------------[ Sound engine memory addresses ]----------------------------------
 

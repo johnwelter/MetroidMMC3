@@ -331,15 +331,18 @@ L828E:	BNE $825B
 L8290:	INC EnDelay,X
 L8293:	INY 
 L8294:	LDA ($81),Y
-L8296:	ASL 
-L8297:	PHP 
-L8298:	JSR Adiv32			;($C2BE)Divide by 32.
-L829B:	PLP 
-L829C:	BCC $82A2
-L829E:	EOR #$FF
-L82A0:	ADC #$00
-L82A2:	STA $00
-L82A4:	RTS
+
+ExtractVerticalNibble:
+;hi nibble = vertical
+L8296:	ASL 				; shift bits to the left, store our literal negative sign into the carry flag
+L8297:	PHP 				; store the carry flag on the stack
+L8298:	JSR Adiv32			; shove all the bits over 5 spaces, to isolate the ABS of the vertical speed
+L829B:	PLP 				; bring back the carry flag
+L829C:	BCC L82A2			; if it's clear, the number is extracted!
+L829E:	EOR #$FF			; else, we'll twos compliment it- flip the bits
+L82A0:	ADC #$00			; add the carry we pulled back in
+L82A2:	STA $00				; store the value in RAM at address 00
+L82A4:	RTS					; return
 
 L82A5:	INC EnCounter,X
 L82A8:	INY 
@@ -403,16 +406,19 @@ L8327:	BEQ $833C
 L8329:	LDY EnCounter,X
 L832C:	INY 
 L832D:	LDA ($81),Y
-L832F:	TAX 
-L8330:	AND #$08
-L8332:	PHP 
-L8333:	TXA 
-L8334:	AND #$07
-L8336:	PLP 
-L8337:	BEQ $833C
-L8339:	JSR TwosCompliment
-L833C:	STA $00
-L833E:	RTS
+
+ExtractHorizontalNibble:
+;lo nibble = horizontal 
+L832F:	TAX 				;save the full speed to X
+L8330:	AND #$08			;check bit 0000 1000, for the literal negative sign
+L8332:	PHP 				;store zero flag - will be set if there was no negative sign
+L8333:	TXA 				;return the full speed to the accumulator
+L8334:	AND #$07			;isolate the ABS of the horizontal speed
+L8336:	PLP 				;bring back the zero flag
+L8337:	BEQ $833C			;if it was zero, the number was extracted!
+L8339:	JSR TwosCompliment	;else, two's compliment the value to get the true negative speed
+L833C:	STA $00				;store out the value in address 00
+L833E:	RTS					;return
 
 L833F:	LDY #$0E
 L8341:	LDA $6AFE,X
