@@ -18,12 +18,48 @@
 
 .org $8000
 
-.require "Defines.asm"
-.require "GameEngineDeclarations.asm"
+.include "Defines.asm"
+
+;-------------------------------------[ Forward declarations ]--------------------------------------
+
+.alias startup			$C01A
+.alias NMI			$C0D9
+.alias ClearNameTables		$C158
+.alias ClearNameTable0		$C16D
+.alias EraseAllSprites		$C1A3
+.alias RemoveIntroSprites	$C1BC
+.alias ClearRAM_33_DF		$C1D4
+.alias PreparePPUProcess_	$C20E
+.alias ChooseRoutine		$C27C
+.alias AddYToPtr02		$C2B3
+.alias Adiv16			$C2BF
+.alias Adiv8			$C2C0
+.alias Amul16			$C2C5
+.alias Amul8			$C2C6
+.alias ProcessPPUString		$C30C
+.alias EraseTile		$C328
+.alias WritePPUByte		$C36B
+.alias PrepPPUPaletteString	$C37E
+.alias TwosCompliment		$C3D4
+.alias WaitNMIPass		$C42C
+.alias ScreenOff		$C439
+.alias WaitNMIPass_		$C43F
+.alias ScreenOn			$C447
+.alias ExitSub			$C45C
+.alias ScreenNmiOff		$C45D
+.alias VBOffAndHorzWrite	$C47D
+.alias NmiOn			$C487
+.alias SetTimer			$C4AA
+.alias ClearSamusStats		$C578
+.alias InitEndGFX		$C5D0
+.alias LoadSamusGFX		$C5DC
+.alias InitGFX7			$C6D6
+.alias BankTable		$CA30
+.alias ChooseEnding		$CAF5
+.alias SilenceMusic		$CB8E
 
 ;-----------------------------------------[ Start of code ]------------------------------------------
 
-AreaUpdate:
 L8000:	lda TitleRoutine		;
 L8002:	cmp #$15			;If intro routines not running, branch.
 L8004:	bcs ++				;
@@ -513,7 +549,7 @@ L841F:	.byte $8A, $8B, $8A, $8B, $8A, $8B, $8A, $8B, $8A, $8B, $8A, $8B, $8A, $8
 ;Writes some blank spaces in row $20A0 (6th row from top).
 L842F:	.byte $20 			;PPU address high byte.
 L8430:	.byte $A8			;PPU address low byte.
-L8431:	.byte $4F			;PPU string length. 
+L8431:	.byte $4F			;PPU string length.
 L8432:	.byte $FF			;Since RLE bit set, repeat 16 blanks starting at $20A8.
 
 ;Writes METROID graphics in row $2100 (9th row from top).
@@ -1476,7 +1512,7 @@ L8CF7:*	LDA SamusAge,Y			;Store SamusAge in $6993,-->
 L8CFA:	STA PasswordByte0B,Y		;SamusAge+1 in $6994 and-->
 L8CFD:	DEY 				;SamusAe+2 in $6995.
 L8CFE:	BPL -				;
-L8D00:*	JSR RandomNumbers			;
+L8D00:*	JSR $C000			;
 L8D03:	LDA RandomNumber1		;
 L8D05:	AND #$0F			;Store the value of $2E at $6998-->
 L8D07:	BEQ -				;When any of the 4 LSB are set. (Does not-->
@@ -4619,30 +4655,91 @@ LA53D:	.byte $00			;End PPU block write.
 ;-------------------------------------------[ World map ]--------------------------------------------
 
 WorldMap:
-.incbin "MetroidMap.bin"
+LA53E:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
+LA54E:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
+LA55E:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $08, $FF, $08, $FF, $FF
+LA56E:	.byte $FF, $FF, $FF, $FF, $08, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
+LA57E:	.byte $FF, $FF, $FF, $2C, $2B, $27, $15, $15, $16, $14, $13, $04, $FF, $06, $08, $0A
+LA58E:	.byte $1A, $29, $29, $28, $2E, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $08, $FF
+LA59E:	.byte $FF, $0E, $FF, $01, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $06, $FF, $03, $1F, $23
+LA5AE:	.byte $25, $24, $26, $20, $1E, $1F, $21, $21, $07, $22, $1D, $1B, $21, $20, $04, $FF
+LA5BE:	.byte $FF, $10, $FF, $0E, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $06, $FF, $06, $FF, $FF
+LA5CE:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $02, $FF
+LA5DE:	.byte $FF, $10, $FF, $0B, $FF, $FF, $08, $0A, $1A, $29, $28, $04, $FF, $06, $FF, $FF
+LA5EE:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $08, $0A, $1A, $29, $29, $28, $04, $FF
+LA5FE:	.byte $FF, $10, $FF, $0B, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $06, $FF, $06, $FF, $FF
+LA60E:	.byte $FF, $FF, $08, $FF, $FF, $FF, $08, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $06, $FF
+LA61E:	.byte $FF, $10, $FF, $0F, $11, $13, $14, $14, $13, $12, $0D, $03, $00, $05, $0C, $0E
+LA62E:	.byte $0E, $0D, $10, $0C, $0F, $0D, $10, $0C, $0E, $1B, $0F, $0E, $0F, $0D, $04, $FF
+LA63E:	.byte $FF, $10, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $0C, $06, $FF, $06, $FF, $FF
+LA64E:	.byte $FF, $FF, $11, $FF, $FF, $FF, $06, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $08, $FF
+LA65E:	.byte $FF, $10, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $0C, $06, $FF, $06, $FF, $FF
+LA66E:	.byte $FF, $FF, $11, $0A, $1A, $28, $04, $FF, $06, $FF, $FF, $FF, $FF, $FF, $06, $FF
+LA67E:	.byte $FF, $10, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $0C, $06, $FF, $06, $FF, $FF
+LA68E:	.byte $FF, $FF, $08, $FF, $FF, $FF, $08, $FF, $08, $1B, $06, $19, $19, $2A, $0B, $FF
+LA69E:	.byte $FF, $0F, $04, $03, $02, $05, $06, $07, $08, $09, $0A, $06, $FF, $03, $12, $14
+LA6AE:	.byte $15, $14, $07, $16, $15, $13, $0B, $FF, $0C, $07, $19, $19, $19, $2A, $0E, $FF
+LA6BE:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $06, $FF, $08, $FF, $FF
+LA6CE:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $01, $FF, $0A, $1B, $04, $0F, $06, $2A, $0E, $FF
+LA6DE:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $06, $FF, $06, $FF, $FF
+LA6EE:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $02, $FF, $06, $FF, $FF, $FF, $FF, $FF, $09, $FF
+LA6FE:	.byte $FF, $08, $17, $09, $14, $13, $18, $12, $14, $19, $13, $04, $FF, $08, $1D, $1F
+LA70E:	.byte $06, $1F, $19, $1E, $1E, $1C, $03, $28, $29, $29, $29, $2B, $29, $2A, $0E, $FF
+LA71E:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $06, $FF, $FF, $FF, $FF, $08, $FF, $08, $1D, $1F
+LA72E:	.byte $1E, $19, $07, $19, $19, $2C, $06, $06, $2B, $2B, $1A, $1A, $1A, $2A, $0B, $FF
+LA73E:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $06, $FF, $0B, $FF, $FF, $0B, $FF, $06, $07, $04
+LA74E:	.byte $0F, $10, $0B, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $09, $FF
+LA75E:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $06, $FF, $07, $17, $18, $0C, $FF, $08, $21, $25
+LA76E:	.byte $25, $22, $03, $21, $25, $20, $00, $27, $2C, $2C, $06, $04, $0F, $10, $0E, $FF
+LA77E:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $03, $1C, $07, $17, $18, $0C, $FF, $0A, $21, $23
+LA78E:	.byte $25, $22, $03, $21, $24, $24, $24, $23, $23, $06, $24, $25, $22, $11, $2D, $FF
+LA79E:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $08, $01, $07, $17, $18, $0C, $FF, $09, $FF, $FF
+LA7AE:	.byte $FF, $06, $06, $FF, $FF, $FF, $FF, $FF, $FF, $07, $26, $25, $22, $0B, $2D, $FF
+LA7BE:	.byte $FF, $0B, $FF, $FF, $FF, $FF, $FF, $02, $0B, $FF, $FF, $08, $FF, $0A, $12, $14
+LA7CE:	.byte $13, $03, $12, $15, $13, $0D, $12, $14, $06, $14, $18, $15, $19, $07, $09, $FF
+LA7DE:	.byte $FF, $09, $17, $1C, $10, $19, $18, $03, $13, $10, $18, $0C, $FF, $06, $FF, $FF
+LA7EE:	.byte $FF, $09, $04, $0F, $10, $0B, $FF, $FF, $08, $12, $16, $16, $16, $13, $0E, $FF
+LA7FE:	.byte $FF, $0A, $17, $1C, $1C, $1C, $18, $03, $13, $19, $12, $0B, $FF, $00, $FF, $FF
+LA80E:	.byte $0B, $08, $12, $19, $19, $07, $FF, $FF, $08, $05, $FF, $FF, $FF, $FF, $06, $FF
+LA81E:	.byte $FF, $05, $FF, $FF, $0B, $FF, $FF, $08, $FF, $FF, $FF, $FF, $0B, $FF, $FF, $FF
+LA82E:	.byte $FF, $06, $FF, $FF, $FF, $FF, $FF, $05, $06, $01, $FF, $FF, $FF, $FF, $0B, $FF
+LA83E:	.byte $FF, $05, $FF, $FF, $07, $17, $18, $04, $13, $14, $14, $16, $0C, $FF, $05, $FF
+LA84E:	.byte $FF, $05, $0F, $18, $17, $18, $19, $29, $05, $02, $FF, $FF, $FF, $FF, $05, $FF
+LA85E:	.byte $FF, $05, $FF, $FF, $08, $FF, $FF, $05, $FF, $0B, $10, $18, $0D, $FF, $0A, $20
+LA86E:	.byte $22, $0D, $25, $26, $26, $26, $1D, $0E, $0E, $03, $23, $24, $24, $15, $07, $FF
+LA87E:	.byte $FF, $05, $FF, $FF, $23, $17, $18, $06, $22, $0C, $FF, $0B, $0E, $FF, $0B, $FF
+LA88E:	.byte $FF, $04, $FF, $FF, $FF, $FF, $05, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $08, $FF
+LA89E:	.byte $FF, $23, $22, $1A, $13, $10, $14, $1C, $16, $06, $21, $0C, $0E, $FF, $0A, $1C
+LA8AE:	.byte $1D, $03, $20, $21, $21, $22, $06, $23, $0F, $28, $27, $27, $27, $19, $07, $FF
+LA8BE:	.byte $FF, $0B, $FF, $1E, $1F, $20, $20, $20, $0F, $15, $21, $24, $0E, $FF, $04, $FF
+LA8CE:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $04, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $08, $FF
+LA8DE:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $1D, $1B, $17, $18, $0C, $FF, $04, $11
+LA8EE:	.byte $10, $12, $13, $14, $14, $15, $03, $1C, $1E, $1E, $1F, $1F, $1F, $1D, $07, $FF
+LA8FE:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $0B, $FF, $0C, $16
+LA90E:	.byte $18, $17, $18, $17, $0F, $17, $17, $1A, $1A, $17, $1B, $1B, $17, $19, $09, $FF
+LA91E: 	.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
+LA91F:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
  
-;Loads contents of world map into -->
-;RAM at addresses $7000 thru $73FF.
 CopyMap:
-LA93E:	LDA #$3E			; stores address A53E (the above table) to some temp bytes in ram, 0000 and 0001
+LA93E:	LDA #$3E			;
 LA940:	STA $00				;
 LA942:	LDA #$A5			;
 LA944:	STA $01				;
-LA946:	LDA #$00			; then store SRAM address 7000 to temp bytes 0002 and 0003
+LA946:	LDA #$00			;
 LA948:	STA $02				;
-LA94A:	LDA #$70			;
-LA94C:	STA $03				; load 1kb of data in a nested for loop
-LA94E:	LDX #$04			; for X = 4; X != 0; X-- {
-LA950:*	LDY #$00			; 	for Y = 0; Y != 0; Y++ {
-LA952:*	LDA ($00),Y			;		load byte from the table above
-LA954:	STA ($02),Y			;		store byte into SRAM
-LA956:	INY 				;   
-LA957:	BNE -				;	}
-LA959:	INC $01				; 	increment our high bytes so we don't loop over the same data
-LA95B:	INC $03				; 	
-LA95D:	DEX 				;  
-LA95E:	BNE --				; }
-LA960:	RTS					;
+LA94A:	LDA #$70			;Loads contents of world map into -->
+LA94C:	STA $03				;RAM at addresses $7000 thru $73FF.
+LA94E:	LDX #$04			;
+LA950:*	LDY #$00			;
+LA952:*	LDA ($00),Y			;
+LA954:	STA ($02),Y			;
+LA956:	INY 				;
+LA957:	BNE -				;
+LA959:	INC $01				;
+LA95B:	INC $03				;
+LA95D:	DEX 				;
+LA95E:	BNE --				;
+LA960:	RTS				;
  
 ;Unused tile patterns.
 LA961:	.byte $00, $40, $90, $D0, $08, $5C, $0C, $00, $00, $C0, $70, $F8, $FC, $F4, $FC, $10
@@ -7991,7 +8088,7 @@ LBFA6:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 
 ;----------------------------------------------[ RESET ]--------------------------------------------
 
-AREARESET:
+RESET:
 LBFB0:	SEI				;Disables interrupt.
 LBFB1:	CLD				;Sets processor to binary mode.
 LBFB2:	LDX #$00			;

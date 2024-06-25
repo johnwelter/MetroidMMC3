@@ -368,18 +368,18 @@
 .alias EnXRoomPos               $0401   ;Enemy x position in room.(not actual screen position).
 ;                               $0402
 ;                               $0403
-.alias EnHitStatus              $0404	;holds hit information
-.alias EnData05                 $0405	
+;                               $0404
+.alias EnData05                 $0405
 .alias EnCounter                $0406   ;Counts such things as explosion time.
-.alias EnExplostionTimer        $0407	;the explosion timer for explosions
+;                               $0407
 ;                               $0408
 .alias EnDelay                  $0409   ;Delay counter between enemy actions.
 ;                               $040A
 .alias EnHitPoints              $040B   ;Current hit points of enemy.
-.alias EnPreviousState          $040C	;holds previous state data for enemy when hit - low nibble for enemy status, high nibble for special attributes
-.alias EnFreezeTimer            $040D	;freeze timer
-.alias EnDamageSource           $040E	;type of weapon that hit the enemy
-.alias EnSpecialAttribs         $040F   ;Bit 7 set=tough version of enemy, bit 6 set=mini boss. when hit, special attribs holds hang time data
+;                               $040C
+;                               $040D
+;                               $040E
+.alias EnSpecialAttribs         $040F   ;Bit 7 set=tough version of enemy, bit 6 set=mini boss.
 
 ;----------------------------------------------------------------------------------------------------
 
@@ -533,11 +533,7 @@
 
 ;----------------------------------------------------------------------------------------------------
 
-.alias PowerUpType              $0748   ;Holds the byte describing what power-up is on name table. 
-										;item types: 
-										;01 = 
-										;02 = 
-										;04 = 
+.alias PowerUpType              $0748   ;Holds the byte describing what power-up is on name table.
 .alias PowerUpYCoord            $0749   ;Y coordinate of the power-up.
 .alias PowerUpXCoord            $074A   ;X coordiante of the power-up
 .alias PowerUpNameTable         $074B   ;#$00 if on name table 0, #$01 if on name table 3.
@@ -707,12 +703,8 @@
 ;---------------------------------------[ More enemy RAM ]-------------------------------------------
 
 .alias Enstatus                 $6AF4   ;Keeps track of enemy statuses.
-                                        ;#$00= Enemy slot not in use,-->
-										;#$01= 
-										;#$02= plain moving
-										;#$03= dying
-                                        ;#$04= Enemy frozen.
-										;#$06= enemy hit
+                                        ;#$00=Enemy slot not in use,-->
+                                        ;#$04=Enemy frozen.
 .alias EnRadY                   $6AF5   ;Distance in pixels from middle of enemy to top or botom.
 .alias EnRadX                   $6AF6   ;Distance in pixels from middle of enemy to left or right.
 .alias EnAnimFrame              $6AF7   ;Index into enemy animation frame data.

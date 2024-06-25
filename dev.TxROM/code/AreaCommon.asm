@@ -129,8 +129,8 @@ L80AD:  BNE -                           ;       }
 L80AF:* RTS                             ;   rts
 
 Unknown80B0:
-    LDY EnDataIndex,X              	;load up the enemy data index from the current enemy
-    LDA EnemyDataTable7B,Y			;then, load the enemy data from the given area
+    LDY EnDataIndex,X               
+    LDA EnemyDataTable7B,Y
     ASL                             ;*2 
     RTS
 

@@ -1,4 +1,3 @@
-map,code/GameEngine.asm,code/GameEngineDeclarations.asm,BFFF,FFFF
 prg,0,0
 prg,1,1
 prg,2,2
