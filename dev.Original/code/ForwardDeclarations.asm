@@ -1,0 +1,44 @@
+;;AreaCommon declares
+.alias AreaUpdate 						$8000
+.alias ExtractVerticalNibble 			$8296
+.alias ExtractHorizontalNibble 			$832F
+.alias ObjectAnimIndexTbl				$8572
+.alias FramePtrTable					$860B
+.alias PlacePtrTable					$86DF
+.alias starpalswitch 					$8AC7
+.alias SamusEnterDoor					$8B13
+.alias DisplayDoors 					$8B79
+
+;Common Area declares (very different to above)
+
+.alias Unknown9560 						$9560
+.alias Unknown9561 						$9561
+.alias AreaPointers						$9598
+.alias SpecItmsTable					$9598
+.alias AreaRoutine						$95C3
+.alias EnemyHitPointTbl					$962B
+.alias EnemyInitDelayTbl				$96BB
+.alias AreaEnemyMovementTable $97A7
+
+.alias nmiscreenwrite 					$9A07
+.alias soundengine 						$B3B4
+.alias decspriteycoord 					$988A
+.alias endgamepalwrite 					$9F54
+.alias copymap 							$A93E
+
+
+.alias Unknown98BF $98BF
+
+.alias Unknown95DA $95DA
+.alias Unknown95AB $95AB
+
+.alias Tourian95C0 					$95C0
+.alias AreaMusicFlag 				$95CD
+.alias AreaDamageLo 				$95CE
+.alias AreaDamageHi 				$95CF
+.alias AreaSpecialRoomTable 		$95D0
+.alias AreaStartRoomX				$95D7
+.alias AreaStartRoomY				$95D8
+.alias AreaStartYPos 				$95D9
+
+

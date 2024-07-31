@@ -18,7 +18,10 @@ $B200-$BFFF) and the portion that is different for each Area bank ($8D60-$B1FF).
     Table 1.1: Area ROM bank portions.
     ROM Addr.       Size in bytes   Name            Documented in...
     $8000-$8D5F     $0D60 (3424)    Common I        Section 2
-    $8F60-$B1FF     $24A0 (9376)    Area Specific   Section 4
+	$8D60-$955F						Area Enemy CHR
+	$9560-$9597						Area Palettes
+	$9598-$95A7						Area Pointers
+    $95A8-$95C2						Tourian Jumps
     $B200-$BFFF     $0E00 (3584)    Sound Engine    Disassembly
 
 ================================[ 2. Common I ]=================================

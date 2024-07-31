@@ -102,9 +102,10 @@ L80AB:	DEC $66
 L80AD:	BNE -
 L80AF:*	RTS
  
+
 L80B0:	LDY EnDataIndex,X
 L80B3:	LDA $977B,Y
-L80B6:	ASL				;*2 
+L80B6:	ASL				;*2, mult the dat, return it in A
 L80B7:	RTS
 
 L80B8:	LDX PageIndex
@@ -224,7 +225,7 @@ L81B4:	STA $6AFE,X
 L81B7:	RTS
 
 L81B8:	LDA #$20
-L81BA:	JSR UnknownF744
+L81BA:	JSR EnableEnStatusFlags
 L81BD:	LDA #$00
 L81BF:	RTS
 
@@ -240,18 +241,20 @@ L81D1:	LDA $6AFF,X
 L81D4:	JSR TwosCompliment
 L81D7:	STA $6AFF,X
 
-L81DA:	JSR $81F6
-L81DD:	BNE $81F5
-L81DF:	JSR $80B0
-L81E2:	SEC 
-L81E3:	BPL $81ED
-L81E5:	LDA #$00
-L81E7:	SBC $0407,X
+;coming from a method in enemy movement stuff
+L81DA:	JSR $81F6	;load flag from enemy table
+L81DD:	BNE $81F5	;if not 0, return
+L81DF:	JSR $80B0	;else, 
+L81E2:	SEC 		;set carry flag 
+L81E3:	BPL $81ED	;if the data doesn't have it's 6th bit set, skip 407 inversion
+L81E5:	LDA #$00	;invert 407
+L81E7:	SBC $0407,X	
 L81EA:	STA $0407,X
-L81ED:	LDA #$00
+L81ED:	LDA #$00	;invert 403
 L81EF:	SBC $0403,X
 L81F2:	STA $0403,X
 L81F5:	RTS
+
 
 L81F6:	JSR UnknownF74B
 L81F9:	AND #$20
@@ -1641,7 +1644,7 @@ L8D02:	TXA
 L8D03:	JSR Adiv16
 L8D06:	AND #$01
 L8D08:	TAY 
-L8D09:	LDA $8D3A,Y
+L8D09:	LDA Unknown8D3A,Y
 L8D0C:	STA $03
 L8D0E:	LDA $030C,X
 L8D11:	STA $0B
@@ -1668,6 +1671,7 @@ L8D34:	LDA $05
 L8D36:	STA $005D,Y
 L8D39:	RTS
 
+Unknown8D3A:
 L8D3A:	.byte $E8, $10, $60, $AD, $91, $69, $8D, $78, $68, $AD, $92, $69, $8D, $79, $68, $A9 
 L8D4A:	.byte $00, $85, $00, $85, $02, $AD, $97, $69, $29, $80, $F0, $06, $A5, $00, $09, $80
 L8D5A:	.byte $85, $00, $AD, $97, $69, $29

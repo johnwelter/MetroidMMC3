@@ -21,40 +21,10 @@
 .org $C000
 
 .require "Defines.asm"
-;.require "TitleDeclarations.asm"
+
 ;-------------------------------------[ Forward declarations ]--------------------------------------
 
-.alias ObjectAnimIndexTbl	$8572
-.alias FramePtrTable		$860B
-.alias PlacePtrTable		$86DF
-.alias SamusEnterDoor		$8B13
-.alias AreaPointers		$9598
-.alias AreaRoutine		$95C3
-.alias EnemyHitPointTbl		$962B
-.alias EnemyInitDelayTbl	$96BB
-.alias SpecItmsTable		$9598
-.alias nmiscreenwrite $9A07
-.alias soundengine $B3B4
-.alias AreaUpdate $8000
-.alias decspriteycoord $988A
-.alias endgamepalwrite $9F54
-.alias starpalswitch $8AC7
-.alias copymap $A93E
-
-.alias Unknown9560 $9560
-.alias Unknown9561 $9561
-.alias Unknown98BF $98BF
-.alias Unknown95D7 $95D7
-.alias Unknown95D8 $95D8
-.alias Unknown95DA $95DA
-.alias Unknown95AB $95AB
-.alias Unknown95D9 $95D9
-.alias Tourian95C0 $95C0
-.alias Unknown95CD $95CD
-.alias ExtractHorizontalNibble $832F
-.alias DisplayDoors $8B79
-.alias ExtractVerticalNibble $8296
-.alias AreaEnemyMovementTable $97A7
+.require "ForwardDeclarations.asm"
 
 ;----------------------------------------[ Start of code ]------------------------------------------
 
@@ -1453,9 +1423,9 @@ MoreInit:
 	inx				;X=2.
 	stx ScrollDir			;Set initial scroll direction as left.
 
-	lda Unknown95D7			;Get Samus start x pos on map.
+	lda AreaStartRoomX			;Get Samus start x pos on map.
 	sta MapPosX			;
-	lda Unknown95D8			;Get Samus start y pos on map.
+	lda AreaStartRoomY		;Get Samus start y pos on map.
 	sta MapPosY			;
 
 	lda Unknown95DA       ; Get ??? Something to do with palette switch
@@ -1562,7 +1532,7 @@ SamusInit:
 *       sty MirrorCntrl			;
 	sty MaxMissilePickup
 	sty MaxEnergyPickup
-	lda Unknown95D9			;Samus' initial vertical position
+	lda AreaStartYPos			;Samus' initial vertical position
 	sta ObjectY			;
 	lda #$80			;Samus' initial horizontal position
 	sta ObjectX			;
@@ -3914,7 +3884,7 @@ StartMusic:
 	bne +
 	lda $032F
 	bmi ++
-*       lda Unknown95CD			;Load proper bit flag for area music.
+*       lda AreaMusicFlag			;Load proper bit flag for area music.
 	ldy ItemRoomMusicStatus
 	bmi ++
 	beq ++
@@ -4649,18 +4619,18 @@ AddToMaxMissiles:
 	iny
 	sty $11
 	jsr IsObjectVisible		;($DFDF)Determine if object is within screen boundaries.
-	txa
-	asl
-	sta $08
-	ldx PageIndex
-	lda $0405,x
-	and #$FD
-	ora $08
-	sta $0405,x
-	lda $08
-	beq ++
-	jmp UnknownDEDE
-
+	txa						;move result to a (1 if visible, 0 if not)
+	asl						;shift to the left (bit 1 is the visible flag
+	sta $08					;store value in zero page
+	ldx PageIndex			;load enemy
+	lda $0405,x				;load 405 of enemy
+	and #$FD				;mask with 1111 1101 to clear current visibility flag
+	ora $08					;set the visibility flag from zero page
+	sta $0405,x				;store into 405
+	lda $08					;load the visibility flag
+	beq ++					;if it's not visible, jump ahead (note- not a fan of this kind of intertwining)
+	jmp UnknownDEDE			;else, jump to sprite drawing routine
+	
 ;----------------------------------------[ Item drop table ]-----------------------------------------
 
 ;The following table determines what, if any, items an enemy will drop when it is killed.
@@ -4696,7 +4666,7 @@ DrawFrame:
 	lda AnimFrame,x			;
 	cmp #$F7			;Is the frame valid?-->
 	bne ++				;Branch if yes.
-*	jmp ClearObjectCntrl		;($DF2D)Clear object control byte.
+*	jmp ClearObjectCntrl		;($DF2D)Clear object control byte and exit
 *	cmp #$07			;Is the animation of Samus facing forward?-->
 	bne +				;If not, branch.
 
@@ -6116,7 +6086,7 @@ GetRoomNum:
 
 	sta RoomNumber			;Store room number.
 
-*	cmp $95D0,y			;Is it a special room?-->
+*	cmp AreaSpecialRoomTable,y			;Is it a special room?-->
 	beq +				;If so, branch to set flag to play item room music.
 	iny				;
 	cpy #$07			;
@@ -7933,9 +7903,9 @@ UnknownF2ED:  bcs +
 	sta $010F
 	jsr UnknownF332
 	jsr UnknownF270
-UnknownF306:  lda $95CE
+UnknownF306:  lda AreaDamageLo
 	sta HealthLoChange
-	lda $95CF
+	lda AreaDamageHi
 	sta HealthHiChange
 *       rts
 
@@ -7990,26 +7960,36 @@ DoOneEnemy:
 	cpy #$03
 	bcs +
 	jsr UnknownF37F
-*       jsr UnknownF3AA
+*   jsr UnknownF3AA
 	lda EnStatus,x
 	sta $81
-	cmp #$07
-	bcs +
-	jsr ChooseRoutine
+	cmp #$07	;compare EnStatus to the max status of 7
+	bcs +		;if our status is greater/equal, and therefore invalid, kill the enemy
+	jsr ChooseRoutine	;else, jump to this enemy's current routine
 
 ; Pointer table to code
 
-	.word ExitSub       ;($C45C) rts
-	.word UnknownF3BE
-	.word UnknownF3E6
-	.word UnknownF40D
-	.word UnknownF43E
-	.word UnknownF483
-	.word UnknownF4EE
+	;#$00= Enemy slot not in use
+	;#$01= waiting
+	;#$02= plain moving
+	;#$03= dying
+	;#$04= Enemy frozen.
+	;#$05=
+	;#$06= enemy hit
 
-*       jmp KillObject			;($FA18)Free enemy data slot.
+EnemyRoutineTable:
+	.word ExitSub       ;Enemy slot not in use
+	.word EnemyWaitState	;waiting
+	.word UnknownF3E6	;plain moving
+	.word UnknownF40D	;dying
+	.word UnknownF43E	;frozen
+	.word UnknownF483	;
+	.word UnknownF4EE	;hit
 
-UnknownF37F:  lda $0405,x
+*   jmp KillObject			;Free enemy data slot.
+
+UnknownF37F:  
+	lda $0405,x
 	and #$02
 	bne +
 	lda EnYRoomPos,x     ; Y coord
@@ -8027,55 +8007,59 @@ UnknownF37F:  lda $0405,x
 	bne +
 	pla
 	pla
-*       ldx PageIndex
+*   ldx PageIndex
 	rts
 
-UnknownF3AA:  lda $0405,x
-	asl
-	rol
-	tay
-	txa
-	jsr Adiv16			;($C2BF)/16.
-	eor FrameCount
-	lsr
-	tya
-	ror
-	ror
+UnknownF3AA:  
+	lda $0405,x			
+	asl					
+	rol					
+	tay					
+	txa					
+	jsr Adiv16			
+	eor FrameCount		
+	lsr					
+	tya					
+	ror					
+	ror					
 	sta $0405,x
 	rts
 
-UnknownF3BE:  lda $0405,x
-	asl
-	bmi +
-	lda #$00
-	sta $6B01,x
-	sta EnCounter,x
-	sta $040A,x
-	jsr UnknownF6B9
-	jsr UnknownF75B
+EnemyWaitState:  				
+	lda $0405,x					;load the status flags
+	asl							;push skip update flag left
+	bmi +						;skip to damage checks if skipping update (high bit set)
+	lda #$00					;load 0
+	sta $6B01,x					;store into enemy data
+	sta EnCounter,x				;store into enemy counter
+	sta $040A,x					;store into enemy orientation
+	jsr UnknownF6B9				;
+	jsr CheckDistanceToPlayer	;
 	jsr UnknownF682
 	jsr UnknownF676
 	lda EnDelay,x
 	beq +
 	jsr UnknownF7BA
-*       jmp ++
+*   jmp ++
 
-UnknownF3E6:  lda $0405,x
-	asl
-	bmi ++
-	lda $0405,x
-	and #$20
-	beq +
-	ldy EnDataIndex,x
-	lda EnemyInitDelayTbl,y		;($96BB)
-	sta EnDelay,x
-	dec EnStatus,x
-	bne ++
-*       jsr UnknownF6B9
-	jsr UnknownF75B
+UnknownF3E6:  	;moving
+	lda $0405,x					;occilates between 5A and 1A for starting enemies
+	asl							;shift bits to the Left (0101->1010, 0001->0010)
+	bmi ++						;if the neg was set (will trigger on 5A), jump to F536
+	lda $0405,x					;else, load ?? again
+	and #$20					;and w 0010 0000 (will be 0 for starting enemies)
+	beq +						;if 0, jump to F6B9
+	ldy EnDataIndex,x			;else, load the enemy data index
+	lda EnemyInitDelayTbl,y		;get the enemy delay time
+	sta EnDelay,x				;set the enemy delay timer
+	dec EnStatus,x				;set us back to a delay/wait status
+	bne ++						;jump to F536
+*   jsr UnknownF6B9
+	jsr CheckDistanceToPlayer
 	jsr UnknownF51E
-*	jsr UnknownF536
-UnknownF40D:	jmp $95E5
+*	jsr UpdateEnemyDamage
+UnknownF40D:	
+	jmp $95E5
 
 UpdateEnemyAnim0:	jsr UpdateEnemyAnim
 	jsr $8058
@@ -8100,7 +8084,8 @@ UpdateEnemyAnim1:
   jsr UpdateEnemyAnim
   jmp CheckObjectAttribs
 
-UnknownF43E:  jsr UnknownF536
+UnknownF43E:  
+    jsr UpdateEnemyDamage
 	lda EnStatus,x
 	cmp #$03
 	beq UpdateEnemyAnim0
@@ -8222,7 +8207,8 @@ UnknownF51E:  lda ScrollDir
 *       jsr SFX_MetroidHit
 	jmp GetPageIndex
 
-UnknownF536:  lda EnSpecialAttribs,x
+UpdateEnemyDamage:  
+    lda EnSpecialAttribs,x
 	sta $0A
 	lda $0404,x
 	and #$20
@@ -8361,7 +8347,7 @@ PlaySnd3:
 	jsr UnknownF68D
 	sta EnCounter,x
 	ldx #$C0
-*       lda EnStatus,x
+*   lda EnStatus,x
 	beq +
 	txa
 	clc
@@ -8370,7 +8356,7 @@ PlaySnd3:
 	cmp #$E0
 	bne -
 	beq GetPageIndex
-*       lda $95DD
+*   lda $95DD
 	jsr UnknownF68D
 	lda #$0A
 	sta EnCounter,x
@@ -8425,139 +8411,145 @@ UnknownF699:  jsr UnknownF844
 	bne -
 Exit12: rts
 
-UnknownF6B9:  lda #$00
+UnknownF6B9:  
+	lda #$00
 	sta $82
-	jsr UnknownF74B
-	tay
-	lda EnStatus,x
+	jsr UnknownF74B			;get some data for this enemy from 968B
+	tay						;store data in y
+	lda EnStatus,x			;load the enemy status
+	cmp #$02				;check if we're moving
+	bne +					;if not, jump ahead
+	tya						;else, put the data back in the accumulator
+	and #$02				;if 0010 is NOT set
+	beq Exit12				;return early
+*   tya						;put the data back into A
+	dec $040D,x				;decrement 40D
+	bne Exit12				;if not equal to 0, RTS
+	pha						;push data to stack
+	ldy EnDataIndex,x		;load enemy data index to y
+	lda $969B,y				;get some kinda data again
+	sta $040D,x				;put it in 40D - some kinda timer
+	pla						;get the data back in A
+	bpl ++++				;if MSB is not set, jump ahead
+	lda #$FE				;1111 1110
+	jsr ClearEnStatusFlags
+	lda ScrollDir			;
 	cmp #$02
-	bne +
-	tya
-	and #$02
-	beq Exit12
-*       tya
-	dec $040D,x
-	bne Exit12
-	pha
-	ldy EnDataIndex,x
-	lda $969B,y
-	sta $040D,x
-	pla
-	bpl ++++
-	lda #$FE
-	jsr UnknownF7B3
-	lda ScrollDir
-	cmp #$02
-	bcc +
-	jsr UnknownF752
-	bcc +
-	tya
-	eor PPUCNT0ZP
-	bcs +++
-*       lda EnXRoomPos,x
-	cmp ObjectX
-	bne +
-	inc $82
-*       rol
-*	and #$01
-	jsr UnknownF744
+	bcc +					;scroll direction is vertical, jump ahead
+	jsr OnSameNametable		;if horizontal- check if we're on the same name table as samus
+	bcc +					;carry is clear if true, enemy name table is in Y- jump ahead
+	tya						;else, moe enemy name table to A
+	eor PPUCNT0ZP			;use enemy nametable to flip PPUCNT0ZP LSB
+	bcs +++					;if we weren't on the same table, jump past the same screen stuff
+*   lda EnXRoomPos,x		;else, get enemy x position
+	cmp ObjectX				;compare to player x
+	bne +					;if they aren't the same, jump ahead
+	inc $82					;else, inc 82
+*   rol						;take enemy room position, and rotate it left
+*	and #$01				;clear all but the LSB (same table- use pos, not same - use name table)
+	jsr EnableEnStatusFlags	;enable flag on enemy
+	lsr						;pop it out
+	ror						;put it back at MSB
+	eor $0403,x				;toggle bits with horizontal speed
+	bpl +					;if we're still positive, jump ahead
+	jsr $81DA				;else, do whatever this does
+*	lda #$FB				;1111 1011
+	jsr ClearEnStatusFlags
+	lda ScrollDir			;get scroll direction
+	cmp #$02				;compare with vertical
+	bcs +					;if we ARE horizontal, jump ahead
+	jsr OnSameNametable		;else, vertical- check if on same name talbe
+	bcc +					;clear if on same table- jump ahead
+	tya						;else, not on same table- put table in A
+	eor PPUCNT0ZP			;toggle or keep bit of PPUCNT0ZP
+	bcs +++					;if we weren't on the same name table, jump further ahead
+*	lda EnYRoomPos,x		;else, get enemy y position
+	cmp ObjectY				;get samus y position
+	bne +					;if they aren't equal, jump ahead
+	inc $82					;else, inc 82
+	inc $82					; twice
+*	rol						;move MSB to LSB of enemy room position
+*	and #$01				;mask with 0000 0001 (enemy y pos if same table, table number if not)
+	asl						;
+	asl						; up to 0100
+	jsr EnableEnStatusFlags	; enable flag
+	lsr						;
 	lsr
-	ror
-	eor $0403,x
-	bpl +
-	jsr $81DA
-*	lda #$FB
-	jsr UnknownF7B3
-	lda ScrollDir
-	cmp #$02
-	bcs +
-	jsr UnknownF752
-	bcc +
-	tya
-	eor PPUCNT0ZP
-	bcs +++
-*	lda EnYRoomPos,x
-	cmp ObjectY
-	bne +
-	inc $82
-	inc $82
-*	rol
-*	and #$01
-	asl
-	asl
-	jsr UnknownF744
-	lsr
-	lsr
-	lsr
-	ror
-	eor $0402,x
-	bpl +
-	jmp $820F
+	lsr						;pop it out
+	ror						;roll it back to MSB
+	eor $0402,x				;flip bits with vert speed
+	bpl +					;if still positive, return 
+	jmp $820F				;else, do thing
 
-UnknownF744:
+EnableEnStatusFlags:
 	ora $0405,x
 	sta $0405,x
 *       rts
 
-UnknownF74B:  ldy EnDataIndex,x
+UnknownF74B:  
+	ldy EnDataIndex,x
 	lda $968B,y
 	rts
 
-UnknownF752:  lda EnNameTable,x
-	tay
-	eor ObjectHi
-	lsr
-	rts
+OnSameNametable:  
+	lda EnNameTable,x	;get enemy name table
+	tay					;put A in Y
+	eor ObjectHi		;eor with player name table (only return 1 when they are a mismatch)
+	lsr					;set the carry flag with the result
+	rts					;return
 
-UnknownF75B:  lda #$E7
-	sta $06
-	lda #$18
-	jsr UnknownF744
-	ldy EnDataIndex,x
-	lda $96AB,y
-	beq +++++
-	tay
-	lda $0405,x
-	and #$02
-	beq ++++
-	tya
-	ldy #$F7
-	asl
-	bcs +
-	ldy #$EF
-*       lsr
-	sta $02
-	sty $06
-	lda ObjectY
-	sta $00
-	ldy EnYRoomPos,x
-	lda $0405,x
-	bmi +
-	ldy ObjectX
-	sty $00
-	ldy EnXRoomPos,x
-*       lda ObjectHi
-	lsr
-	ror $00
-	lda EnNameTable,x
-	lsr
-	tya
-	ror
-	sec
-	sbc $00
-	bpl +
-	jsr TwosCompliment		;($C3D4)
-*       lsr
-	lsr
-	lsr
-	cmp $02
-	bcc ++
-*	lda $06
-UnknownF7B3:  and $0405,x
-	sta $0405,x
-*	rts
+CheckDistanceToPlayer:  
+	lda #$E7						;1110 0111	create default mask
+	sta $06							;store in zero page
+	lda #$18						;0001 1000  set the flags on the status 
+	jsr EnableEnStatusFlags
+	ldy EnDataIndex,x				;get enemy data index
+	lda $96AB,y						;load data from area for this enemy
+	beq +++++						;if 0, return with flags set
+	tay								;place A into Y
+	lda $0405,x						;load status flags
+	and #$02						;check visibility flag
+	beq ++++						;not visible, clear the flags
+	tya								;visible, move the data back into A
+	ldy #$F7						;make new mask 1111 0111
+	asl								;check if bit 7 of data was set
+	bcs +							;if so, keep current mask
+	ldy #$EF						;else, create 1110 1111 mask
+*   lsr								;get data back with upper flag removed
+	sta $02							;store data in zero page
+	sty $06							;store mask in zero page
+	lda ObjectY						; prep for a comparison between samus' Y position
+	sta $00							;
+	ldy EnYRoomPos,x				; and the enemy's Y position
+	lda $0405,x						;  
+	bmi +							; else if the highest bit isn't set on the enemy's status flags 
+	ldy ObjectX						; prep for a comparison between samus' x position
+	sty $00							; 
+	ldy EnXRoomPos,x				; and the enemy's X position
+*   lda ObjectHi					; Get Samus' nametable
+	lsr								; pop nametable out
+	ror $00							; shift player position right, with name table coming in the MSB
+	lda EnNameTable,x				;load enemy name table
+	lsr								;pop name table out
+	tya								;move enemy position into A
+	ror								;shift position right, bring in enemy name table into MSB
+	sec								;set the carry flag
+	sbc $00							;subtract the player position
+	bpl +							;if the result is positive, jump ahead
+	jsr TwosCompliment				;else if it's negative, flip it- we want ABS
+*   lsr								;
+	lsr								;divide result by 8
+	lsr								;
+	cmp $02							;compare to leftover data from table- a distance?
+	bcc ++							;if we're less than, leave
+*	lda $06							;use either 1110 0111, 1111 0111, or 1110 1111 for the status flags
+ClearEnStatusFlags:  
+	and $0405,x				;clear flags from process
+	sta $0405,x				;store flags in enemy
+*	rts					
 
-UnknownF7BA:  dec EnDelay,x
+UnknownF7BA:  
+	dec EnDelay,x
 	bne +
 	lda $0405,x
 	and #$08
@@ -8613,7 +8605,7 @@ UnknownF7BA:  dec EnDelay,x
 	beq +
 	jsr $8206
 *	lda #$DF
-	jmp UnknownF7B3
+	jmp ClearEnStatusFlags
 
 UnknownF83E:
   lda $0405,x
@@ -8734,7 +8726,8 @@ UnknownF8F8:  lda $85
 	sta $0408,y
 *       rts
 
-UnknownF91D:  ldx PageIndex
+UnknownF91D:  
+	ldx PageIndex
 	jsr UnknownE792
 	tya
 	tax
@@ -8747,7 +8740,8 @@ Table15:
 	.byte $02
 	.byte $FE
 
-UnknownF92C:  lda #$02
+UnknownF92C:  
+	lda #$02
 	sta EnRadY,y
 	sta EnRadX,y
 	ora $0405,y
@@ -8755,8 +8749,8 @@ UnknownF92C:  lda #$02
 	rts
 
 UnknownF93B:
-  ldx #$B0
-*       jsr UnknownF949
+    ldx #$B0
+*   jsr UnknownF949
 	ldx PageIndex
 	jsr Xminus16
 	cmp #$60
@@ -8788,16 +8782,20 @@ UnknownF96A:  jsr UnknownFA5B
 	lda EnStatus,x
 	beq Exit19
 	jsr UnknownFA60
-UnknownF97C:  lda #$01
-UnknownF97E:  jsr UpdateEnemyAnim
+UnknownF97C:  
+	lda #$01
+UnknownF97E:  
+	jsr UpdateEnemyAnim
 	jmp ClrObjCntrlIfFrameIsF7
 
-*       inc $0408,x
-UnknownF987:  inc $0408,x
+*   inc $0408,x
+UnknownF987:  
+	inc $0408,x
 	lda #$00
 	sta EnDelay,x
 	beq +
-UnknownF991:  jsr UnknownFA5B
+UnknownF991:  
+	jsr UnknownFA5B
 	lda $040A,x
 	and #$FE
 	tay
@@ -8812,35 +8810,35 @@ UnknownF991:  jsr UnknownFA5B
 	sta $0408,x
 	jmp UnknownF987
 
-*       cmp EnDelay,x
+*   cmp EnDelay,x
 	beq ---
 	inc EnDelay,x
-	iny
-	lda ($0A),y
-	jsr ExtractVerticalNibble
-	ldx PageIndex
-	sta $0402,x
-	lda ($0A),y
-	jsr ExtractHorizontalNibble
-	ldx PageIndex
-	sta $0403,x
-	tay
-	lda $040A,x
-	lsr
-	php
-	bcc +
-	tya
-	jsr TwosCompliment		;($C3D4)
-	sta $0403,x
-*       plp
-	bne +
-	lda $0402,x
-	beq +
-	bmi +
-	ldy $040A,x
-	lda $95E0,y
+	iny							;y = index into movement data
+	lda ($0A),y					;load condensed movement data
+	jsr ExtractVerticalNibble	;extract verticle speed
+	ldx PageIndex				;get the enemy index
+	sta $0402,x					;store to enemy vertical speed
+	lda ($0A),y					;reload condensed movement data
+	jsr ExtractHorizontalNibble ;extract horizontal speed
+	ldx PageIndex				;get enemy index
+	sta $0403,x					;store to enemy horizontal speed
+	tay							;move horizontal speed into Y
+	lda $040A,x					;load enemy orientation
+	lsr							;get lowest bit (left or right normal/enemy is sideways)
+	php							;push status to stack
+	bcc +						;if we popped a 1 out, jump ahead
+	tya							;else, put horizontal back into A
+	jsr TwosCompliment			;flip the speed direction
+	sta $0403,x					;store flipped speed into horizontal speed
+*   plp							;bring back the status
+	bne +						;if not 0, jump ahead
+	lda $0402,x					;else, load vertical speed
+	beq +						;jump ahead if the speed is 0
+	bmi +						;or less than 0
+	ldy $040A,x					;load orientation (0->3)
+	lda $95E0,y					;index ??? in area data
 	sta EnResetAnimIndex,x
-*       jsr EnemyBGCrashDetection
+*   jsr EnemyBGCrashDetection
 	ldx PageIndex
 	bcs ++
 	lda EnStatus,x

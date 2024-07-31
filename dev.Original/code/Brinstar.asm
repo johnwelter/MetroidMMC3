@@ -197,9 +197,18 @@ L95A2:	.word EnemyFramePtrTbl2		;($9EE0)tables needed to accommodate all entries
 L95A4:	.word EnemyPlacePtrTbl		;($9F0E)Pointers to enemy frame placement data.
 L95A6:	.word EnemyAnimIndexTbl		;($9D6A)index to values in addr tables for enemy animations.
 
-;empty nothings here, jump routines in tourian
-L95A8:	.byte $60, $EA, $EA, $60, $EA, $EA, $60, $EA, $EA, $60, $EA, $EA, $60, $EA, $EA, $60 
-L95B8:	.byte $EA, $EA, $60, $EA, $EA, $60, $EA, $EA, $60, $EA, $EA
+;;TOURIAN JUMP tables
+;;unimplemented outside of tourian
+;;			  RTS  NOP  NOP
+L95A8:	.byte $60, $EA, $EA
+L95AB:	.byte $60, $EA, $EA
+L95AE:	.byte $60, $EA, $EA
+L95B1:	.byte $60, $EA, $EA
+L95B4:	.byte $60, $EA, $EA
+L95B7:	.byte $60, $EA, $EA
+L95BA:	.byte $60, $EA, $EA
+L95BD:	.byte $60, $EA, $EA
+L95C0:	.byte $60, $EA, $EA
 
 AreaRoutine:
 L95C3:	JMP $9D35			;Area specific routine.
@@ -210,21 +219,36 @@ L95C8:	CLC				;The following routine returns the twos-->
 L95C9:	ADC #$01			;compliment of the value stored in A.
 L95CB:	RTS				;
 
-L95CC:	.byte $FF			;Not used.
-				
-L95CD:	.byte $01			;Brinstar music init flag.
+BossRoomVal:	.byte $FF			;Not used.
+AreaMusicFlag:	.byte $01			;Brinstar music init flag.
+AreaDamageLo:	.byte $80			;Base damage caused by area enemies to lower health byte.
+AreaDamageHi:	.byte $00			;Base damage caused by area enemies to upper health byte.
 
-L95CE:	.byte $80			;Base damage caused by area enemies to lower health byte.
-L95CF:	.byte $00			;Base damage caused by area enemies to upper health byte.
+;Special room numbers(used to start item room music), 7 only.
+AreaSpecialRoomTable:	.byte $2B, $2C, $28, $0B, $1C, $0A, $1A
 
-;Special room numbers(used to start item room music).
-L95D0:	.byte $2B, $2C, $28, $0B, $1C, $0A, $1A
+;;Area Start Data
+AreaStartRoomX:	.byte $03			;Samus start x coord on world map.
+AreaStartRoomY:	.byte $0E			;Samus start y coord on world map.
+AreaStartYPos:	.byte $B0			;Samus start verticle screen position.
 
-L95D7:	.byte $03			;Samus start x coord on world map.
-L95D8:	.byte $0E			;Samus start y coord on world map.
-L95D9:	.byte $B0			;Samus start verticle screen position.
-
-L95DA:	.byte $01, $00, $03, $43, $00, $00, $00, $00, $00, $00, $69 
+;;byte 0 - something to to with a pallete toggle, read in MoreInit in GameEngine.asm
+;;byte 1 - Unused
+;;byte 2 - something to do with enemy kills, read in UnknownFA91
+;;byte 3 - something to do with setting up enemy explosions, read in Enemy Damage routine
+;;byte 4 - Unused
+;;byte 5 - Unused
+;;byte 6 - something to do with enemy movement, read in UnknownF991, indexed with y 
+;;byte 7 - ''
+;;byte 8 - something to do with enemy movement, read in UnknownF991, indexed with y
+;;byte 9 - ''
+;;byte A - something to do with special and mellow enemies, read in SpecEnemyHandler and UpdateMellowEnemies
+Unknown95DA:	.byte $01, $00
+Unknown95DC:	.byte $03
+Unknown95DD:	.byte $43, $00, $00
+Unknown95E0: 	.byte $00, $00 
+Unknown95E2:	.byte $00, $00
+Unknown95E4:	.byte $69 
 
 L95E5:	LDA EnDataIndex, X
 L95E8:	JSR $8024
@@ -251,6 +275,24 @@ L960B:	.byte $27, $27, $29, $29, $2D, $2B, $31, $2F, $33, $33, $41, $41, $4B, $4
 L961B:	.byte $72, $74, $00, $00, $00, $00, $69, $69, $69, $69, $00, $00, $00, $00, $00, $00
 
 EnemyHitPointTbl:
+
+; 0 -
+; 1 -
+; 2 -
+; 3 -
+; 4 - 
+; 5 - 
+; 6 - green swooper
+; 7 - 
+; 8 - 
+; 9 - 
+; A - 
+; B - 
+; C - 
+; D - 
+; E - 
+; F - 
+
 L962B:	.byte $08, $08, $04, $FF, $02, $02, $04, $01, $20, $FF, $FF, $04, $01, $00, $00, $00
 
 L963B:	.byte $05, $05, $0B, $0B, $17, $13, $1B, $19, $23, $23, $35, $35, $48, $48, $59, $57 
@@ -261,12 +303,19 @@ L965B:	.byte $05, $05, $0B, $0B, $17, $13, $1B, $19, $23, $23, $35, $35, $48, $4
 
 L966B:	.byte $6C, $6F, $5B, $5D, $5F, $64, $69, $69, $69, $69, $00, $00, $00, $00, $00, $00
 
+;some kinda data, so fuckin obfuscated.. used in area common
 L967B:	.byte $00, $00, $00, $80, $00, $00, $00, $00, $00, $00, $00, $00, $80, $00, $00, $00 
 
+;I know it contains SFX data in 0000 xx000
+;I know we do soemthing with 0000 00x0 related to enemy movement and waiting
+;same with x000 0000
+;AreaCommon uses something with 00x0 0000
 L968B:	.byte $01, $01, $01, $00, $86, $04, $89, $80, $81, $00, $00, $00, $82, $00, $00, $00 
 
+;some kind of timer?
 L969B:	.byte $01, $01, $01, $01, $01, $01, $01, $01, $20, $01, $01, $01, $40, $00, $00, $00 
 
+;I know it contains something in x000 0000 regarding flag clears and if we wait for player 
 L96AB:	.byte $00, $00, $06, $00, $83, $00, $88, $00, $00, $00, $00, $00, $00, $00, $00, $00 
 
 EnemyInitDelayTbl:

@@ -391,20 +391,31 @@
 
 .alias EnYRoomPos		$0400	;Enemy y position in room.(not actual screen position).
 .alias EnXRoomPos		$0401	;Enemy x position in room.(not actual screen position).
-;				$0402
-;				$0403
-;				$0404
-;				$0405
+.alias EnVertSpeed		$0402
+.alias EnHoriSpeed		$0403
+;						$0404
+.alias EnStatusFlags	$0405	;cutx xxvx 
+								;|||| ||||
+								;|||| |||+-
+								;|||| ||+--visibility
+								;|||| |+---??
+								;|||| +----??
+								;|||| 
+								;|||+------always 1?
+								;||+-------delay timer active
+								;|+--------skip state update
+								;+---------check distance to player 1 = Y check, 0 = X check
+								
 .alias EnCounter		$0406	;Counts such things as explosion time.
-;				$0407
-;				$0408
+;						$0407
+;						$0408
 .alias EnDelay			$0409	;Delay counter between enemy actions.
-;				$040A
+.alias EnRotation		$040A	; ^,>,v,<
 .alias EnHitPoints		$040B	;Current hit points of enemy.
-;				$040C
-;				$040D
-;				$040E
-.alias EnSpecialAttribs		$040F	;Bit 7 set=tough version of enemy, bit 6 set=mini boss.
+;						$040C
+;						$040D	;some kinda timer?
+;						$040E
+.alias EnSpecialAttribs	$040F	;Bit 7 set=tough version of enemy, bit 6 set=mini boss.
 
 ;----------------------------------------------------------------------------------------------------
 
@@ -733,13 +744,12 @@
 
 ;---------------------------------------[ More enemy RAM ]-------------------------------------------
 
-.alias Enstatus			$6AF4	;Keeps track of enemy statuses. #$00=Enemy slot not in use,-->
-					;#$04=Enemy frozen.
+.alias Enstatus			$6AF4	;Keeps track of enemy statuses.
 .alias EnRadY			$6AF5	;Distance in pixels from middle of enemy to top or botom.
 .alias EnRadX			$6AF6	;Distance in pixels from middle of enemy to left or right.
 .alias EnAnimFrame		$6AF7	;Index into enemy animation frame data.
 .alias EnAnimDelay		$6AF8	;Number of frames to delay between animation frames.
-.alias EnResetAnimIndex		$6AF9	;Index to beginning of animation sequence.
+.alias EnResetAnimIndex	$6AF9	;Index to beginning of animation sequence.
 .alias EnAnimIndex		$6AFA	;Index to current animation.
 .alias EnNameTable		$6AFB	;#$00=Enemy on name table 0, #$01=Enemy on name table 3.
 ;				$6AFC
