@@ -222,6 +222,7 @@ L95CB:	RTS				;
 BossRoomVal:	.byte $FF			;Not used.
 AreaMusicFlag:	.byte $01			;Brinstar music init flag.
 AreaDamageLo:	.byte $80			;Base damage caused by area enemies to lower health byte.
+;AreaDamageLo:	.byte $00			;Base damage caused by area enemies to lower health byte.
 AreaDamageHi:	.byte $00			;Base damage caused by area enemies to upper health byte.
 
 ;Special room numbers(used to start item room music), 7 only.
@@ -278,12 +279,12 @@ EnemyHitPointTbl:
 
 ; 0 -
 ; 1 -
-; 2 -
-; 3 -
-; 4 - 
-; 5 - 
-; 6 - green swooper
-; 7 - 
+; 2 - glider
+; 3 - freezie back and forth guys
+; 4 - driller guy
+; 5 - crawler
+; 6 - swooper
+; 7 - grind fodder
 ; 8 - 
 ; 9 - 
 ; A - 
@@ -308,14 +309,20 @@ L967B:	.byte $00, $00, $00, $80, $00, $00, $00, $00, $00, $00, $00, $00, $80, $0
 
 ;I know it contains SFX data in 0000 xx000
 ;I know we do soemthing with 0000 00x0 related to enemy movement and waiting
-;same with x000 0000
 ;AreaCommon uses something with 00x0 0000
+;0000 0000
+;|||| ||||
+;|||| |||+- ?
+;|||| ||+-- check direction to samus when moving
+;|||| ++--- enemy hit SFX index
+;||+------- ?
+;+--------- only check vertical direction to samus
 L968B:	.byte $01, $01, $01, $00, $86, $04, $89, $80, $81, $00, $00, $00, $82, $00, $00, $00 
 
-;some kind of timer?
+;some kind of timer for 40D
 L969B:	.byte $01, $01, $01, $01, $01, $01, $01, $01, $20, $01, $01, $01, $40, $00, $00, $00 
 
-;I know it contains something in x000 0000 regarding flag clears and if we wait for player 
+;I know it contains something in x000 0000 regarding flag clears and if we wait for player position
 L96AB:	.byte $00, $00, $06, $00, $83, $00, $88, $00, $00, $00, $00, $00, $00, $00, $00, $00 
 
 EnemyInitDelayTbl:
@@ -336,6 +343,12 @@ L9753:	.byte $F6, $FC, $FE, $04, $02, $00, $00, $00, $0C, $FC, $FC, $00, $00, $0
 L9763:	.byte $00, $00, $00, $00, $00, $02, $02, $02, $02, $00, $00, $00, $02, $00, $02, $02
 L9773:	.byte $00, $00, $00, $00, $00, $00, $00, $00
 
+;NOTE - bytes from this row in normal situations get pre-bitshifted left, probably to make 
+;sure it's a quick carry flag check for the MSB
+;0000 0000
+;|||| ||||
+;|||+------- if the enemy is a metroid for damage and SFX purposes
+;|+--------- wether to flip 407(?) as well as 406(EnCounter) when flipping velocities for enemies that check relation to samus
 L977B:	.byte $64, $6C, $21, $01, $04, $00, $4C, $40, $04, $00, $00, $40, $40, $00, $00, $00 
 
 L978B:	.byte $00, $00, $64, $67, $69, $69, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00

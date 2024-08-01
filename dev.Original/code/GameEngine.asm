@@ -4474,7 +4474,7 @@ UnknownDCFC:
 *       lda $040C,x
 	asl
 	bmi UnknownDD75
-	jsr UnknownF74B
+	jsr LoadFromEn968B
 	sta $00
 	jsr $80B0
 	and #$20
@@ -4576,12 +4576,12 @@ AddToMaxMissiles:
 	lda ($41),y
 	bcc +
 	lda ($43),y
-*       sta $00
+*   sta $00
 	iny
 	lda ($41),y
 	bcc +
 	lda ($43),y
-*       sta $01
+*   sta $01
 	jsr GetSpriteCntrlData		;($DCC3)Get place pointer index and sprite control data.
 	tay
 	lda ($45),y
@@ -4607,7 +4607,7 @@ AddToMaxMissiles:
 	bne +
 	jmp UnknownDCF5
 
-*       ldx PageIndex
+*   ldx PageIndex
 	iny
 	lda ($00),y
 	sta EnRadY,x
@@ -6737,7 +6737,7 @@ UnknownEB6E:
 	ldy EnDataIndex,x		;Load A with index to enemy data.
 	asl $0405,x			;*2
 	jsr UnknownFB7B
-	jmp UnknownF85A
+	jmp EnemyInitHealth
 
 IsSlotTaken:
 	lda EnStatus,x
@@ -7947,25 +7947,25 @@ UnknownF340:  lda $10
 ; =============
 
 UpdateEnemies:
-	ldx #$50		;Load x with #$50
-*       jsr DoOneEnemy			;($F351)
+	ldx #$50						;Load x with #$50
+*       jsr DoOneEnemy						
 	ldx PageIndex
 	jsr Xminus16
 	bne -
 DoOneEnemy:
-	stx PageIndex		;PageIndex starts at $50 and is subtracted by $F each iteration.
-				;There is a max of 6 enemies at a time.
-	ldy EnStatus,x
+	stx PageIndex					;PageIndex starts at $50 and is subtracted by $F each iteration.
+									;There is a max of 6 enemies at a time.
+	ldy EnStatus,x		
 	beq +
 	cpy #$03
 	bcs +
-	jsr UnknownF37F
-*   jsr UnknownF3AA
+	jsr BreakOnVisibilityMismatch 	;check if we're visible- if we are in our status, and not in reality, break early
+*   jsr SetEnemyUpdateSkip			;update every other enemy per frame
 	lda EnStatus,x
 	sta $81
-	cmp #$07	;compare EnStatus to the max status of 7
-	bcs +		;if our status is greater/equal, and therefore invalid, kill the enemy
-	jsr ChooseRoutine	;else, jump to this enemy's current routine
+	cmp #$07						;compare EnStatus to the max status of 7
+	bcs +							;if our status is greater/equal, and therefore invalid, kill the enemy
+	jsr ChooseRoutine				;else, jump to this enemy's current routine
 
 ; Pointer table to code
 
@@ -7974,57 +7974,63 @@ DoOneEnemy:
 	;#$02= plain moving
 	;#$03= dying
 	;#$04= Enemy frozen.
-	;#$05=
+	;#$05= power up state
 	;#$06= enemy hit
 
 EnemyRoutineTable:
-	.word ExitSub       ;Enemy slot not in use
+	.word ExitSub       	;Enemy slot not in use
 	.word EnemyWaitState	;waiting
-	.word UnknownF3E6	;plain moving
-	.word UnknownF40D	;dying
-	.word UnknownF43E	;frozen
-	.word UnknownF483	;
-	.word UnknownF4EE	;hit
+	.word EnemyMoveState	;plain moving
+	.word EnemyDyingState	;dying
+	.word EnemyFrozenState	;frozen
+	.word EnemyPowerupState	;power up
+	.word EnemyHitState		;hit
 
 *   jmp KillObject			;Free enemy data slot.
 
-UnknownF37F:  
-	lda $0405,x
-	and #$02
-	bne +
+BreakOnVisibilityMismatch:  
+	lda $0405,x			 ; load enemy status flags
+	and #$02			 ; check if enemy is visible
+	bne +				 ; if not, load enemy and exit
 	lda EnYRoomPos,x     ; Y coord
-	sta $0A
+	sta $0A				 ; 
 	lda EnXRoomPos,x     ; X coord
 	sta $0B
-	lda EnNameTable,x     ; hi coord
+	lda EnNameTable,x    ; name table 
 	sta $06
-	lda EnRadY,x
+	lda EnRadY,x		 ; enemy hit box
 	sta $08
-	lda EnRadX,x
+	lda EnRadX,x		 ; enemy hit box
 	sta $09
 	jsr IsObjectVisible		;($DFDF)Determine if object is within the screen boundaries.
-	txa
-	bne +
-	pla
-	pla
-*   ldx PageIndex
+	txa					 ;x = 1 if visible, 0 if not, push to A
+	bne +				 ;if not visible, load enemy and return
+	pla					 ;else, pop the last call on the stack out
+	pla					 ;we want to go back two layers before instead
+*   ldx PageIndex		 ;load enemy
+	rts					 ;return
+
+;the comments aren't super helpful, but here's what's going on
+;on the enemy status flags, $0405, the 6th bit is an update skip Bit
+;on every frame, an enemy's skip bit is set based on the current odd/even parity of the frame counter
+;and every other enemy has the opposite skip 
+;so, only half the enemies are updating per frame
+SetEnemyUpdateSkip:  
+	lda $0405,x			;  du.. ....	get status flags
+	asl					;d u... ...0	pop out check distance flag
+	rol					;u .... ..0d	pop out skip update flag, bring back distance flag
+	tay					;move A to Y
+	txa					;move enemy index to A
+	jsr Adiv16			;move high nibble to low nibble
+	eor FrameCount		;get current frame count, flip bits
+	lsr					;shift right to get LSB into carry (n)
+	tya					;  .... ..0d	return to status flags
+	ror					;  n... ...0 d	bring in inverted skip update flag, pop distance flag
+	ror					;  dn.. .... 0	bring back distance flag
+	sta $0405,x			;store back into status flags
 	rts
 
-UnknownF3AA:  
-	lda $0405,x			
-	asl					
-	rol					
-	tay					
-	txa					
-	jsr Adiv16			
-	eor FrameCount		
-	lsr					
-	tya					
-	ror					
-	ror					
-	sta $0405,x
-	rts
-
+;;update enemy wait state
 EnemyWaitState:  				
 	lda $0405,x					;load the status flags
 	asl							;push skip update flag left
@@ -8033,7 +8039,7 @@ EnemyWaitState:
 	sta $6B01,x					;store into enemy data
 	sta EnCounter,x				;store into enemy counter
 	sta $040A,x					;store into enemy orientation
-	jsr UnknownF6B9				;
+	jsr EnemyDirectionToSamus	;
 	jsr CheckDistanceToPlayer	;
 	jsr UnknownF682
 	jsr UnknownF676
@@ -8042,26 +8048,30 @@ EnemyWaitState:
 	jsr UnknownF7BA
 *   jmp ++
 
-UnknownF3E6:  	;moving
-	lda $0405,x					;occilates between 5A and 1A for starting enemies
-	asl							;shift bits to the Left (0101->1010, 0001->0010)
-	bmi ++						;if the neg was set (will trigger on 5A), jump to F536
-	lda $0405,x					;else, load ?? again
-	and #$20					;and w 0010 0000 (will be 0 for starting enemies)
-	beq +						;if 0, jump to F6B9
+;;update enemy moving state
+EnemyMoveState:  	
+	lda $0405,x					;load enemy status flags
+	asl							;check if the skip update flag is set
+	bmi ++						;if set, skip move updates, go straight to damage
+	lda $0405,x					;else, load status flags again
+	and #$20					;check if we have a delay timer to start
+	beq +						;if not, jump ahead
 	ldy EnDataIndex,x			;else, load the enemy data index
 	lda EnemyInitDelayTbl,y		;get the enemy delay time
 	sta EnDelay,x				;set the enemy delay timer
 	dec EnStatus,x				;set us back to a delay/wait status
-	bne ++						;jump to F536
-*   jsr UnknownF6B9
-	jsr CheckDistanceToPlayer
-	jsr UnknownF51E
-*	jsr UpdateEnemyDamage
-UnknownF40D:	
+	bne ++						;skip move updates for enemy damage
+*   jsr EnemyDirectionToSamus	;for enemies that home in on samus while moving, update it
+	jsr CheckDistanceToPlayer	;not sure exactly what this does yet
+	jsr EnemyUnderRoom			;kill enemies that somehow get under the map in horizontal rooms
+*	jsr UpdateEnemyDamage		;if the enemy was shot, update their damage
+
+;;update enemy dying state
+EnemyDyingState:	
 	jmp $95E5
 
-UpdateEnemyAnim0:	jsr UpdateEnemyAnim
+UpdateEnemyAnim0:	
+	jsr UpdateEnemyAnim
 	jsr $8058
 CheckObjectAttribs:
 	ldx PageIndex
@@ -8070,11 +8080,13 @@ CheckObjectAttribs:
 	lda ObjectCntrl
 	bmi +
 	lda #$A3
-UnknownF423:  sta ObjectCntrl
-*       lda EnStatus,x
+UnknownF423:  
+	sta ObjectCntrl
+*   lda EnStatus,x
 	beq UnknownF42D
 	jsr ClrObjCntrlIfFrameIsF7
-UnknownF42D:  ldx PageIndex
+UnknownF42D:  
+	ldx PageIndex
 	lda #$00
 	sta $0404,x
 	sta $040E,x
@@ -8084,7 +8096,7 @@ UpdateEnemyAnim1:
   jsr UpdateEnemyAnim
   jmp CheckObjectAttribs
 
-UnknownF43E:  
+EnemyFrozenState:  
     jsr UpdateEnemyDamage
 	lda EnStatus,x
 	cmp #$03
@@ -8093,7 +8105,7 @@ UnknownF43E:
 	bmi +
 	lda #$A1
 	sta ObjectCntrl
-*       lda FrameCount
+*   lda FrameCount
 	and #$07
 	bne +
 	dec $040D,x
@@ -8106,37 +8118,38 @@ UnknownF43E:
 	ldy EnDataIndex,x
 	lda $969B,y
 	sta $040D,x
-*       lda $040D,x
+*   lda $040D,x
 	cmp #$0B
 	bcs +
 	lda FrameCount
 	and #$02
 	beq +
 	asl ObjectCntrl
-*       jmp CheckObjectAttribs
+*   jmp CheckObjectAttribs
 
-UnknownF483:  lda $0404,x
-	and #$24
-	beq ++++++
-	jsr KillObject			;($FA18)Free enemy data slot.
-	ldy EnAnimFrame,x
-	cpy #$80
-	beq PickupMissile
-	tya
-	pha
-	lda EnDataIndex,x
-	pha
-	ldy #$00
-	ldx #$03
-	pla
-	bne ++
-	dex
-	pla
-	cmp #$81
-	bne +
-	ldx #$01			;Increase HealthHi by 1.
-	ldy #$50			;Increase HealthLo by 5.
-*       pha
+EnemyPowerupState:  
+	lda $0404,x				;
+	and #$24				;I guess we check collision with samus here?
+	beq ++++++				;if no collision, just update delete timer
+	jsr KillObject			;	($FA18)Free enemy data slot.
+	ldy EnAnimFrame,x		;	check the enemy anim frame
+	cpy #$80				;	if it's equal to $80, it was a missle
+	beq PickupMissile		;		jump to picking up a missle
+	tya						;	else, it was health - put the anim frame into A
+	pha						;	then push it to the stack
+	lda EnDataIndex,x		; 	load enemy data index
+	pha						;	push that to the stack too
+	ldy #$00				;	
+	ldx #$03				;	;set up for a 30.0 health boost
+	pla						; 	put enemy data index back into A
+	bne ++					; 	if it's not index 0, jump ahead to health change
+	dex						;	if it IS 0, we need to check something else
+	pla						;	pop anim frame back into the accumulator
+	cmp #$81				;	comapre to $81
+	bne +					;	if equal, jump past this - we have a bigger enemy drop
+	ldx #$01				;	Increase HealthHi by 1.
+	ldy #$50				;	Increase HealthLo by 5.
+*   pha	
 *	pla				
 	sty HealthLoChange
 	stx HealthHiChange
@@ -8148,12 +8161,12 @@ PickupMissile:
 	ldy EnDataIndex,x
 	beq +
 	lda #$1E
-*       clc
+*   clc
 	adc MissileCount
-	bcs +		   ; can't have more than 255 missiles
-	cmp MaxMissiles	 ; can Samus hold this many missiles?
-	bcc ++		  ; branch if yes
-*       lda MaxMissiles	 ; set to max. # of missiles allowed
+	bcs +		   			; can't have more than 255 missiles
+	cmp MaxMissiles			; can Samus hold this many missiles?
+	bcc ++		  		 	; branch if yes
+*   lda MaxMissiles		 	; set to max. # of missiles allowed
 *	sta MissileCount
 	jmp SFX_MissilePickup
 
@@ -8170,7 +8183,8 @@ PickupMissile:
 	sta ObjectCntrl
 	jmp CheckObjectAttribs
 
-UnknownF4EE:  dec EnSpecialAttribs,x
+EnemyHitState:  
+	dec EnSpecialAttribs,x
 	bne ++
 	lda $040C,x
 	tay
@@ -8190,41 +8204,45 @@ UnknownF4EE:  dec EnSpecialAttribs,x
 *	lda #$A0
 	jmp UnknownF423
 
-UnknownF515:  sta $040C,x
-UnknownF518:  lda #$04
+UnknownF515:  
+	sta $040C,x
+FreezeEnemy:  
+	lda #$04
 	sta EnStatus,x
 	rts
 
-UnknownF51E:  lda ScrollDir
-	ldx PageIndex
-	cmp #$02
-	bcc +++		; added plus for new damage code
-	lda EnYRoomPos,x     ; Y coord
-	cmp #$EC
-	bcc +++		; added plus for new damage code
-	jmp KillObject			;($FA18)Free enemy data slot.
+EnemyUnderRoom:  
+	lda ScrollDir		 ; load scroll direction
+	ldx PageIndex		 ; load enemy
+	cmp #$02		     ; check scroll direction
+	bcc +++				 ; added plus for new damage code - return if we're vertical, else
+	lda EnYRoomPos,x     ; check Y coord
+	cmp #$EC			 ; compare to bottom of room - if an enemy leaves the bottom of a room, kill it
+	bcc +++				 ; added plus for new damage code
+	jmp KillObject		 ;($FA18)Free enemy data slot.
 
-*       jsr SFX_MetroidHit
-	jmp GetPageIndex
+PlayMetroidHitSound:
+*   jsr SFX_MetroidHit		;
+	jmp GetPageIndex		;jump to end of damage code
 
 UpdateEnemyDamage:  
-    lda EnSpecialAttribs,x
-	sta $0A
-	lda $0404,x
-	and #$20
-	beq ++		;added plus
-	lda $040E,x
-	cmp #$03
-	bne ++++	;added plus
-	bit $0A
-	bvs ++++	;added plus
-	lda EnStatus,x
-	cmp #$04
-	beq ++++	;added plus
+    lda EnSpecialAttribs,x 	; load the special attributes of an enemy, ;Bit 7 set=tough version of enemy, bit 6 set=mini boss. 
+	sta $0A					; store the value into $000A for safe keeping
+	lda $0404,x				; load up the shot/collision status 
+	and #$20				; and with mask out 0010 0000, to check if it's a shot 
+	beq ++					; added plus - equal to 0? jump to the RTS - no shot detected
+	lda $040E,x				; 	40E is the type of laser we were hit by (01 = laser, 02 = wave, 03 = ice, 0A = bomb, 0B = missle
+	cmp #$03				; 	this value is loaded into here from samus' 0300 page ram (from 3D0 down)
+	bne ++++				;		added plus - not equal? jump to the hit points checktwo chunks down
+	bit $0A					; 		take the enemy attribute we loaded. 
+	bvs ++++				; 			added plus - if bit 6 is set IE, we're a miniboss, jump down to the hit point check; ice lasers don't freeze the bosses
+	lda EnStatus,x			;		if NOT, then load the current status
+	cmp #$04				;		compare to frozen
+	beq ++++				;			added plus - frozen? jump to hit point stuff
 	
-	;here's some new damage code for the ice beam to work more like super metroid 
+;--------------here's some new damage code for the ice beam to work more like super metroid 
 	
-	
+SuperMetroidIceBeam:
 		jsr $80B0				
         and #$20						
 		bne +				
@@ -8242,130 +8260,132 @@ UpdateEnemyDamage:
 		
 *		lda EnStatus,x
 	
+;-------------end of new damage code
 
-	;end of new damage code
-	jsr UnknownF515
-	lda #$40
-	sta $040D,x
-	jsr $80B0
-	and #$20
-	beq +
-	lda #$01	;making this one so the metroid only takes one misile instead of 5
-	sta EnHitPoints,x
-	jmp $95A8
-*       rts
+	jsr UnknownF515			; else, jump back up to where we store whatever we ended up with into 040C, I assume a previous status then load 4 into A, and store that in the enemy status- AKA, freeze it
+	lda #$40				; load up #40 frames
+	sta $040D,x				; store in delay timer
+	jsr $80B0				; load the enemy info from the current room, bit shifted left 1
+	and #$20				; check metroid bit
+	beq +					; if it's not a metroid, return
+	lda #$01				; 	making this one so the metroid only takes one misile instead of 5
+	sta EnHitPoints,x		; 	set metroid health
+	jmp $95A8				;	jump to 95A8, which does stuff to the metroid on samus flag, among other things
+*   rts						; 	then, we're done with freezing and damage updates
 
-*	jsr $80B0
-	and #$20
-	bne ---- ;added minus
-	jsr SFX_Metal
+PlayInvicibleSFX:
+*	jsr $80B0				; get 977b attributes
+	and #$20				; check if a metroid
+	bne ---- 				; 	added minus - if metroid, play metroid hit sound
+	jsr SFX_Metal			; play metal hit- nothing 
 	jmp UnknownF42D
 
-*	lda EnHitPoints,x
-	cmp #$FF
-	beq --
-	bit $0A
-	bvc +
-	jsr SFX_BossHit
-	bne ++
-*	jsr UnknownF74B
-	and #$0C
-	beq PlaySnd1
-	cmp #$04
-	beq PlaySnd2
+ContinueEnemyDamge0:
+*	lda EnHitPoints,x		;load enemy hit points	
+	cmp #$FF				;if it's FF
+	beq --					;enemy is invincible
+	bit $0A					;if not, load up the enemy status from $000A
+	bvc +					;if it's still not a boss, jump to just checking the normal SFX
+	jsr SFX_BossHit			;	if it was a boss, play the boss hit sfx
+	bne ++					;	then, jump to damage dealing
+*	jsr LoadFromEn968B		;load 968b attributes
+	and #$0C				;get SFX index bits
+	beq PlaySnd1			;00 - sound 1
+	cmp #$04				
+	beq PlaySnd2			;01 - sound 2
 	cmp #$08
-	beq PlaySnd3
-	jsr SFX_MetroidHit
-	bne +       ; branch always
+	beq PlaySnd3			;10 - sound 3
+	jsr SFX_MetroidHit		;11 - sound 4, metroid
+	bne +       			; branch always
 PlaySnd1:
 	jsr SFX_EnemyHit
-	bne +       ; branch always
+	bne +       			; branch always
 PlaySnd2:
 	jsr SFX_EnemyHit
-	bne +       ; branch always
+	bne +       			; branch always
 PlaySnd3:
-	jsr SFX_BigEnemyHit		;($CBCE)
-*	ldx PageIndex
-	jsr $80B0
-	and #$20
+	jsr SFX_BigEnemyHit	
+
+ContinueEnemyDamge1:
+*	ldx PageIndex			; load up the enemy back into x	
+	jsr $80B0				;
+	and #$20				; if it's *not a metroid*, jump to enemy status check- we can only get here if the metroid is frozen
 	beq +
-	lda $040E,x
-	cmp #$0B
-	bne ----
-*       lda EnStatus,x
-	cmp #$04
-	bne +
-	lda $040C,x
-*       ora $0A
-	sta $040C,x
-	asl
-	bmi +
-	jsr $80B0
+	lda $040E,x						;else, load up the damage source
+	cmp #$0B						;check if it's a missle
+	bne ----						;not equal, play the metal sfx and pop out- no damage to deal
+*   lda EnStatus,x					; 	load up that stat
+	cmp #$04						; 	check if we're frozen
+	bne +							; 	not frozen? use the status as is and jump to oring with the special attribute
+	lda $040C,x						; 		else, if frozen, load up the previous state we saved out earlier from being frozen
+*   ora $0A							; 		or with that stored enemy attribute
+	sta $040C,x						;		then store that in back into the previous state data
+	asl								;		shift the previous state data left- check the 
+	bmi +							;jump down if our multiplication nagated the value
+	jsr $80B0						;
 	and #$20
-	bne +
-	ldy $040E,x
-	cpy #$0B
-	beq +++++
-	cpy #$81
-	beq +++++
-*       lda #$06
-	sta EnStatus,x
-	lda #$0A
-	bit $0A
-	bvc +
-	lda #$03
-*       sta EnSpecialAttribs,x
-	;cpy #$02
-	;beq +
+	bne +							; it's a metroid, jump to the load 6 - missles do one hit each, so we treat them like normal lasers
+	ldy $040E,x						; if not set, load the missle type into y
+	cpy #$0B						; was it a missle?
+	beq +++++						; if it's equal, skip normal damage - instant kill
+	cpy #$81						; what about whatever the fuck this is?
+	beq +++++						; if equal, skip normal damage - instant kill
+*   lda #$06						; load 6
+	sta EnStatus,x					; store that into the status, probably "hit"
+	lda #$0A						; 10 to A
+	bit $0A							; check the mini boss tag again
+	bvc +							; if it is the boss,
+	lda #$03						; load 3 to A instead
+*   sta EnSpecialAttribs,x			; store in the special attributes as a freeze timer
 	bit SamusGear
-	bvs +
-	bit $0A
-	bvc ++
-	ldy $040E,x
-	cpy #$0B
-	bne ++
-	dec EnHitPoints,x
+	bvs +							; if a wave beam, 2 damage
+	bit $0A							; not a wave beam? check if we're a boss
+	bvc ++							; not a boss? sub just 1 health
+	ldy $040E,x						; load the missle type
+	cpy #$0B						; if it's a missle, do a full 4 hits on the boss
+	bne ++							
+	dec EnHitPoints,x				;sub up to 4 health
 	beq +++
-	dec EnHitPoints,x
+	dec EnHitPoints,x				;sub up to 3 health
 	beq +++
-*       dec EnHitPoints,x
+*   dec EnHitPoints,x				;sub up to 2 health
 	beq ++
-*	dec EnHitPoints,x
-	bne GetPageIndex
-*	lda #$03
-	sta EnStatus,x
-	bit $0A
-	bvs +
-	lda $040E,x
-	cmp #$02
-	bcs +
-	lda #$00
-	jsr UnknownDCFC
-	ldx PageIndex
-*       jsr UnknownF844
-	lda $960B,y
-	jsr UnknownF68D
-	sta EnCounter,x
-	ldx #$C0
-*   lda EnStatus,x
-	beq +
-	txa
-	clc
-	adc #$08
-	tax
-	cmp #$E0
-	bne -
-	beq GetPageIndex
-*   lda $95DD
-	jsr UnknownF68D
+*   dec EnHitPoints,x				;sub 1 health
+	bne GetPageIndex				;does DEC load up the
+*   lda #$03						;go in for the kill
+	sta EnStatus,x					;load 03 into the status - enemy is dying
+	bit $0A							;check if we're a miniboss
+	bvs +							;if so, jump down to the mystery load
+	lda $040E,x						;check the damage type
+	cmp #$02						;compare to wave
+	bcs +							;if greater than OR equal to, jump down to the mystery load
+	lda #$00						;otherwise, load 0 and jump to 
+	jsr UnknownDCFC					;the enemy kill/item drop routine - for normal explosions
+	ldx PageIndex					;I THINK THE REST OF THIS IS FINDING AND POPULATING AN EXPLOSION SLOT 
+*   jsr UnknownF844					;gets us some kinda index into 960B- by loading up the eney data, bit shifting down (based on the neg flag), then roling the carry left onto the enemy index
+	lda $960B,y						;load that value at the index, and take it to the reset anim index
+	jsr ResetAnimIndex
+	sta EnCounter,x					;store whatever we got out of that into the en counter
+	ldx #$C0						;load a specific enemy status, the one at offset #C0- 6BB4, or something
+*   lda EnStatus,x					
+	beq +							;if it's 0, jump to loading the mystery value in 95DD
+	txa								;put x into a for a bit
+	clc								;clear carry
+	adc #$08						;add 8
+	tax								;put a back into x
+	cmp #$E0						;compare with #E0, three rows down 
+	bne -							;if we haven't reached that max index, keep looping- this time, checking the 6BBC value, etc
+	beq GetPageIndex				;if we reached that max index and never found a 0, get the page index or whatever and leave the subroutine
+*   lda $95DD						
+	jsr ResetAnimIndex
 	lda #$0A
 	sta EnCounter,x
-	inc EnStatus,x
+    inc EnStatus,x					;set the found explosion to active
 	lda #$00
 	bit $0A
 	bvc +
 	lda #$03
-*       sta $0407,x
+*   sta $0407,x
 	ldy PageIndex
 	lda EnYRoomPos,y
 	sta EnYRoomPos,x
@@ -8373,11 +8393,12 @@ PlaySnd3:
 	sta EnXRoomPos,x
 	lda EnNameTable,y
 	sta EnNameTable,x
-	GetPageIndex:
+GetPageIndex:
 	ldx PageIndex
 	rts
 
-UnknownF676:  jsr $80B0
+UnknownF676:  
+	jsr $80B0
 	asl
 	asl
 	asl
@@ -8385,22 +8406,26 @@ UnknownF676:  jsr $80B0
 	sta $6B03,x
 	rts
 
-UnknownF682:  jsr UnknownF844
+UnknownF682:  
+	jsr UnknownF844
 	lda $963B,y
 	cmp EnResetAnimIndex,x
 	beq +
-ResetAnimIndex:
-UnknownF68D:  sta EnResetAnimIndex,x
-UnknownF690:  sta EnAnimIndex,x
-UnknownF693:  lda #$00
+ResetAnimIndex:  
+	sta EnResetAnimIndex,x
+UnknownF690:  
+	sta EnAnimIndex,x
+UnknownF693:  
+	lda #$00
 	sta EnAnimDelay,x
-*       rts
+*   rts
 
-UnknownF699:  jsr UnknownF844
+UnknownF699:  
+	jsr UnknownF844
 	lda $965B,y
 	cmp EnResetAnimIndex,x
 	beq Exit12
-	jsr UnknownF68D
+	jsr ResetAnimIndex
 	ldy EnDataIndex,x
 	lda $967B,y
 	and #$7F
@@ -8411,54 +8436,58 @@ UnknownF699:  jsr UnknownF844
 	bne -
 Exit12: rts
 
-UnknownF6B9:  
+EnemyDirectionToSamus:  	
 	lda #$00
 	sta $82
-	jsr UnknownF74B			;get some data for this enemy from 968B
-	tay						;store data in y
-	lda EnStatus,x			;load the enemy status
-	cmp #$02				;check if we're moving
-	bne +					;if not, jump ahead
-	tya						;else, put the data back in the accumulator
-	and #$02				;if 0010 is NOT set
-	beq Exit12				;return early
-*   tya						;put the data back into A
-	dec $040D,x				;decrement 40D
-	bne Exit12				;if not equal to 0, RTS
-	pha						;push data to stack
-	ldy EnDataIndex,x		;load enemy data index to y
-	lda $969B,y				;get some kinda data again
-	sta $040D,x				;put it in 40D - some kinda timer
-	pla						;get the data back in A
-	bpl ++++				;if MSB is not set, jump ahead
-	lda #$FE				;1111 1110
-	jsr ClearEnStatusFlags
-	lda ScrollDir			;
+	jsr LoadFromEn968B		; get movement attributes for enemy
+	tay						; store it off (for constant use)
+	lda EnStatus,x			; load the enemy status
+	cmp #$02				; if we're moving, we need to do an extra check
+	bne +					;
+	tya						;	see if this enemy should check it's relation to samus when moving
+	and #$02				;	return early if not
+	beq Exit12				;	
+*   tya						;
+	dec $040D,x				; decrement 40D timer
+	bne Exit12				; if it's not 0, leave 
+	pha						; push EnA? attribute to stack, so we can free up y
+	ldy EnDataIndex,x		; load enemy data index to y
+	lda $969B,y				; get some the 40D timer amount for this enemy
+	sta $040D,x				; reset 40D with the timer
+	pla						; return EnA? to the accumulator
+	bpl ++++				; if MSB is not set, jump ahead
+	
+CheckHorizontalToSamus:
+	lda #$FE				; 	set enemy horizontal relation flag
+	jsr ClearEnStatusFlags	; 	clear horizontal relation flag on enemy
+	lda ScrollDir			; 	check the current scroll direction
 	cmp #$02
-	bcc +					;scroll direction is vertical, jump ahead
-	jsr OnSameNametable		;if horizontal- check if we're on the same name table as samus
-	bcc +					;carry is clear if true, enemy name table is in Y- jump ahead
-	tya						;else, moe enemy name table to A
-	eor PPUCNT0ZP			;use enemy nametable to flip PPUCNT0ZP LSB
-	bcs +++					;if we weren't on the same table, jump past the same screen stuff
-*   lda EnXRoomPos,x		;else, get enemy x position
-	cmp ObjectX				;compare to player x
-	bne +					;if they aren't the same, jump ahead
-	inc $82					;else, inc 82
-*   rol						;take enemy room position, and rotate it left
-*	and #$01				;clear all but the LSB (same table- use pos, not same - use name table)
-	jsr EnableEnStatusFlags	;enable flag on enemy
-	lsr						;pop it out
-	ror						;put it back at MSB
-	eor $0403,x				;toggle bits with horizontal speed
-	bpl +					;if we're still positive, jump ahead
-	jsr $81DA				;else, do whatever this does
-*	lda #$FB				;1111 1011
+	bcc +					; 	scroll direction is vertical, jump ahead
+	jsr OnPlayerNametable	; 		if horizontal- check if we're on the same name table as samus
+	bcc +					; 		carry is clear if true - we can compare distances
+	tya						; 			else, move enemy name table to A
+	eor PPUCNT0ZP			; 			only return 1 if the current PPU nametable is ALSO different from the enemy
+	bcs +++					; 		
+*   lda EnXRoomPos,x		; 	if in vertical scroll/ same nametable as samus in horizontal scroll
+	cmp ObjectX				; 	compare enemy and player horizontal position
+	bne +					; 	if they aren't the same, jump over
+	inc $82					; 		else, inc 82
+*   rol						; 	A = 1 if greater/equal, 0 if less than
+*	and #$01				; 	get final horizontal relation flag (same table? use difference : use enemy nametable in relation to current PPU nametable )
+	jsr EnableEnStatusFlags	; 	enable horizontal relation flag on enemy
+	lsr						; 	get the direction back out to carry flag (0 = left of samus, 1 = right)
+	ror						; 	get the flag to the MSB
+	eor $0403,x				; 	if the velocity direction does not match, we'll get a negative number
+	bpl +					; 	if we're still positive, jump ahead
+	jsr $81DA				; 	flip horizontal velocity to match relation to samus
+
+CheckVerticalToSamus:
+*	lda #$FB				; 	
 	jsr ClearEnStatusFlags
 	lda ScrollDir			;get scroll direction
 	cmp #$02				;compare with vertical
 	bcs +					;if we ARE horizontal, jump ahead
-	jsr OnSameNametable		;else, vertical- check if on same name talbe
+	jsr OnPlayerNametable		;else, vertical- check if on same name talbe
 	bcc +					;clear if on same table- jump ahead
 	tya						;else, not on same table- put table in A
 	eor PPUCNT0ZP			;toggle or keep bit of PPUCNT0ZP
@@ -8486,12 +8515,12 @@ EnableEnStatusFlags:
 	sta $0405,x
 *       rts
 
-UnknownF74B:  
+LoadFromEn968B:  
 	ldy EnDataIndex,x
 	lda $968B,y
 	rts
 
-OnSameNametable:  
+OnPlayerNametable:  
 	lda EnNameTable,x	;get enemy name table
 	tay					;put A in Y
 	eor ObjectHi		;eor with player name table (only return 1 when they are a mismatch)
@@ -8611,7 +8640,8 @@ UnknownF83E:
   lda $0405,x
   jmp +
 
-UnknownF844:  lda $0405,x
+UnknownF844:  
+	lda $0405,x
 	bpl +
 	lsr
 	lsr
@@ -8622,7 +8652,7 @@ UnknownF844:  lda $0405,x
 	rts
 
 GetRandom_EnIdxFrCnt:
-  txa
+	txa
 	lsr
 	lsr
 	lsr
@@ -8630,15 +8660,16 @@ GetRandom_EnIdxFrCnt:
 	lsr
 	rts
 
-UnknownF85A:  ldy EnDataIndex,x
-	lda $969B,y
-	sta $040D,x
-	lda EnemyHitPointTbl,y		;($962B)
-	ldy EnSpecialAttribs,x
-	bpl +
-	asl
-*       sta EnHitPoints,x
-*       rts
+EnemyInitHealth:  
+	ldy EnDataIndex,x			;get enemy data index	
+	lda $969B,y					;get timer(?)
+	sta $040D,x					;set timer(?)
+	lda EnemyHitPointTbl,y		;get enemy hit points
+	ldy EnSpecialAttribs,x		;see if the enemy is the tough version
+	bpl +						;
+	asl							;if so, double the health
+*   sta EnHitPoints,x			;store into enemy hit points
+*   rts
 
 UnknownF870:
   lda $0405,x
@@ -8666,7 +8697,7 @@ UnknownF870:
 	tya
 	tax
 	pla
-	jsr UnknownF68D
+	jsr ResetAnimIndex
 	ldx PageIndex
 	lda #$01
 	sta EnStatus,y
@@ -8849,8 +8880,8 @@ UnknownF991:
 	beq +
 	iny
 *       lda $95E2,y
-	jsr UnknownF68D
-	jsr UnknownF518
+	jsr ResetAnimIndex
+	jsr FreezeEnemy
 	lda #$0A
 	sta EnDelay,x
 *       jmp UnknownF97C
@@ -8916,7 +8947,7 @@ UnknownFA7D:  ldx PageIndex
 
 UnknownFA91:  jsr KillObject			;($FA18)Free enemy data slot.
 	lda $95DC
-	jsr UnknownF68D
+	jsr ResetAnimIndex
 	jmp UnknownF97C
 
 EnemyDestruction:
@@ -9021,14 +9052,15 @@ UnknownFAFF:  sty PageIndex
 	sta $0405,x
 	ldy EnDataIndex,x
 	jsr UnknownFB7B
-	jmp UnknownF85A
+	jmp EnemyInitHealth
 
 *       sta EnDataIndex,x
 	lda #$01
 	sta EnDelay,x
 	jmp KillObject			;($FA18)Free enemy data slot.
 
-UnknownFB7B:  jsr $80B0
+UnknownFB7B:  
+	jsr $80B0
 	ror $0405,x
 	lda EnemyInitDelayTbl,y		;($96BB)Load initial delay for enemy movement.
 	sta EnDelay,x		;
@@ -9067,7 +9099,7 @@ UnknownFBB9:
 *       lda $963B,y
 	cmp EnResetAnimIndex,x
 	beq Exit13
-	jmp UnknownF68D
+	jmp ResetAnimIndex
 
 UnknownFBCA:
   ldx PageIndex

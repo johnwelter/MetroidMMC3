@@ -393,15 +393,15 @@
 .alias EnXRoomPos		$0401	;Enemy x position in room.(not actual screen position).
 .alias EnVertSpeed		$0402
 .alias EnHoriSpeed		$0403
-;						$0404
-.alias EnStatusFlags	$0405	;cutx xxvx 
+.alias EnHitStatus		$0404
+.alias EnStatusFlags	$0405	;dutx xvsh 
 								;|||| ||||
-								;|||| |||+-
+								;|||| |||+-enemy in relation to player horizontal (0 = left, 1 = right)
 								;|||| ||+--visibility
-								;|||| |+---??
+								;|||| |+---enemy in relation to player vertical (
 								;|||| +----??
 								;|||| 
-								;|||+------always 1?
+								;|||+------??
 								;||+-------delay timer active
 								;|+--------skip state update
 								;+---------check distance to player 1 = Y check, 0 = X check
@@ -413,8 +413,8 @@
 .alias EnRotation		$040A	; ^,>,v,<
 .alias EnHitPoints		$040B	;Current hit points of enemy.
 ;						$040C
-;						$040D	;some kinda timer?
-;						$040E
+.alias EnHoldTimer		$040D	;some kinda delay timer?
+.alias EnHitSource		$040E	;laser type that hit enemy
 .alias EnSpecialAttribs	$040F	;Bit 7 set=tough version of enemy, bit 6 set=mini boss.
 
 ;----------------------------------------------------------------------------------------------------

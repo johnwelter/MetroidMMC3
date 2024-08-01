@@ -43,7 +43,7 @@ L8009:	JMP GetRandom_EnIdxFrCnt
 L800C:	JMP UpdateEnemyAnim		;($E094)
 L800F:	JMP ResetAnimIndex 
 L8012:	JMP UnknownF83E
-L8015:	JMP UnknownF85A
+L8015:	JMP EnemyInitHealth
 L8018:	JMP UnknownFBB9
 L801B:	JMP UnknownFB88
 L801E:	JMP UnknownFBCA
@@ -103,10 +103,10 @@ L80AD:	BNE -
 L80AF:*	RTS
  
 
-L80B0:	LDY EnDataIndex,X
-L80B3:	LDA $977B,Y
-L80B6:	ASL				;*2, mult the dat, return it in A
-L80B7:	RTS
+L80B0:	LDY EnDataIndex,X	;load enemy index
+L80B3:	LDA $977B,Y			;get the data in  977B
+L80B6:	ASL					;shift the data left, moving MSB to carry flag
+L80B7:	RTS					;return 
 
 L80B8:	LDX PageIndex
 L80BA:	BCS $80FA
@@ -244,9 +244,9 @@ L81D7:	STA $6AFF,X
 ;coming from a method in enemy movement stuff
 L81DA:	JSR $81F6	;load flag from enemy table
 L81DD:	BNE $81F5	;if not 0, return
-L81DF:	JSR $80B0	;else, 
+L81DF:	JSR $80B0	;else, load 977b enemy date
 L81E2:	SEC 		;set carry flag 
-L81E3:	BPL $81ED	;if the data doesn't have it's 6th bit set, skip 407 inversion
+L81E3:	BPL $81ED	;if the 6th bit wasn't set
 L81E5:	LDA #$00	;invert 407
 L81E7:	SBC $0407,X	
 L81EA:	STA $0407,X
@@ -256,7 +256,7 @@ L81F2:	STA $0403,X
 L81F5:	RTS
 
 
-L81F6:	JSR UnknownF74B
+L81F6:	JSR LoadFromEn968B
 L81F9:	AND #$20
 L81FB:	RTS
 
