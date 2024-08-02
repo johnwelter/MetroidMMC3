@@ -1416,7 +1416,8 @@ LA13F:	PLA
 LA140:	CLC 
 LA141:	RTS
 
-LA142:	TAY 
+;;called when shooting tiles in tourian
+LA142:	TAY 		
 LA143:	LDA $71
 LA145:	BEQ $A15C
 LA147:	LDX $4B

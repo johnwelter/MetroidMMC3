@@ -577,37 +577,40 @@ L9ABA:	JMP $9A8F
 
 ToggleEnHoriRealtionFlag:
 L9ABD:	LDA $0405,X		;load enemy status flags
-L9AC0:	EOR #$01		;flip the bit
+L9AC0:	EOR #$01		;flip the horizontal relation bit
 L9AC2:	STA $0405,X		;store the new flags
 L9AC5:	RTS				;return
 
 L9AC6:	JSR $9ADA
 L9AC9:	JSR $9AE2
-L9ACC:	LDX PageIndex
-L9ACE:	BCC $9AD9
+
+
+L9ACC:	LDX PageIndex	;load enemy index
+L9ACE:	BCC $9AD9		;
 L9AD0:	JSR $9ADA
 L9AD3:	STA $040A,X
 L9AD6:	JSR $9A8F
 L9AD9:	RTS
 
-L9ADA:	LDY $040A,X
-L9ADD:	INY 
-L9ADE:	TYA 
-L9ADF:	AND #$03
-L9AE1:	RTS
+
+L9ADA:	LDY $040A,X		;load enemy orientation
+L9ADD:	INY 			;increment orientation
+L9ADE:	TYA 			;put Y into A
+L9ADF:	AND #$03		; A = (orientation + 1) % 4
+L9AE1:	RTS				;return
 
 ;enter here with orientation in A, 0000 00rr
-L9AE2:	LDY $0405,X		; load enemy status flags to Y
-L9AE5:	STY $00			; store in temp0
-L9AE7:	LSR $00			; shift temp0 to right, kicking hori relation bit to carry
-L9AE9:	ROL 			; 0000 0rrh
-L9AEA:	ASL 			; 0000 rrh0
-L9AEB:	TAY 			; move to y
-L9AEC:	LDA $8049,Y		; read from table
-L9AEF:	PHA 			; push A to stack
-L9AF0:	LDA $8048,Y		; get previous byte from table
-L9AF3:	PHA 			; push A to stack
-L9AF4:	RTS				; RTS to new location
+L9AE2:	LDY $0405,X							; load enemy status flags to Y
+L9AE5:	STY $00								; store in temp0
+L9AE7:	LSR $00								; shift temp0 to right, kicking hori relation bit to carry (h)
+L9AE9:	ROL 								; 0000 0rrh
+L9AEA:	ASL 								; 0000 rrh0
+L9AEB:	TAY 								; move to y
+L9AEC:	LDA CornerRotationRoutines + 1,Y	; read from table
+L9AEF:	PHA 								; push A to stack
+L9AF0:	LDA CornerRotationRoutines,Y		; get previous byte from table
+L9AF3:	PHA 								; push A to stack
+L9AF4:	RTS									; based on rotation and chirality, check for rotation updates
 
 Enemy6Update:
 L9AF5:	LDA $81

@@ -55,6 +55,8 @@ L8018:	JMP UnknownFBB9
 L801B:	JMP UnknownFB88
 L801E:	JMP UnknownFBCA
 L8021:	JMP UnknownF870
+
+
 AreaChooseRoutine:
 		JMP ChooseRoutine		;($C27C)
 L8027:	JMP UnknownFD8F
@@ -69,7 +71,17 @@ L803F:	JMP DrawTileBlast
 L8042:	JMP SubtractHealth		;($CE92)
 L8045:	JMP Base10Subtract		;($C3FB)
 
-L8048:	.word $84FD, $84A6, $844A, $844A, $84A6, $84FD, $83F4, $83F4
+;use the current rotation and horizontal relation status to pick a given 
+;rotation collision check routine from below
+CornerRotationRoutines:
+L8048:	.word $84FD			; clock wise from up
+L804A:	.word $84A6 		; counter clockwise from up
+L804C:	.word $844A			; clockwise from right
+L804E:	.word $844A			; counter clockwise from right
+L8050:	.word $84A6			; clockwise from down
+L8052:	.word $84FD			; counter clockwise from down
+L8054:	.word $83F4			; clockwise from left
+L8056:	.word $83F4			; counter clockwise from left
 
 L8058:	LDX PageIndex
 L805A:	LDA $0405,X
@@ -366,10 +378,10 @@ L82B2:	RTS
 
 L82B3:	LDA $6B03,X
 L82B6:	BPL $82BE
-L82B8:	JSR UnknownE770
+L82B8:	JSR CreateEnemyYRadLowerBound
 L82BB:	JMP $82C3
 L82BE:	BEQ $82D2
-L82C0:	JSR UnknownE77B
+L82C0:	JSR CreateEnemyYRadUpperBound
 L82C3:	LDX PageIndex
 L82C5:	BCS $82D2
 L82C7:	LDY EnCounter,X
@@ -389,10 +401,10 @@ L82E0:	TYA
 L82E1:	STA EnCounter,X
 L82E4:	LDA $6B03,X
 L82E7:	BPL $82EF
-L82E9:	JSR UnknownE770
+L82E9:	JSR CreateEnemyYRadLowerBound
 L82EC:	JMP $82F4
 L82EF:	BEQ $82FB
-L82F1:	JSR UnknownE77B
+L82F1:	JSR CreateEnemyYRadUpperBound
 L82F4:	LDX PageIndex
 L82F6:	BCC $82FB
 L82F8:	JMP $8258
@@ -514,14 +526,15 @@ L83EF:	ADC $0403,X
 L83F2:	STA $00
 L83F4:	RTS
 
-L83F5:	LDX PageIndex
-L83F7:	LDA EnYRoomPos,X
-L83FA:	SEC 
-L83FB:	SBC EnRadY,X
-L83FE:	AND #$07
-L8400:	SEC 
-L8401:	BNE $8406
-L8403:	JSR UnknownE770
+
+L83F5:	LDX PageIndex			; load enemy inedx
+L83F7:	LDA EnYRoomPos,X		; get enemy y position
+L83FA:	SEC 					; set carry
+L83FB:	SBC EnRadY,X			; subtract radius Y
+L83FE:	AND #$07				; AND with 0000 0111 to clamp down 
+L8400:	SEC 					; set carry again
+L8401:	BNE $8406				; if our AND value wasn't 0
+L8403:	JSR CreateEnemyYRadLowerBound			;
 L8406:	LDY #$00
 L8408:	STY $00
 L840A:	LDX PageIndex
@@ -564,7 +577,7 @@ L8451:	ADC EnRadY,X
 L8454:	AND #$07
 L8456:	SEC 
 L8457:	BNE $845C
-L8459:	JSR UnknownE77B
+L8459:	JSR CreateEnemyYRadUpperBound
 L845C:	LDY #$00
 L845E:	STY $00
 L8460:	LDX PageIndex

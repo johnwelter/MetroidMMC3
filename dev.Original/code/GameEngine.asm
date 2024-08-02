@@ -823,17 +823,17 @@ ExtractNibbles:
 WaitNMIPass:    
 	jsr ClearNMIStat		;($C434)Indicate currently in NMI.
 *	lda NMIStatus			;
-	beq -				;Wait for NMI to end.
-	rts				;
+	beq -					;Wait for NMI to end.
+	rts						;
 
 ClearNMIStat:
-	lda #$00			;Clear NMI byte to indicate the game is-->
+	lda #$00				;Clear NMI byte to indicate the game is-->
 	sta NMIStatus			;currently running NMI routines.
-	rts				;
+	rts						;
 
 ScreenOff:
 	lda PPUCNT1ZP			;
-	and #$E7			; BG & SPR visibility = off
+	and #$E7				; BG & SPR visibility = off
 
 WriteAndWait:
 *	sta PPUCNT1ZP			;Update value to be loaded into PPU control register.
@@ -841,13 +841,13 @@ WriteAndWait:
 WaitNMIPass_:
 	jsr ClearNMIStat		;($C434)Indicate currently in NMI.
 *	lda NMIStatus			;
-	beq -				;Wait for NMI to end before continuing.
-	rts				;
+	beq -					;Wait for NMI to end before continuing.
+	rts						;
 
 ScreenOn:
 	lda PPUCNT1ZP			;
-	ora #$1E			;BG & SPR visibility = on
-	bne --				;Branch always
+	ora #$1E				;BG & SPR visibility = on
+	bne --					;Branch always
 
 ;Update the actual PPU control registers.
 
@@ -860,44 +860,44 @@ WritePPUCtrl:
 	jsr PrepPPUMirror		;($C4D9)Setup vertical or horizontal mirroring.
 
 ExitSub:
-	rts				;Exit subroutines.
+	rts						;Exit subroutines.
 
 ;Turn off both screen and NMI.
 
 ScreenNmiOff:
 	lda PPUCNT1ZP			;
-	and #$E7			;BG & SPR visibility = off
+	and #$E7				;BG & SPR visibility = off
 	jsr WriteAndWait		;($C43D)Wait for end of NMI.
 	lda PPUCNT0ZP			;Prepare to turn off NMI in PPU.
-	and #$7F			;NMI = off
+	and #$7F				;NMI = off
 	sta PPUCNT0ZP			;
 	sta PPUControl0			;Actually load PPU register with NMI off value.
-	rts				;
+	rts						;
 
 ;The following routine does not appear to be used.
 
 	lda PPUCNT0ZP			;Enable VBlank.
-	ora #$80			;
+	ora #$80				;
 	sta PPUCNT0ZP			;Write PPU control register 0 and PPU status byte.
 	sta PPUControl0			;
 	lda PPUCNT1ZP			;Turn sprites and screen on.
-	ora #$1E			;
-	bne --				;Branch always.
+	ora #$1E				;
+	bne --					;Branch always.
 
 VBOffAndHorzWrite: 
 	lda PPUCNT0ZP			;
-	and #$7B			;Horizontal write, disable VBlank. 
+	and #$7B				;Horizontal write, disable VBlank. 
 *	sta PPUControl0			;Save new values in the PPU control register-->
 	sta PPUCNT0ZP			;and PPU status byte.
-	rts				;
+	rts						;
 
 NmiOn:
 *	lda PPUStatus			;
-	and #$80			;Wait for end of VBlank.
-	bne -				;
+	and #$80				;Wait for end of VBlank.
+	bne -					;
 	lda PPUCNT0ZP			;
-	ora #$80			;Enable VBlank interrupts.
-	bne --				;Branch always.
+	ora #$80				;Enable VBlank interrupts.
+	bne --					;Branch always.
 
 ;--------------------------------------[ Timer routines ]--------------------------------------------
 
@@ -906,53 +906,53 @@ NmiOn:
 ;is playing.
 
 WaitTimer:
-	lda Timer3			;Exit if timer hasn't hit zero yet
-	bne +				;
+	lda Timer3				;Exit if timer hasn't hit zero yet
+	bne +					;
 	lda NextRoutine			;Set GameOver as next routine.
-	cmp #$04			;
+	cmp #$04				;
 	beq SetMainRoutine		;Set GoPassword as main routine.
-	cmp #$06			;
+	cmp #$06				;
 	beq SetMainRoutine		;
 	jsr StartMusic			;($D92C)Assume power up was picked up and GameEngine-->
 	lda NextRoutine			;is next routine. Start area music before exiting.
 
 SetMainRoutine:
 	sta MainRoutine			;Set next routine to run.
-*	rts				;
+*	rts						;
 
 SetTimer:
-	sta Timer3			;Set Timer3. Frames to wait is value stored in A*10.
+	sta Timer3				;Set Timer3. Frames to wait is value stored in A*10.
 	stx NextRoutine			;Save routine to jump to after Timer3 expires.
-	lda #$09			;Next routine to run is WaitTimer.
+	lda #$09				;Next routine to run is WaitTimer.
 	bne SetMainRoutine		;Branch always.
 
 ;-----------------------------------[ PPU mirroring routines ]---------------------------------------
 
 PrepVertMirror:
-	nop				;
-	nop				;Prepare to set PPU for vertical mirroring (again).
-	lda #$47			;
+	nop						;
+	nop						;Prepare to set PPU for vertical mirroring (again).
+	lda #$47				;
 
 SetPPUMirror:
-	lsr				;
-	lsr				;Move bit 3 to bit 0 position.
-	lsr				;
-	and #$01			;Remove all other bits.
-	sta $00				;Store at address $00.
+	lsr						;
+	lsr						;Move bit 3 to bit 0 position.
+	lsr						;
+	and #$01				;Remove all other bits.
+	sta $00					;Store at address $00.
 	lda MMCReg0Cntrl		;
-	and #$FE			;Load MMCReg0Cntrl and remove bit 0.
-	ora $00				;Replace bit 0 with stored bit at $00.
+	and #$FE				;Load MMCReg0Cntrl and remove bit 0.
+	ora $00					;Replace bit 0 with stored bit at $00.
 	sta MMCReg0Cntrl		;
 	sta MMC1Reg0			;
-	lsr				;
+	lsr						;
 	sta MMC1Reg0			;
-	lsr				;
+	lsr						;
 	sta MMC1Reg0			;
-	lsr				;Load new configuration data serially-->
+	lsr						;Load new configuration data serially-->
 	sta MMC1Reg0			;into MMC1Reg0.
-	lsr				;
+	lsr						;
 	sta MMC1Reg0			;
-	rts				;
+	rts						;
 
 PrepPPUMirror:
 	lda MirrorCntrl			;Load MirrorCntrl into A.
@@ -990,16 +990,16 @@ ROMSwitch:
 
 MMCWriteReg3:
 	sta MMC1Reg3			;Write bit 0 of ROM bank #.
-	lsr				;
+	lsr						;
 	sta MMC1Reg3			;Write bit 1 of ROM bank #.
-	lsr				;
+	lsr						;
 	sta MMC1Reg3			;Write bit 2 of ROM bank #.
-	lsr				;
+	lsr						;
 	sta MMC1Reg3			;Write bit 3 of ROM bank #.
-	lsr				;
+	lsr						;
 	sta MMC1Reg3			;Write bit 4 of ROM bank #.
-	lda $00				;Restore A with current bank number before exiting.
-*	rts				;
+	lda $00					;Restore A with current bank number before exiting.
+*	rts						;
 
 ;Calls the proper routine according to the bank number in A.
 
@@ -1046,53 +1046,53 @@ InitBank0:
 ;Brinstar memory page.
 
 InitBank1:
-	lda #$00			;
+	lda #$00				;
 	sta GameMode			;GameMode = play.
 	jsr ScreenNmiOff		;($C45D)Disable screen and Vblank.
 	lda MainRoutine			;
-	cmp #$03			;Is game engine running? if so, branch.-->
-	beq +				;Else do some housekeeping first.
-	lda #$00			;
+	cmp #$03				;Is game engine running? if so, branch.-->
+	beq +					;Else do some housekeeping first.
+	lda #$00				;
 	sta MainRoutine			;Run InitArea routine next.
-	sta InArea			;Start in Brinstar.
+	sta InArea				;Start in Brinstar.
 	sta GamePaused			;Make sure game is not paused.
 	jsr ClearRAM_33_DF		;($C1D4)Clear game engine memory addresses.
 	jsr ClearSamusStats		;($C578)Clear Samus' stats memory addresses.
-*	ldy #$00			;
+*	ldy #$00				;
 	jsr ROMSwitch			;($C4EF)Load Brinstar memory page into lower 16Kb memory.
 	jsr InitBrinstarGFX		;($C604)Load Brinstar GFX.
-	jmp NmiOn			;($C487)Turn on VBlank interrupts.
+	jmp NmiOn				;($C487)Turn on VBlank interrupts.
 
 ClearSamusStats:
-	ldy #$0F			;
-	lda #$00			;Clears Samus stats(Health, full tanks, game timer, etc.).
-*	sta $0100,y			;Load $100 thru $10F with #$00.
-	dey				;
-	bpl -				;Loop 16 times.
-	rts				;
+	ldy #$0F				;
+	lda #$00				;Clears Samus stats(Health, full tanks, game timer, etc.).
+*	sta $0100,y				;Load $100 thru $10F with #$00.
+	dey						;
+	bpl -					;Loop 16 times.
+	rts						;
 
 ;Norfair memory page.
 
 InitBank2:
-	lda #$00			;GameMode = play.
+	lda #$00				;GameMode = play.
 	sta GameMode			;
 	jsr ScreenNmiOff		;($C45D)Disable screen and Vblank.
 	jsr InitNorfairGFX		;($C622)Load Norfair GFX.
-	jmp NmiOn			;($C487)Turn on VBlank interrupts.
+	jmp NmiOn				;($C487)Turn on VBlank interrupts.
 
 ;Tourian memory page.
 
 InitBank3:
-	lda #$00			;GameMode = play.
+	lda #$00				;GameMode = play.
 	sta GameMode			;
 	jsr ScreenNmiOff		;($C45D)Disable screen and Vblank.
-	ldy #$0D			;
+	ldy #$0D				;
 *	lda MetroidData,y		;Load info from table below into-->
-	sta $77F0,y			;$77F0 thru $77FD.
+	sta $77F0,y				;$77F0 thru $77FD.
 	dey				;
-	bpl -				;
+	bpl -					;
 	jsr InitTourianGFX		;($C645)Load Tourian GFX.
-	jmp NmiOn			;($C487)Turn on VBlank interrupts.
+	jmp NmiOn				;($C487)Turn on VBlank interrupts.
 
 ;Table used by above subroutine and loads the initial data used to describe
 ;metroid's behavior in the Tourian section of the game.
@@ -1103,149 +1103,149 @@ MetroidData:
 ;Kraid memory page.
 
 InitBank4:
-	lda #$00			;GameMode = play.
+	lda #$00				;GameMode = play.
 	sta GameMode			;
 	jsr ScreenNmiOff		;($C45D)Disable screen and Vblank.
 	jsr InitKraidGFX		;($C677)Load Kraid GFX.
-	jmp NmiOn			;($C487)Turn on VBlank interrupts.
+	jmp NmiOn				;($C487)Turn on VBlank interrupts.
 
 ;Ridley memory page.
 
 InitBank5:
-	lda #$00			;GameMode = play.
+	lda #$00				;GameMode = play.
 	sta GameMode			;
 	jsr ScreenNmiOff		;($C45D)Disable screen and Vblank.
 	jsr InitRidleyGFX		;($C69F)Loag Ridley GFX.
-	jmp NmiOn			;($C487)Turn on VBlank interrupts.
+	jmp NmiOn				;($C487)Turn on VBlank interrupts.
 
 InitEndGFX:
-	lda #$01			;
+	lda #$01				;
 	sta GameMode			;Game is at title/end game.
 	jmp InitGFX6			;($C6C2)Load end game GFX.
 
 InitTitleGFX:
-	ldy #$15			;Entry 21 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
+	ldy #$15				;Entry 21 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
 
 LoadSamusGFX:
-	ldy #$00			;Entry 0 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
+	ldy #$00				;Entry 0 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
 	lda JustInBailey		;
-	beq +				;Branch if wearing suit
-	ldy #$1B			;Entry 27 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Switch to girl gfx
-*	ldy #$14			;Entry 20 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$17			;Entry 23 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$18			;Entry 24 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$19			;Entry 25 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$16			;Entry 22 in GFXInfo table.
-	jmp LoadGFX			;($C7AB)Load pattern table GFX.
+	beq +					;Branch if wearing suit
+	ldy #$1B				;Entry 27 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Switch to girl gfx
+*	ldy #$14				;Entry 20 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$17				;Entry 23 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$18				;Entry 24 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$19				;Entry 25 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$16				;Entry 22 in GFXInfo table.
+	jmp LoadGFX				;($C7AB)Load pattern table GFX.
 
 InitBrinstarGFX:
-	ldy #$03			;Entry 3 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$04			;Entry 4 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$05			;Entry 5 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$06			;Entry 6 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$19			;Entry 25 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$16			;Entry 22 in GFXInfo table.
-	jmp LoadGFX			;($C7AB)Load pattern table GFX.
+	ldy #$03				;Entry 3 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$04				;Entry 4 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$05				;Entry 5 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$06				;Entry 6 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$19				;Entry 25 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$16				;Entry 22 in GFXInfo table.
+	jmp LoadGFX				;($C7AB)Load pattern table GFX.
 
 InitNorfairGFX:
-	ldy #$04			;Entry 4 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$05			;Entry 5 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$07			;Entry 7 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$08			;Entry 8 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$09			;Entry 9 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$19			;Entry 25 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$16			;Entry 22 in GFXInfo table.
-	jmp LoadGFX			;($C7AB)Load pattern table GFX.
+	ldy #$04				;Entry 4 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$05				;Entry 5 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$07				;Entry 7 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$08				;Entry 8 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$09				;Entry 9 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$19				;Entry 25 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$16				;Entry 22 in GFXInfo table.
+	jmp LoadGFX				;($C7AB)Load pattern table GFX.
 
 InitTourianGFX:
-	ldy #$05			;Entry 5 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$0A			;Entry 10 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$0B			;Entry 11 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$0C			;Entry 12 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$0D			;Entry 13 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$0E			;Entry 14 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$1A			;Entry 26 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$1C			;Entry 28 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$19			;Entry 25 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$16			;Entry 22 in GFXInfo table.
-	jmp LoadGFX			;($C7AB)Load pattern table GFX.
+	ldy #$05				;Entry 5 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$0A				;Entry 10 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$0B				;Entry 11 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$0C				;Entry 12 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$0D				;Entry 13 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$0E				;Entry 14 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$1A				;Entry 26 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$1C				;Entry 28 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$19				;Entry 25 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$16				;Entry 22 in GFXInfo table.
+	jmp LoadGFX				;($C7AB)Load pattern table GFX.
 
 InitKraidGFX:
-	ldy #$04			;Entry 4 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$05			;Entry 5 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$0A			;Entry 10 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$0F			;Entry 15 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$10			;Entry 16 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$11			;Entry 17 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$19			;Entry 25 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$16			;Entry 22 in GFXInfo table.
-	jmp LoadGFX			;($C7AB)Load pattern table GFX.
+	ldy #$04				;Entry 4 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$05				;Entry 5 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$0A				;Entry 10 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$0F				;Entry 15 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$10				;Entry 16 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$11				;Entry 17 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$19				;Entry 25 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$16				;Entry 22 in GFXInfo table.
+	jmp LoadGFX				;($C7AB)Load pattern table GFX.
 
 InitRidleyGFX:
-	ldy #$04			;Entry 4 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$05			;Entry 5 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$0A			;Entry 10 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$12			;Entry 18 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$13			;Entry 19 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$19			;Entry 25 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$16			;Entry 22 in GFXInfo table.
-	jmp LoadGFX			;($C7AB)Load pattern table GFX.
+	ldy #$04				;Entry 4 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$05				;Entry 5 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$0A				;Entry 10 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$12				;Entry 18 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$13				;Entry 19 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$19				;Entry 25 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$16				;Entry 22 in GFXInfo table.
+	jmp LoadGFX				;($C7AB)Load pattern table GFX.
 
 InitGFX6:
-	ldy #$01			;Entry 1 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$02			;Entry 2 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$19			;Entry 25 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$16			;Entry 22 in GFXInfo table.
-	jmp LoadGFX			;($C7AB)Load pattern table GFX.
+	ldy #$01				;Entry 1 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$02				;Entry 2 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$19				;Entry 25 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$16				;Entry 22 in GFXInfo table.
+	jmp LoadGFX				;($C7AB)Load pattern table GFX.
 
 InitGFX7:
-	ldy #$17			;Entry 23 in GFXInfo table.
-	jsr LoadGFX			;($C7AB)Load pattern table GFX.
-	ldy #$16			;Entry 22 in GFXInfo table.
-	jmp LoadGFX			;($C7AB)Load pattern table GFX.
+	ldy #$17				;Entry 23 in GFXInfo table.
+	jsr LoadGFX				;($C7AB)Load pattern table GFX.
+	ldy #$16				;Entry 22 in GFXInfo table.
+	jmp LoadGFX				;($C7AB)Load pattern table GFX.
 
 ;The table below contains info for each tile data block in the ROM.
 ;Each entry is 7 bytes long. The format is as follows:
@@ -1255,63 +1255,63 @@ InitGFX7:
 ;byte 5-6: data length (16-bit).
 
 GFXInfo:
-	.byte $06			;[SPR]Samus, items.		Entry 0.
-	.word $8000, $0000, $09A0
-	.byte $04			;[SPR]Samus in ending.		Entry 1.
+	.byte $06					;[SPR]Samus, items.				Entry 0.
+	.word $8000, $0000, $09A0	
+	.byte $04					;[SPR]Samus in ending.			Entry 1.
 	.word $8D60, $0000, $0520
-	.byte $01			;[BGR]Partial font, "The End".	Entry 2.
+	.byte $01					;[BGR]Partial font, "The End".	Entry 2.
 	.word $8D60, $1000, $0400
-	.byte $06			;[BGR]Brinstar rooms.		Entry 3.
+	.byte $06					;[BGR]Brinstar rooms.			Entry 3.
 	.word $9DA0, $1000, $0150
-	.byte $05			;[BGR]Misc. objects.		Entry 4.
+	.byte $05					;[BGR]Misc. objects.			Entry 4.
 	.word $8D60, $1200, $0450
-	.byte $06			;[BGR]More Brinstar rooms.	Entry 5.
+	.byte $06					;[BGR]More Brinstar rooms.		Entry 5.
 	.word $9EF0, $1800, $0800
-	.byte $01			;[SPR]Brinstar enemies.		Entry 6.
+	.byte $01					;[SPR]Brinstar enemies.			Entry 6.
 	.word $9160, $0C00, $0400
-	.byte $06			;[BGR]Norfair rooms.		Entry 7.
+	.byte $06					;[BGR]Norfair rooms.			Entry 7.
 	.word $A6F0, $1000, $0260
-	.byte $06			;[BGR]More Norfair rooms.	Entry 8.
+	.byte $06					;[BGR]More Norfair rooms.		Entry 8.
 	.word $A950, $1700, $0070
-	.byte $02			;[SPR]Norfair enemies.		Entry 9.
+	.byte $02					;[SPR]Norfair enemies.			Entry 9.
 	.word $8D60, $0C00, $0400
-	.byte $06			;[BGR]Tourian rooms.		Entry 10.
+	.byte $06					;[BGR]Tourian rooms.			Entry 10.
 	.word $A9C0, $1000, $02E0
-	.byte $06			;[BGR]More Tourian rooms.	Entry 11.
+	.byte $06					;[BGR]More Tourian rooms.		Entry 11.
 	.word $ACA0, $1200, $0600
-	.byte $06			;[BGR]Mother Brain room.	Entry 12.
+	.byte $06					;[BGR]Mother Brain room.		Entry 12.
 	.word $B2A0, $1900, $0090
-	.byte $05			;[BGR]Misc. object.		Entry 13.
+	.byte $05					;[BGR]Misc. object.				Entry 13.
 	.word $91B0, $1D00, $0300
-	.byte $02			;[SPR]Tourian enemies.		Entry 14.
+	.byte $02					;[SPR]Tourian enemies.			Entry 14.
 	.word $9160, $0C00, $0400
-	.byte $06			;[BGR]More Tourian rooms.	Entry 15.
+	.byte $06					;[BGR]More Tourian rooms.		Entry 15.
 	.word $B330, $1700, $00C0
-	.byte $04			;[BGR]Misc. object and fonts.	Entry 16.
+	.byte $04					;[BGR]Misc. object and fonts.	Entry 16.
 	.word $9360, $1E00, $0200
-	.byte $03			;[SPR]Miniboss I enemies.	Entry 17.
+	.byte $03					;[SPR]Miniboss I enemies.		Entry 17.
 	.word $8D60, $0C00, $0400
-	.byte $06			;[BGR]More Tourian Rooms.	Entry 18.
+	.byte $06					;[BGR]More Tourian Rooms.		Entry 18.
 	.word $B3F0, $1700, $00C0
-	.byte $03			;[SPR]Miniboss II enemies.	Entry 19.
+	.byte $03					;[SPR]Miniboss II enemies.		Entry 19.
 	.word $9160, $0C00, $0400
-	.byte $06			;[SPR]Inrto/End sprites.	Entry 20.
+	.byte $06					;[SPR]Inrto/End sprites.		Entry 20.
 	.word $89A0, $0C00, $0100
-	.byte $06			;[BGR]Title.			Entry 21.
+	.byte $06					;[BGR]Title.					Entry 21.
 	.word $8BE0, $1400, $0500
-	.byte $06			;[BGR]Solid tiles.		Entry 22.
+	.byte $06					;[BGR]Solid tiles.				Entry 22.
 	.word $9980, $1FC0, $0040
-	.byte $06			;[BGR]Complete font.		Entry 23.
+	.byte $06					;[BGR]Complete font.			Entry 23.
 	.word $B4C0, $1000, $0400
-	.byte $06			;[BGR]Complete font.		Entry 24.
+	.byte $06					;[BGR]Complete font.			Entry 24.
 	.word $B4C0, $0A00, $00A0
-	.byte $06			;[BGR]Solid tiles.		Entry 25.
+	.byte $06					;[BGR]Solid tiles.				Entry 25.
 	.word $9980, $0FC0, $0040
-	.byte $06			;[BGR]Complete font.		Entry 26.
+	.byte $06					;[BGR]Complete font.			Entry 26.
 	.word $B4C0, $1D00, $02A0
-	.byte $06			;[SPR]Suitless Samus.		Entry 27.
+	.byte $06					;[SPR]Suitless Samus.			Entry 27.
 	.word $90E0, $0000, $07B0
-	.byte $06			;[BGR]Exclaimation point.	Entry 28.
+	.byte $06					;[BGR]Exclaimation point.		Entry 28.
 	.word $9890, $1F40, $0010
 
 ;--------------------------------[ Pattern table loading routines ]---------------------------------
@@ -1391,51 +1391,51 @@ AreaInit:
 ;------------------------------------------[ MoreInit ]---------------------------------------------
 
 MoreInit:
-	ldy #$01			;
+	ldy #$01				;
 	sty PalDataPending		;Palette data pending = yes.
-	ldx #$FF			;
+	ldx #$FF				;
 	stx SpareMem75			;$75 Not referenced ever again in the game.
-	inx				;X=0.
+	inx						;X=0.
 	stx AtEnding			;Not playing ending scenes.
 	stx DoorStatus			;Samus not in door.
 	stx SamusDoorData		;Samus is not inside a door.
-	stx UpdatingProjectile		;No projectiles need to be updated.
-	txa				;A=0.
+	stx UpdatingProjectile	;No projectiles need to be updated.
+	txa						;A=0.
 
-*	cpx #$65			;Check to see if more RAM to clear in $7A thru $DE.
-	bcs +				;
-	sta $7A,x			;Clear RAM $7A thru $DE.
-*	cpx #$FF			;Check to see if more RAM to clear in $300 thru $3FE.
-	bcs +				;
+*	cpx #$65				;Check to see if more RAM to clear in $7A thru $DE.
+	bcs +					;
+	sta $7A,x				;Clear RAM $7A thru $DE.
+*	cpx #$FF				;Check to see if more RAM to clear in $300 thru $3FE.
+	bcs +					;
 	sta ObjAction,x			;Clear RAM $300 thru $3FE.
 *	inx				;
-	bne ---				;Loop until all required RAM is cleared.
+	bne ---					;Loop until all required RAM is cleared.
 
 	jsr ScreenOff			;($C439)Turn off Background and visibility.
 	jsr ClearNameTables		;($C158)Clear screen data.
 	jsr EraseAllSprites		;($C1A3)Erase all sprites from sprite RAM.
 	jsr DestroyEnemies		;($C8BB)
 
-	stx DoorOnNameTable3		;Clear data about doors on the name tables.
-	stx DoorOnNameTable0		;
-	inx				;X=1.
+	stx DoorOnNameTable3	;Clear data about doors on the name tables.
+	stx DoorOnNameTable0	;
+	inx						;X=1.
 	stx SpareMem30			;Not accessed by game.
-	inx				;X=2.
+	inx						;X=2.
 	stx ScrollDir			;Set initial scroll direction as left.
 
-	lda AreaStartRoomX			;Get Samus start x pos on map.
-	sta MapPosX			;
+	lda AreaStartRoomX		;Get Samus start x pos on map.
+	sta MapPosX				;
 	lda AreaStartRoomY		;Get Samus start y pos on map.
-	sta MapPosY			;
+	sta MapPosY				;
 
-	lda Unknown95DA       ; Get ??? Something to do with palette switch
+	lda Unknown95DA       	; Get ??? Something to do with palette switch
 	sta PalToggle
 	lda #$FF
 	sta RoomNumber			;Room number = $FF(undefined room).
-	jsr CopyPtrs    ; copy pointers from ROM to RAM 
+	jsr CopyPtrs    		; copy pointers from ROM to RAM 
 	jsr GetRoomNum			;($E720)Put room number at current map pos in $5A.
-*       jsr SetupRoom			;($EA2B)
-	ldy RoomNumber  ; load room number
+*       jsr SetupRoom		;($EA2B)
+	ldy RoomNumber  		; load room number
 	iny
 	bne -
 
@@ -1444,10 +1444,10 @@ MoreInit:
 	ldy CartRAMPtr
 	sty $00
 	lda PPUCNT0ZP
-	and #$FB	; PPU increment = 1
+	and #$FB				; PPU increment = 1
 	sta PPUCNT0ZP
 	sta PPUControl0
-	ldy PPUStatus   ; reset PPU addr flip/flop
+	ldy PPUStatus   		; reset PPU addr flip/flop
 
 ; Copy room RAM #0 ($6000) to PPU Name Table #0 ($2000)
 
@@ -1455,8 +1455,8 @@ MoreInit:
 	sty PPUAddress
 	ldy #$00
 	sty PPUAddress
-	ldx #$04	; prepare to write 4 pages
-*       lda ($00),y
+	ldx #$04				; prepare to write 4 pages
+*   lda ($00),y
 	sta PPUIOReg
 	iny
 	bne -
@@ -1477,7 +1477,7 @@ MoreInit:
 
 CopyPtrs:
 	ldx #$0D
-*       lda AreaPointers+2,x
+*   lda AreaPointers+2,x
 	sta RoomPtrTable,x
 	dex
 	bpl -
@@ -1505,16 +1505,16 @@ DestroyEnemies:
 ; Code that sets up Samus, when the game is first started.
 
 SamusInit:
-	lda #$08			;
-  sta MainRoutine			;SamusIntro will be executed next frame.
-	lda #$2C			;440 frames to fade in Samus(7.3 seconds).
-	sta Timer3			;
+	lda #$08				;
+	sta MainRoutine			;SamusIntro will be executed next frame.
+	lda #$2C				;440 frames to fade in Samus(7.3 seconds).
+	sta Timer3				;
 	jsr IntroMusic			;($CBFD)Start the intro music.
 	ldy #sa_FadeIn0			;
 	sty ObjAction			;Set Samus status as fading onto screen.
 	ldx #$00
 	stx SamusBlink
-	dex				;X = $FF
+	dex						;X = $FF
 	stx $0728
 	stx $0730
 	stx $0732
@@ -1526,32 +1526,32 @@ SamusInit:
 	ldy #$27
 	lda InArea
 	and #$0F
-	beq +				;Branch if Samus starting in Brinstar.
+	beq +					;Branch if Samus starting in Brinstar.
 	lsr ScrollDir			;If not in Brinstar, change scroll direction from left-->
-	ldy #$2F			;to down. and set PPU for horizontal mirroring.
-*       sty MirrorCntrl			;
+	ldy #$2F				;to down. and set PPU for horizontal mirroring.
+*       sty MirrorCntrl		;
 	sty MaxMissilePickup
 	sty MaxEnergyPickup
-	lda AreaStartYPos			;Samus' initial vertical position
-	sta ObjectY			;
-	lda #$80			;Samus' initial horizontal position
-	sta ObjectX			;
+	lda AreaStartYPos		;Samus' initial vertical position
+	sta ObjectY				;
+	lda #$80				;Samus' initial horizontal position
+	sta ObjectX				;
 	lda PPUCNT0ZP			;
-	and #$01			;Set Samus' name table position to current name table-->
+	and #$01				;Set Samus' name table position to current name table-->
 	sta ObjectHi			;active in PPU.
 	
-	lda TankCount
-	jsr Amul16
-	ora #$09
-	sta HealthHi
-	lda #$99
-	sta HealthLo
+	lda TankCount			;mod to give full health at game start
+	jsr Amul16				;taking tank count into account
+	ora #$09				;
+	sta HealthHi			; give us 90 +
+	lda #$99				;
+	sta HealthLo			; 9.9 health
 	
-	;lda #$00			;
+	;lda #$00				;
 	;sta HealthLo			;Starting health is-->
-	;lda #$03			;set to 30 units.
+	;lda #$03				;set to 30 units.
 	;sta HealthHi			;
-*       rts				;
+*   rts						;
 
 ;------------------------------------[ Main game engine ]--------------------------------------------
 
@@ -1560,41 +1560,41 @@ GameEngine:
 	jsr ScrollDoor			;($E1F1)twice as fast as 1 routine call.
 
 	lda NARPASSWORD			;
-	beq +				;
-	lda #$03			;The following code is only accessed if -->
+	beq +					;
+	lda #$03				;The following code is only accessed if -->
 	sta HealthHi			;NARPASSWORD has been entered at the -->
-	lda #$FF			;password screen. Gives you new health,-->
+	lda #$FF				;password screen. Gives you new health,-->
 	sta SamusGear			;missiles and every power-up every frame.
-	lda #$05			;
+	lda #$05				;
 	sta MissileCount		;
 
 *	jsr UpdateWorld			;($CB29)Update Samus, enemies and room tiles.
-	lda MiniBossKillDelay		;
+	lda MiniBossKillDelay	;
 	ora PowerUpDelay		;Check if mini boss was just killed or powerup aquired.-->
-	beq +				;If not, branch.
+	beq +					;If not, branch.
 
-	lda #$00			;
-	sta MiniBossKillDelay		;Reset delay indicators.
+	lda #$00				;
+	sta MiniBossKillDelay	;Reset delay indicators.
 	sta PowerUpDelay		;
-	lda #$18			;Set timer for 240 frames(4 seconds).
-	ldx #$03			;GameEngine routine to run after delay expires
+	lda #$18				;Set timer for 240 frames(4 seconds).
+	ldx #$03				;GameEngine routine to run after delay expires
 	jsr SetTimer			;($C4AA)Set delay timer and game engine routine.
 
 *	lda ObjAction			;Check is Samus is dead.
 	cmp #sa_Dead2   		;Is Samus dead?-->
-	bne ---	   			;exit if not.
+	bne ---	   				;exit if not.
 	lda AnimDelay			;Is Samus still exploding?-->
-	bne ---				;Exit if still exploding.
+	bne ---					;Exit if still exploding.
 	jsr SilenceMusic		;Turn off music.
-	lda MotherBrainStatus		;
-	cmp #$0A			;Is mother brain already dead? If so, branch.
-	beq +				;
-	lda #$04			;Set timer for 40 frames (.667 seconds).
-	ldx #$04			;GameOver routine to run after delay expires.
+	lda MotherBrainStatus	;
+	cmp #$0A				;Is mother brain already dead? If so, branch.
+	beq +					;
+	lda #$04				;Set timer for 40 frames (.667 seconds).
+	ldx #$04				;GameOver routine to run after delay expires.
 	jmp SetTimer			;($C4AA)Set delay timer and run game over routine.
 
 *	inc MainRoutine			;Next routine to run is GameOver.
-	rts				;
+	rts						;
 
 ;----------------------------------------[ Update age ]----------------------------------------------
 
@@ -1605,31 +1605,31 @@ GameEngine:
 
 UpdateAge:
 	lda GameMode			;
-	bne ++				;Exit if at title/password screen.
+	bne ++					;Exit if at title/password screen.
 	lda MainRoutine			;
-	cmp #$03			;Is game engine running?
-	bne ++				;If not, don't update age.
+	cmp #$03				;Is game engine running?
+	bne ++					;If not, don't update age.
 	ldx FrameCount			;Only update age when FrameCount is zero-->
-	bne ++				;(which is approx. every 4.266666666667 seconds).
+	bne ++					;(which is approx. every 4.266666666667 seconds).
 	inc SamusAge,x			;Minor Age = Minor Age + 1.
 	lda SamusAge			;
-	cmp #$D0			;Has Minor Age reached $D0?-->
-	bcc ++				;If not, we're done.-->
-	lda #$00			;Else reset minor age.
+	cmp #$D0				;Has Minor Age reached $D0?-->
+	bcc ++					;If not, we're done.-->
+	lda #$00				;Else reset minor age.
 	sta SamusAge			;
-*	cpx #$03			;
-	bcs +				;Loop to update middle age and possibly major age.
-	inx				;
+*	cpx #$03				;
+	bcs +					;Loop to update middle age and possibly major age.
+	inx						;
 	inc SamusAge,x			;
-	beq -	   			;Branch if middle age overflowed, need to increment--> 
-*	rts				;major age too. Else exit.
+	beq -	   				;Branch if middle age overflowed, need to increment--> 
+*	rts						;major age too. Else exit.
 
 ;-------------------------------------------[ Game over ]--------------------------------------------
 
 EngineGameOver:
-	lda #$1C			;GameOver is the next routine to run.
+	lda #$1C				;GameOver is the next routine to run.
 	sta TitleRoutine		;
-	lda #$01			;
+	lda #$01				;
 	sta SwitchPending		;Prepare to switch to title memory page.
 	jmp ScreenOff			;($C439)Turn screen off.
 
@@ -1637,63 +1637,63 @@ EngineGameOver:
 
 PauseMode:
 	lda Joy2Status			;Load buttons currently being pressed on joypad 2.
-	and #$88			;
-	eor #$88			;both A & UP pressed?-->
-	bne Exit14			;Exit if not.
+	and #$88				;
+	eor #$88				;both A & UP pressed?-->
+	bne Exit14				;Exit if not.
 	ldy EndTimerHi			;
-	iny				;Is escape timer active?-->
-	bne Exit14			;Sorry, can't quit if this is during escape scence.
+	iny						;Is escape timer active?-->
+	bne Exit14				;Sorry, can't quit if this is during escape scence.
 	sta GamePaused			;Clear pause game indicator.
 	inc MainRoutine			;Display password is the next routine to run.
 
 Exit14:
-	rts				;Exit for routines above and below.
+	rts						;Exit for routines above and below.
 
 ;------------------------------------------[ GoPassword ]--------------------------------------------
 
 GoPassword:
-	lda #$19			;DisplayPassword is next routine to run.
+	lda #$19				;DisplayPassword is next routine to run.
 	sta TitleRoutine		;
-	lda #$01			;
+	lda #$01				;
 	sta SwitchPending		;Prepare to switch to intro memory page.
 	lda NoiseSFXFlag		;
-	ora #$01			;Silence music.
+	ora #$01				;Silence music.
 	sta NoiseSFXFlag		;
 	jmp ScreenOff			;($C439)Turn off screen.
 
 ;-----------------------------------------[ Samus intro ]--------------------------------------------
 
 SamusIntro:
-	jsr EraseAllSprites		;($C1A3)Clear all sprites off screen.
-	ldy ObjAction			;Load Samus' fade in status.
-	lda Timer3			;
-	bne +				;Branch if Intro still playing.
+	jsr EraseAllSprites			;($C1A3)Clear all sprites off screen.
+	ldy ObjAction				;Load Samus' fade in status.
+	lda Timer3					;
+	bne +						;Branch if Intro still playing.
 	
 ;Fade in complete.
 	sta ItemRoomMusicStatus		;Make sure item room music is not playing.
-	lda #sa_Begin			;Samus facing forward and can't be hurt.
-	sta ObjAction			;
-	jsr StartMusic			;($D92C)Start main music.
-	jsr SelectSamusPal		;($CB73)Select proper Samus palette.
-	lda #$03			;
-	sta MainRoutine			;Game engine will be called next frame.
+	lda #sa_Begin				;Samus facing forward and can't be hurt.
+	sta ObjAction				;
+	jsr StartMusic				;($D92C)Start main music.
+	jsr SelectSamusPal			;($CB73)Select proper Samus palette.
+	lda #$03					;
+	sta MainRoutine				;Game engine will be called next frame.
 
 ;Still fading in.
-*	cmp #$1F			;When 310 frames left of intro, display Samus.
-	bcs Exit14			;Branch if not time to start drawing Samus.
+*	cmp #$1F					;When 310 frames left of intro, display Samus.
+	bcs Exit14					;Branch if not time to start drawing Samus.
 	cmp SamusFadeInTimeTbl-20,y	;sa_FadeIn0 is beginning of table.
-	bne +				;Every time Timer3 equals one of the entries in the table-->
-	inc ObjAction			;below, change the palette used to color Samus.
-	sty PalDataPending		;
-*	lda FrameCount			;Is game currently on an odd frame?-->
-	lsr				;If not, branch to exit.
-	bcc Exit14			;Only display Samus on odd frames [the blink effect].
-	lda #an_SamusFront		;Samus front animation is animation to display.-->
-	jsr SetSamusAnim		;($CF6B)while fading in.
-	lda #$00			;
-	sta SpritePagePos		;Samus sprites start at Sprite00RAM.
-	sta PageIndex			;Samus RAM is first set of RAM.
-	jmp AnimDrawObject		;($DE47)Draw Samus on screen.
+	bne +						;Every time Timer3 equals one of the entries in the table-->
+	inc ObjAction				;below, change the palette used to color Samus.
+	sty PalDataPending			;
+*	lda FrameCount				;Is game currently on an odd frame?-->
+	lsr							;If not, branch to exit.
+	bcc Exit14					;Only display Samus on odd frames [the blink effect].
+	lda #an_SamusFront			;Samus front animation is animation to display.-->
+	jsr SetSamusAnim			;($CF6B)while fading in.
+	lda #$00					;
+	sta SpritePagePos			;Samus sprites start at Sprite00RAM.
+	sta PageIndex				;Samus RAM is first set of RAM.
+	jmp AnimDrawObject			;($DE47)Draw Samus on screen.
 
 ;The following table marks the time remaining in Timer3 when a palette change should occur during
 ;the Samus fade-in sequence. This creates the fade-in effect.
@@ -1705,20 +1705,20 @@ SamusFadeInTimeTbl:
 
 IsEngineRunning:
 	ldy MainRoutine			;If Samus is fading in or the wait timer is-->
-	cpy #$07			;active, return from routine.
-	beq +				;
-	cpy #$03			;Is game engine running?
-	beq ++				;If yes, branch to SwitchBank.
-*	rts				;Exit if can't switch bank.
+	cpy #$07				;active, return from routine.
+	beq +					;
+	cpy #$03				;Is game engine running?
+	beq ++					;If yes, branch to SwitchBank.
+*	rts						;Exit if can't switch bank.
 
 ;-----------------------------------------[ Switch bank ]--------------------------------------------
 
 ;Switch to appropriate area bank
 
 SwitchBank:
-*	sta InArea			;Save current area Samus is in.
-	and #$0F			;
-	tay				;Use 4 LSB to load switch pending offset from BankTable table.
+*	sta InArea				;Save current area Samus is in.
+	and #$0F				;
+	tay						;Use 4 LSB to load switch pending offset from BankTable table.
 	lda BankTable,y			;Base is $CA30.
 	sta SwitchPending		;Store switch data.
 	jmp CheckSwitch			;($C4DE)Switch lower 16KB to appropriate memory page.
@@ -1727,11 +1727,11 @@ SwitchBank:
 ;Each value is the area bank number plus one.
 
 BankTable:
-	.byte $02			;Brinstar.
-	.byte $03			;Norfair.
-	.byte $05			;Kraid hideout.
-	.byte $04			;Tourian.
-	.byte $06			;Ridley hideout.
+	.byte $02				;Brinstar.
+	.byte $03				;Norfair.
+	.byte $05				;Kraid hideout.
+	.byte $04				;Tourian.
+	.byte $06				;Ridley hideout.
 
 ;----------------------------------[ Saved game routines (not used) ]--------------------------------
 
@@ -1739,36 +1739,36 @@ BankTable:
 
 ;Determine what type of ending is to be shown, based on Samus' age
 ChooseEnding:
-	ldy #$01			;
+	ldy #$01				;
 *	lda SamusAge+2			;If SamusAge+2 anything but #$00, load worst-->
-	bne +				;ending(more than 37 hours of gameplay).
+	bne +					;ending(more than 37 hours of gameplay).
 	lda SamusAge+1			;
 	cmp AgeTable-1,y		;Loop four times to determine-->
-	bcs +				;ending type from table below.
-	iny				;
-	cpy #$05			;
-	bne -				;
+	bcs +					;ending type from table below.
+	iny						;
+	cpy #$05				;
+	bne -					;
 *	sty EndingType			;Store the ending # (1..5), 5=best ending
-	lda #$00			;
-	cpy #$04			;Was the best or 2nd best ending achieved?
-	bcc +				;Branch if not (suit stays on)
-	lda #$01			;
+	lda #$00				;
+	cpy #$04				;Was the best or 2nd best ending achieved?
+	bcc +					;Branch if not (suit stays on)
+	lda #$01				;
 *	sta JustInBailey		;Suit OFF, baby!
-	rts				;
+	rts						;
 
 ;Table used by above subroutine to determine ending type.
 AgeTable:
-	.byte $7A			;Max. 37 hours
-	.byte $16			;Max. 6.7 hours
-	.byte $0A			;Max. 3.0 hours
-	.byte $04			;Best ending. Max. 1.2 hours
+	.byte $7A				;Max. 37 hours
+	.byte $16				;Max. 6.7 hours
+	.byte $0A				;Max. 3.0 hours
+	.byte $04				;Best ending. Max. 1.2 hours
 
 ;--------------------------------[ Clear screen data (not used) ]------------------------------------
 
 ClearScreenData:
 	jsr ScreenOff			;($C439)Turn off screen.
-	lda #$FF			;
-	sta $00				;Prepare to fill nametable with #$FF.
+	lda #$FF				;
+	sta $00					;Prepare to fill nametable with #$FF.
 	jsr ClearNameTable		;($C175)Clear selected nametable.
 	jmp EraseAllSprites		;($C1A3)Clear sprite data.
 
@@ -1777,7 +1777,7 @@ ClearScreenData:
 ; ===== THE REAL GUTS OF THE GAME ENGINE! =====
 
 UpdateWorld:
-	ldx #$00			;Set start of sprite RAM to $0200.
+	ldx #$00				;Set start of sprite RAM to $0200.
 	stx SpritePagePos		;
 
 	jsr UpdateEnemies		;($F345)Display of enemies.
@@ -1791,20 +1791,20 @@ UpdateWorld:
 	jsr UnknownF93B
 	jsr DestroyGeenSpinner  ; destruction of green spinners
 	jsr SamusEnterDoor		;($8B13)Check if Samus entered a door.
-	jsr DisplayDoors      ; display of doors
-	jsr UpdateTiles ; tile de/regeneration
+	jsr DisplayDoors      	; display of doors
+	jsr UpdateTiles 		; tile de/regeneration
 	jsr CrashDetection      ; Samus <--> enemies crash detection
 	jsr DisplayBar			;($E0C1)Display of status bar.
 	jsr UnknownFAF2
 	jsr CheckMissileToggle
-	jsr UpdateItems ; display of special items
+	jsr UpdateItems 		; display of special items
 	jsr UpdateEndTimer
 
 ;Clear remaining sprite RAM
-	ldx SpritePagePos
-	lda #$F4
-*       sta Sprite00RAM,x
-	jsr Xplus4       ; X = X + 4
+	ldx SpritePagePos		;sprite page pos starts at 0
+	lda #$F4				;load F4
+*   sta Sprite00RAM,x		;store data into sprite ram (F4, F8, FC)
+	jsr Xplus4       		;X = X + 4
 	bne -
 	rts
 
@@ -1821,15 +1821,15 @@ SelectSamusPal:
 	lda SamusGear
 	asl
 	asl
-	asl				;CF contains Varia status (1 = Samus has it)
-	lda MissileToggle		;A = 1 if Samus is firing missiles, else 0
-	rol				;Bit 0 of A = 1 if Samus is wearing Varia
+	asl							;CF contains Varia status (1 = Samus has it)
+	lda MissileToggle			;A = 1 if Samus is firing missiles, else 0
+	rol							;Bit 0 of A = 1 if Samus is wearing Varia
 	adc #$02
-	ldy JustInBailey		;In suit?
-	beq +				;Branch if yes
+	ldy JustInBailey			;In suit?
+	beq +						;Branch if yes
 	clc
-	adc #$17			;Add #$17 to the pal # to reach "no suit"-palettes
-*       sta PalDataPending		;Palette will be written next NMI
+	adc #$17					;Add #$17 to the pal # to reach "no suit"-palettes
+*   sta PalDataPending			;Palette will be written next NMI
 	pla
 	tay
 	rts
@@ -1839,148 +1839,148 @@ SelectSamusPal:
 ;Initiate sound effects.
 
 SilenceMusic:				;The sound flags are stored in memory-->
-	lda #$01			;starting at $0680. The following is a-->
+	lda #$01				;starting at $0680. The following is a-->
 	bne SFX_SetX0			;list of sound effects played when the-->
-					;flags are set:
-PauseMusic:				;
+							;flags are set:
+PauseMusic:					;
 	lda #$02   	     		;$0680: These SFX use noise channel.
 	bne SFX_SetX0			;Bit 7 - No sound.
-					;Bit 6 - ScrewAttack.
+							;Bit 6 - ScrewAttack.
 SFX_SamusWalk:				;Bit 5 - MissileLaunch.
-	lda #$08			;Bit 4 - BombExplode.
+	lda #$08				;Bit 4 - BombExplode.
 	bne SFX_SetX0			;Bit 3 - SamusWalk.
-					;Bit 2 - SpitFlame.
+							;Bit 2 - SpitFlame.
 SFX_BombExplode:			;Bit 1 - No sound.
-	lda #$10			;Bit 0 - No sound.
+	lda #$10				;Bit 0 - No sound.
 	bne SFX_SetX0			;
-					;$0681: These SFX use sq1 channel.
+							;$0681: These SFX use sq1 channel.
 SFX_MissileLaunch:			;Bit 7 - MissilePickup.
-	lda #$20			;Bit 6 - EnergyPickup.
-					;Bit 5 - Metal.
-SFX_SetX0:				;Bit 4 - BulletFire.
-	ldx #$00			;Bit 3 - OutOfHole.
-	beq SFX_SetSoundFlag		;Bit 2 - EnemyHit.
-					;Bit 1 - SamusJump.
+	lda #$20				;Bit 6 - EnergyPickup.
+							;Bit 5 - Metal.
+SFX_SetX0:					;Bit 4 - BulletFire.
+	ldx #$00				;Bit 3 - OutOfHole.
+	beq SFX_SetSoundFlag	;Bit 2 - EnemyHit.
+							;Bit 1 - SamusJump.
 SFX_OutOfHole:				;Bit 0 - WaveFire.
-	lda #$08			;
+	lda #$08				;
 	bne SFX_SetX1			;$0682: Not used.
-					;
+							;
 SFX_BombLaunch:				;$0683: These SFX use tri channel.
-	lda #$01			;Bit 7 - SamusDie.
+	lda #$01				;Bit 7 - SamusDie.
 	bne SFX_SetX3			;Bit 6 - DoorOpenClose.
-					;Bit 5 - MetroidHit.
+							;Bit 5 - MetroidHit.
 SFX_SamusJump:				;Bit 4 - StatueRaise.
-	lda #$02			;Bit 3 - Beep.
+	lda #$02				;Bit 3 - Beep.
 	bne SFX_SetX1			;Bit 2 - BigEnemyHit.
-					;Bit 1 - SamusBall.
+							;Bit 1 - SamusBall.
 SFX_EnemyHit:				;Bit 0 - BombLaunch.
-	lda #$04			;
+	lda #$04				;
 	bne SFX_SetX1			;$0684: These SFX use multi channels.
-					;Bit 7 - FadeInMusic		(music).
+							;Bit 7 - FadeInMusic		(music).
 SFX_BulletFire:				;Bit 6 - PowerUpMusic		(music).
-	lda #$10			;Bit 5 - EndMusic  (Page 0 only)(music).
+	lda #$10				;Bit 5 - EndMusic  (Page 0 only)(music).
 	bne SFX_SetX1			;Bit 4 - IntroMusic(Page 0 only)(music).
-					;Bit 3 - not used		(SFX).
-SFX_Metal:				;Bit 2 - SamusHit		(SFX).
-	lda #$20			;Bit 1 - BossHit		(SFX).
+							;Bit 3 - not used		(SFX).
+SFX_Metal:					;Bit 2 - SamusHit		(SFX).
+	lda #$20				;Bit 1 - BossHit		(SFX).
 	bne SFX_SetX1			;Bit 0 - IncorrectPassword	(SFX).
-					;
+							;
 SFX_EnergyPickup:			;$0685: Music flags. The music flags start different-->
-	lda #$40			;music depending on what memory page is loaded. The-->
+	lda #$40				;music depending on what memory page is loaded. The-->
 	bne SFX_SetX1			;following lists what bits start what music for each-->
-					;memory page.
+							;memory page.
 SFX_MissilePickup:			;
-	lda #$80			;Page 0: Intro/ending.
-					;Bit 7 - Not used.
-SFX_SetX1:				;Bit 6 - TourianMusic.
-	ldx #$01			;Bit 5 - ItemRoomMusic.
-	bne SFX_SetSoundFlag		;Bit 4 - Not used.
-					;Bit 3 - Not used.
+	lda #$80				;Page 0: Intro/ending.
+							;Bit 7 - Not used.
+SFX_SetX1:					;Bit 6 - TourianMusic.
+	ldx #$01				;Bit 5 - ItemRoomMusic.
+	bne SFX_SetSoundFlag	;Bit 4 - Not used.
+							;Bit 3 - Not used.
 SFX_WaveFire:				;Bit 2 - Not used.
-	lda #$01			;Bit 1 - Not used.
+	lda #$01				;Bit 1 - Not used.
 	bne SFX_SetX1			;Bit 0 - Not used.
-					;
+							;
 SFX_ScrewAttack:			;Page 1: Brinstar.
-	lda #$40			;Bit 7 - Not used.
+	lda #$40				;Bit 7 - Not used.
 	bne SFX_SetX0			;Bit 6 - TourianMusic.
-					;Bit 5 - ItemRoomMusic.
+							;Bit 5 - ItemRoomMusic.
 SFX_BigEnemyHit:			;Bit 4 - Not used.
-	lda #$04			;Bit 3 - Not used.
+	lda #$04				;Bit 3 - Not used.
 	bne SFX_SetX3			;Bit 2 - Not used.
-					;Bit 1 - Not used.
+							;Bit 1 - Not used.
 SFX_MetroidHit:				;Bit 0 - BrinstarMusic.
-	lda #$20			;
+	lda #$20				;
 	bne SFX_SetX3			;Page 2: Norfair.
-					;Bit 7 - Not used.
+							;Bit 7 - Not used.
 SFX_BossHit:				;Bit 6 - TourianMusic.
-	lda #$02			;Bit 5 - ItemRoomMusic.
+	lda #$02				;Bit 5 - ItemRoomMusic.
 	bne SFX_SetX4			;Bit 4 - Not used.
-					;Bit 3 - NorfairMusic.
-SFX_Door:				;Bit 2 - Not used.
-	lda #$40			;Bit 1 - Not used.
+							;Bit 3 - NorfairMusic.
+SFX_Door:					;Bit 2 - Not used.
+	lda #$40				;Bit 1 - Not used.
 	bne SFX_SetX3			;Bit 0 - Not used.
-					;
+							;
 SFX_SamusHit:				;Page 3: Tourian.
-	lda #$04			;Bit 7 - Not used.
+	lda #$04				;Bit 7 - Not used.
 	bne SFX_SetX4			;Bit 6 - TourianMusic
-					;Bit 5 - ItemRoomMusic.
+							;Bit 5 - ItemRoomMusic.
 SFX_SamusDie:				;Bit 4 - Not used.
-	lda #$80			;Bit 3 - Not used.
+	lda #$80				;Bit 3 - Not used.
 	bne SFX_SetX3			;Bit 2 - EscapeMusic.
-					;Bit 1 - MotherBrainMusic
-SFX_SetX2:				;Bit 0 - Not used.
-	ldx #$02			;
-					;Page 4: Kraid.
+							;Bit 1 - MotherBrainMusic
+SFX_SetX2:					;Bit 0 - Not used.
+	ldx #$02				;
+							;Page 4: Kraid.
 SFX_SetSoundFlag:			;Bit 7 - RidleyAreaMusic.
-	ora $0680,x			;Bit 6 - TourianMusic.
-	sta $0680,x			;Bit 5 - ItemRoomMusic.
-	rts				;Bit 4 - KraidAreaMusic.
-					;Bit 3 - Not used.
+	ora $0680,x				;Bit 6 - TourianMusic.
+	sta $0680,x				;Bit 5 - ItemRoomMusic.
+	rts						;Bit 4 - KraidAreaMusic.
+							;Bit 3 - Not used.
 SFX_SamusBall:				;Bit 2 - Not used.
-	lda #$02			;Bit 1 - Not used.
+	lda #$02				;Bit 1 - Not used.
 	bne SFX_SetX3			;Bit 0 - Not used.
-					;
-SFX_Beep:				;Page 5: Ridley.
-	lda #$08			;Bit 7 - RidleyAreaMusic.
-					;Bit 6 - TourianMusic.
-SFX_SetX3:				;Bit 5 - ItemRoomMusic.
-	ldx #$03			;Bit 4 - KraidAreaMusic.
-	bne SFX_SetSoundFlag		;Bit 3 - Not used.
-					;Bit 2 - Not used.
+							;
+SFX_Beep:					;Page 5: Ridley.
+	lda #$08				;Bit 7 - RidleyAreaMusic.
+							;Bit 6 - TourianMusic.
+SFX_SetX3:					;Bit 5 - ItemRoomMusic.
+	ldx #$03				;Bit 4 - KraidAreaMusic.
+	bne SFX_SetSoundFlag	;Bit 3 - Not used.
+							;Bit 2 - Not used.
 ;Initiate music				;Bit 1 - Not used.
-					;Bit 0 - Not used.
+							;Bit 0 - Not used.
 PowerUpMusic:				;
-	lda #$40			;
+	lda #$40				;
 	bne SFX_SetX4			;
-					;
-IntroMusic:				;
-	lda #$80			;
-					;
-SFX_SetX4:				;
-	ldx #$04			;
-	bne SFX_SetSoundFlag		;
-					;
+							;
+IntroMusic:					;
+	lda #$80				;
+							;
+SFX_SetX4:					;
+	ldx #$04				;
+	bne SFX_SetSoundFlag	;
+							;
 MotherBrainMusic:			;
-	lda #$02			;
+	lda #$02				;
 	bne SFX_SetX5			;
-					;
+							;
 TourianMusic:				;
-	lda #$40			;
-					;
-SFX_SetX5:				;
-	ldx #$05			;
-	bne SFX_SetSoundFlag		;
+	lda #$40				;
+							;
+SFX_SetX5:					;
+	ldx #$05				;
+	bne SFX_SetSoundFlag	;
 
 ;--------------------------------------[ Update Samus ]----------------------------------------------
 
 UpdateSamus:
-	ldx #$00			;Samus data is located at index #$00.
+	ldx #$00				;Samus data is located at index #$00.
 	stx PageIndex			;
-	inx				;x=1.
-	stx IsSamus			;Indicate Samus is the object being updated.
+	inx						;x=1.
+	stx IsSamus				;Indicate Samus is the object being updated.
 	jsr GoSamusHandler		;($CC1A)Find proper Samus handler routine.
-	dec IsSamus			;Update of Samus complete.
-	rts				;
+	dec IsSamus				;Update of Samus complete.
+	rts						;
 
 GoSamusHandler:
 	lda ObjAction			;
@@ -2003,67 +2003,67 @@ GoSamusHandler:
 ;---------------------------------------[ Samus standing ]-------------------------------------------
 
 SamusStand:
-	lda Joy1Status			;Status of joypad 1.
-	and #$CF			;Remove SELECT & START status bits.
-	beq +				;Branch if no buttons pressed.
+	lda Joy1Status				;Status of joypad 1.
+	and #$CF					;Remove SELECT & START status bits.
+	beq +						;Branch if no buttons pressed.
 	jsr ClearHorzMvmtAnimData	;($CF5D)Set no horiontal movement and single frame animation.
-	lda Joy1Status			;
-*	and #$07			;Keep status of DOWN/LEFT/RIGHT.
-	bne +				;Branch if any are pressed.
-	lda Joy1Change			;
-	and #$08     			;Check if UP was pressed last frame.-->
-	beq +++				;If not, branch.
-*	jsr BitScan			;($E1E1)Find which directional button is pressed.
-	cmp #$02			;Is down pressed?-->
-	bcs +				;If so, branch.
-	sta SamusDir			;1=left, 0=right.
-*	tax				;
-	lda ActionTable,x		;Load proper Samus status from table below.
-	sta ObjAction			;Save Samus status.
-*	lda Joy1Change			;
-	ora Joy1Retrig			;Check if fire was just pressed or needs to retrigger.
-	asl				;
-	bpl +				;Branch if FIRE not pressed.
-	jsr FireWeapon			;($D1EE)Shoot left/right.
-*	bit Joy1Change			;Check if jump was just pressed.
-	bpl +				;Branch if JUMP not pressed.
-	lda #sa_Jump			;
-	sta ObjAction			;Set Samus status as jumping.
-*	lda #$04			;Prepare to set animation delay to 4 frames.
-	jsr SetSamusData		;($CD6D)Set Samus control data and animation.
-	lda ObjAction			;
-	cmp #sa_Door			;Is Samus inside a door, dead or pointing up and jumping?-->
-	bcs +				;If so, branch to exit.
-	jsr ChooseRoutine		;Select routine below.
+	lda Joy1Status				;
+*	and #$07					;Keep status of DOWN/LEFT/RIGHT.
+	bne +						;Branch if any are pressed.
+	lda Joy1Change				;
+	and #$08     				;Check if UP was pressed last frame.-->
+	beq +++						;If not, branch.
+*	jsr BitScan					;($E1E1)Find which directional button is pressed.
+	cmp #$02					;Is down pressed?-->
+	bcs +						;If so, branch.
+	sta SamusDir				;1=left, 0=right.
+*	tax							;
+	lda ActionTable,x			;Load proper Samus status from table below.
+	sta ObjAction				;Save Samus status.
+*	lda Joy1Change				;
+	ora Joy1Retrig				;Check if fire was just pressed or needs to retrigger.
+	asl							;
+	bpl +						;Branch if FIRE not pressed.
+	jsr FireWeapon				;($D1EE)Shoot left/right.
+*	bit Joy1Change				;Check if jump was just pressed.
+	bpl +						;Branch if JUMP not pressed.
+	lda #sa_Jump				;
+	sta ObjAction				;Set Samus status as jumping.
+*	lda #$04					;Prepare to set animation delay to 4 frames.
+	jsr SetSamusData			;($CD6D)Set Samus control data and animation.
+	lda ObjAction				;
+	cmp #sa_Door				;Is Samus inside a door, dead or pointing up and jumping?-->
+	bcs +						;If so, branch to exit.
+	jsr ChooseRoutine			;Select routine below.
 
 ;Pointer table to code.
 
-	.word ExitSub			;($C45C)Rts.
-	.word SetSamusRun		;($CC98)Samus is running.
-	.word SetSamusJump		;($CFC3)Samus is jumping.
-	.word SetSamusRoll		;($D0B5)Samus is in a ball.
-	.word SetSamusPntUp		;($CF77)Samus is pointing up.
+	.word ExitSub				;($C45C)Rts.
+	.word SetSamusRun			;($CC98)Samus is running.
+	.word SetSamusJump			;($CFC3)Samus is jumping.
+	.word SetSamusRoll			;($D0B5)Samus is in a ball.
+	.word SetSamusPntUp			;($CF77)Samus is pointing up.
 
 ;Table used by above subroutine.
 
 ActionTable:
-	.byte sa_Run			;Run right.
-	.byte sa_Run			;Run left.
+	.byte sa_Run				;Run right.
+	.byte sa_Run				;Run left.
 	.byte sa_Roll
 	.byte sa_PntUp
 
 ;----------------------------------------------------------------------------------------------------
 
 SetSamusExplode:
-  lda #$50
+	lda #$50
 	sta SamusJumpDsplcmnt
 	lda #an_Explode
 	jsr SetSamusAnim
 	sta ObjectCounter
-*       rts
+*   rts
 
 SetSamusRun:
-  lda #$09
+	lda #$09
 	sta WalkSoundDelay
 	ldx #$00
 	lda AnimResetIndex
@@ -2074,21 +2074,21 @@ SetSamusRun:
 	beq +
 	lda #$04
 	jsr SetSamusNextAnim
-*       lda RunAnimationTbl,x
+*   lda RunAnimationTbl,x
 	sta AnimResetIndex
 	ldx SamusDir
 SetSamusRunAccel:
-  lda RunAccelerationTbl,x
+	lda RunAccelerationTbl,x
 	sta SamusHorzAccel
 	rts
 
 RunAnimationTbl:
-  .byte an_SamusRun
+	.byte an_SamusRun
 	.byte an_SamusRunPntUp
 
 RunAccelerationTbl:
-  .byte $30			;Accelerate right.
-	.byte $D0			;Accelerate left.
+	.byte $30						;Accelerate right.
+	.byte $D0					;Accelerate left.
 
 ; SamusRun
 ; ========
@@ -2104,22 +2104,22 @@ SamusRun:
 	bcs ++++
 	lda #an_SamusJump
 	sta AnimResetIndex
-	bcc ++++	  ; branch always
-*       cpy #$18
+	bcc ++++	  				; branch always
+*   cpy #$18
 	bcc +++
 	lda AnimResetIndex
 	cmp #an_SamusFireJump
 	beq +
 	lda #an_SamusSalto
 	sta AnimResetIndex
-*       cpy #$20
+*   cpy #$20
 	bcc ++
 	lda Joy1Status
 	and #$08
 	beq +
 	lda #an_SamusJumpPntUp
 	sta AnimResetIndex
-*       bit Joy1Status
+*   bit Joy1Status
 	bmi +
 	jsr StopVertMovement		;($D147)
 *	lda #an_SamusRun
@@ -2127,107 +2127,108 @@ SamusRun:
 	bne +
 	lda #an_SamusJump
 	sta AnimResetIndex
-*       lda SamusInLava
+*   lda SamusInLava
 	beq +
 	lda Joy1Change
-	bmi JumpPressed       ; branch if JUMP pressed
-*       jsr UnknownCF88
+	bmi JumpPressed       		; branch if JUMP pressed
+*   jsr UnknownCF88
 	jsr UnknownD09C
-	jsr UnknownCF2E
+	jsr ReverseHoriAccelOnType04Collision
 	lda #$02
-	bne SetSamusData       ; branch always
-*	lda SamusOnElevator
+	bne SetSamusData       		; branch always
+*	lda SamusOnElevator	
 	bne +
 	jsr SetSamusRunAccel
-*       jsr UnknownCDBF
-	dec WalkSoundDelay  ; time to play walk sound?
-	bne +	       ; branch if not
+*   jsr UnknownCDBF
+	dec WalkSoundDelay  		; time to play walk sound?
+	bne +	       				; branch if not
 	lda #$09
-	sta WalkSoundDelay  ; # of frames till next walk sound trigger
+	sta WalkSoundDelay  		; # of frames till next walk sound trigger
 	jsr SFX_SamusWalk
-*       jsr UnknownCF2E
+*   jsr ReverseHoriAccelOnType04Collision
 	lda Joy1Change
-	bpl +	   ; branch if JUMP not pressed
+	bpl +	   					; branch if JUMP not pressed
 JumpPressed:
-  jsr SetSamusJump
+	jsr SetSamusJump
 	lda #$12
 	sta SamusHorzSpeedMax
 	jmp UnknownCD6B
 
-*       ora Joy1Retrig
+*   ora Joy1Retrig
 	asl
-	bpl +	   ; branch if FIRE not pressed
+	bpl +	   					; branch if FIRE not pressed
 	jsr UnknownCDD7
-*       lda Joy1Status
+*   lda Joy1Status
 	and #$03
 	bne +
 	jsr StopHorzMovement
 	jmp UnknownCD6B
 
-*       jsr BitScan			;($E1E1)
+*   jsr BitScan					;($E1E1)
 	cmp SamusDir
 	beq UnknownCD6B
 	sta SamusDir
 	jsr SetSamusRun
+	
 UnknownCD6B:
-  lda #$03
+	lda #$03
 
 ;---------------------------------------[ Set Samus data ]-------------------------------------------
 
 ;The following function sets various animation and control data bytes for Samus.
 
 SetSamusData:
-  jsr UpdateObjAnim		;($DC8F)Update animation if needed.
+	jsr UpdateObjAnim			;($DC8F)Update animation if needed.
 	jsr IsScrewAttackActive		;($CD9C)Check if screw attack active to change palette.
-	bcs +				;If screw attack not active, branch to skip palette change.
-	lda FrameCount			;
-	lsr				;
-	and #$03			;Every other frame, change Samus palette while screw-->
-	ora #$A0			;Attack is active.
-	sta ObjectCntrl			;
+	bcs +						;If screw attack not active, branch to skip palette change.
+	lda FrameCount				;
+	lsr							;
+	and #$03					;Every other frame, change Samus palette while screw-->
+	ora #$A0					;Attack is active.
+	sta ObjectCntrl				;
 *	jsr CheckHealthStatus		;($CDFA)Check if Samus hit, blinking or Health low.
 	jsr LavaAndMoveCheck		;($E269)Check if Samus is in lava or moving.
-	lda MetroidOnSamus		;Is a Metroid stuck to Samus?-->
-	beq +				;If not, branch.
-	lda #$A1			;Metroid on Samus. Turn Samus blue.
-	sta ObjectCntrl			;
+	lda MetroidOnSamus			;Is a Metroid stuck to Samus?-->
+	beq +						;If not, branch.
+	lda #$A1					;Metroid on Samus. Turn Samus blue.
+	sta ObjectCntrl				;
 *	jsr SetmirrorCntrlBit		;($CD92)Mirror Samus, if necessary.
-	jmp DrawFrame			;($DE4A)Display Samus.
+	jmp DrawFrame				;($DE4A)Display Samus.
 
 ;---------------------------------[ Set mirror control bit ]-----------------------------------------
 
 SetmirrorCntrlBit:
-  lda SamusDir			;Facing left=#$01, facing right=#$00.
-	jsr Amul16			;($C2C5)*16. Move bit 0 to bit 4 position.
-	ora ObjectCntrl			;
-	sta ObjectCntrl			;Use SamusDir bit to set mirror bit.
-	rts				;
+	lda SamusDir				;Facing left=#$01, facing right=#$00.
+	jsr Amul16					;($C2C5)*16. Move bit 0 to bit 4 position.
+	ora ObjectCntrl				;
+	sta ObjectCntrl				;Use SamusDir bit to set mirror bit.
+	rts							;
 
 ;------------------------------[ Check if screw attack is active ]-----------------------------------
 
 IsScrewAttackActive:
-  sec				;Assume screw attack is not active.
-	ldy ObjAction			;
-	dey				;Is Samus running?-->
-	bne ++				;If not, branch to exit.
-	lda SamusGear			;
-	and #gr_SCREWATTACK		;Does Samus have screw attack?-->
-	beq ++				;If not, branch to exit.
-	lda AnimResetIndex		;
-	cmp #an_SamusSalto		;Is Samus summersaulting?-->
-	beq +				;If so, branch to clear carry(screw attack active).
-	cmp #an_SamusJump		;
-	sec				;Is Samus jumping?-->
-	bne ++				;If not, branch to exit.
-	bit ObjVertSpeed		;If Samus is jumping and still moving upwards, screw--> 
-	bpl ++				;attack is active.
-*	cmp AnimIndex			;Screw attack will still be active if not spinning, but-->
-*	rts				;jumping while running and still moving upwards.
+	sec							;Assume screw attack is not active.
+	ldy ObjAction				;
+	dey							;Is Samus running?-->
+	bne ++						;If not, branch to exit.
+	lda SamusGear				;
+	and #gr_SCREWATTACK			;Does Samus have screw attack?-->
+	beq ++						;If not, branch to exit.
+	lda AnimResetIndex			;
+	cmp #an_SamusSalto			;Is Samus summersaulting?-->
+	beq +						;If so, branch to clear carry(screw attack active).
+	cmp #an_SamusJump			;
+	sec							;Is Samus jumping?-->
+	bne ++						;If not, branch to exit.
+	bit ObjVertSpeed			;If Samus is jumping and still moving upwards, screw--> 
+	bpl ++						;attack is active.
+*	cmp AnimIndex				;Screw attack will still be active if not spinning, but-->
+*	rts							;jumping while running and still moving upwards.
 
 ;----------------------------------------------------------------------------------------------------
 
 UnknownCDBF:
-  lda Joy1Status
+	lda Joy1Status
 	and #$08
 	lsr
 	lsr
@@ -2242,7 +2243,7 @@ UnknownCDBF:
 	jmp UnknownCD6B
 
 UnknownCDD7:
-  jsr FireWeapon			;($D1EE)Shoot left/right.
+	jsr FireWeapon			;($D1EE)Shoot left/right.
 	lda Joy1Status
 	and #$08
 	bne +
@@ -2250,7 +2251,7 @@ UnknownCDD7:
 	sta AnimIndex
 	rts
 
-*       lda AnimIndex
+*   lda AnimIndex
 	sec
 	sbc AnimResetIndex
 	and #$03
@@ -2267,11 +2268,11 @@ Table05:
 	.byte $3F
 
 CheckHealthStatus:
-  lda SamusHit			;
-	and #$20			;Has Samus been hit?-->
-	beq +++				;If not, branch to check if still blinking from recent hit.
-	lda #$32			;
-	sta SamusBlink			;Samus has been hit. Set blink for 32 frames.
+	lda SamusHit				;
+	and #$20					;Has Samus been hit?-->
+	beq +++						;If not, branch to check if still blinking from recent hit.
+	lda #$32					;
+	sta SamusBlink				;Samus has been hit. Set blink for 32 frames.
 	lda #$FF
 	sta DamagePushDirection
 	lda $73
@@ -2279,7 +2280,7 @@ CheckHealthStatus:
 	beq ++
 	bpl +
 	jsr SFX_SamusHit
-*       lda SamusHit
+*   lda SamusHit
 	and #$08
 	lsr
 	lsr
@@ -2287,8 +2288,8 @@ CheckHealthStatus:
 	sta DamagePushDirection
 *	lda #$FD
 	sta ObjVertSpeed
-	lda #$38			;Samus is hit. Store Samus hit gravity.
-	sta SamusGravity		;
+	lda #$38					;Samus is hit. Store Samus hit gravity.
+	sta SamusGravity			;
 	jsr IsSamusDead
 	bne +
 	jmp CheckHealthBeep
@@ -2299,15 +2300,15 @@ CheckHealthStatus:
 	ldx DamagePushDirection
 	inx
 	beq +++
-	jsr Adiv16       ; / 16
-	cmp #$03
+	jsr Adiv16       			; / 16
+	cmp #$03		
 	bcs +
 	ldy SamusHorzAccel
 	bne +++
 	jsr SetHorzMvmntData
 *       dex
 	bne +
-	jsr TwosCompliment		;($C3D4)
+	jsr TwosCompliment			;($C3D4)
 *       sta ObjHorzSpeed
 *	lda $77
 	bpl CheckHealthBeep
@@ -2330,7 +2331,7 @@ CheckHealthBeep:
 ; health < 17
 *       lda FrameCount
 	and #$0F
-	bne +				;Only beep every 16th frame.
+	bne +						;Only beep every 16th frame.
 	jsr SFX_Beep
 *	lda #$00
 	sta SamusHit
@@ -2341,63 +2342,63 @@ CheckHealthBeep:
 IsSamusDead:
 	lda ObjAction			;
 	cmp #sa_Dead			;
-	beq Exit3			;Samus is dead. Zero flag is set.
+	beq Exit3				;Samus is dead. Zero flag is set.
 	cmp #sa_Dead2			;
-	beq Exit3			;
-	cmp #$FF			;Samus not dead. Clear zero flag.
+	beq Exit3				;
+	cmp #$FF				;Samus not dead. Clear zero flag.
 
 Exit3:  
-	rts				;Exit for routines above and below.
+	rts						;Exit for routines above and below.
 
 ;----------------------------------------[ Subtract health ]-----------------------------------------
 
 SubtractHealth:
 	lda HealthLoChange		;Check to see if health needs to be changed.-->
 	ora HealthHiChange		;If not, branch to exit.
-	beq Exit3			;
+	beq Exit3				;
 	jsr IsSamusDead			;($CE84)Check if Samus is already dead.
 	beq ClearDamage			;Samus is dead. Branch to clear damage values.
 	ldy EndTimerHi			;If end escape timer is running, Samus cannot be hurt.
-	iny				;
-	beq +				;Branch if end escape timer not active.
+	iny						;
+	beq +					;Branch if end escape timer not active.
 
 ClearDamage:
-	jmp ClearHealthChange		;($F323)Clear health change values.
+	jmp ClearHealthChange	;($F323)Clear health change values.
 
-*	lda MotherBrainStatus		;If mother brain is in the process of dying, receive-->
-	cmp #$03			;no damage.
+*	lda MotherBrainStatus	;If mother brain is in the process of dying, receive-->
+	cmp #$03				;no damage.
 	bcs ClearDamage			;
 
 	lda SamusGear			;
 	and #gr_VARIA			;Check is Samus has Varia.
-	beq +				;
+	beq +					;
 	lsr HealthLoChange		;If Samus has Varia, divide damage by 2.
 	lsr HealthHiChange		;
-	bcc +				;If HealthHi moved a bit into the carry flag while-->
-	lda #$4F			;dividing, add #$4F to HealthLo for proper-->
+	bcc +					;If HealthHi moved a bit into the carry flag while-->
+	lda #$4F				;dividing, add #$4F to HealthLo for proper-->
 	adc HealthLoChange		;division results.
 	sta HealthLoChange		;
 
 *	lda HealthLo			;Prepare to subtract from HealthLo.
-	sta $03				;
+	sta $03					;
 	lda HealthLoChange		;Amount to subtract from HealthLo.
-	sec				;
+	sec						;
 	jsr Base10Subtract		;($C3FB)Perform base 10 subtraction.
 	sta HealthLo			;Save results.
 
-   lda HealthHi			;Prepare to subtract from HealthHi.
-	sta $03				;
+   lda HealthHi				;Prepare to subtract from HealthHi.
+	sta $03					;
 	lda HealthHiChange		;Amount to subtract from HealthHi.
 	jsr Base10Subtract		;($C3FB)Perform base 10 subtraction.
 	sta HealthHi			;Save Results.
 
 	lda HealthLo			;
-	and #$F0			;Is Samus health at 0?  If so, branch to-->
+	and #$F0				;Is Samus health at 0?  If so, branch to-->
 	ora HealthHi			;begin death routine.
-	beq +				;
-	bcs ++				;Samus not dead. Branch to exit.
+	beq +					;
+	bcs ++					;Samus not dead. Branch to exit.
 
-*	lda #$00			;Samus is dead.
+*	lda #$00				;Samus is dead.
 	sta HealthLo			;
 	sta HealthHi			;Set health to #$00.
 	lda #sa_Dead			;
@@ -2409,91 +2410,94 @@ ClearDamage:
 
 AddHealth:
 	lda HealthLo			;Prepare to add to HealthLo.
-	sta $03				;
+	sta $03					;
 	lda HealthLoChange		;Amount to add to HealthLo.
-	clc				;
+	clc						;
 	jsr Base10Add			;($C3DA)Perform base 10 addition.
 	sta HealthLo			;Save results.
 
 	lda HealthHi			;Prepare to add to HealthHi.
-	sta $03				;
+	sta $03					;
 	lda HealthHiChange		;Amount to add to HealthHi.
 	jsr Base10Add			;($C3DA)Perform base 10 addition.
 	sta HealthHi			;Save results.
 
 	lda TankCount			;
-	jsr Amul16			;($C2C5)*16. Move tank count to upper 4 bits.
-	ora #$0F			;Set lower 4 bits.
+	jsr Amul16				;($C2C5)*16. Move tank count to upper 4 bits.
+	ora #$0F				;Set lower 4 bits.
 	cmp HealthHi			;
-	bcs +				;Is life less than max? if so, branch.
-	and #$F9			;Life is more than max amount. 
+	bcs +					;Is life less than max? if so, branch.
+	and #$F9				;Life is more than max amount. 
 	sta HealthHi			;
-	lda #$99			;Set life to max amount.
+	lda #$99				;Set life to max amount.
 	sta HealthLo			;
-*	jmp ClearHealthChange		;($F323)
+*	jmp ClearHealthChange	;($F323)
 
 ;----------------------------------------------------------------------------------------------------
 
-UnknownCF2E:
-	lda SamusHit
-	lsr
-	and #$02
-	beq +++
-	bcs +
+;I'm not quite sure this ever gets used, as I can't seem to find the conditions under which samus can even 
+;get #04 or #05 as a possible hit value - only the bullets can even get #04 on door collisions
+ReverseHoriAccelOnType04Collision:	; 	
+	lda SamusHit				;  .... .x.y 	load samus hit into A
+	lsr							;  0... ..x. y	move y into carry
+	and #$02					;  0000 00x0 y  flip all but x
+	beq +++						;  0000 0000 ?	RTS
+	bcs +						;   y  =  1	 ?  negate left movement     
+								;   y  =  0  ?  negate right movement
 	lda SamusHorzAccel
-	bmi +++
-	bpl ++
-*       lda SamusHorzAccel
-	bmi +
-	bne ++
-*	jsr TwosCompliment		;($C3D4)
-	sta SamusHorzAccel
+	bmi +++						;going left, leave
+	bpl ++						;going right, jump to negate
+*   lda SamusHorzAccel		
+	bmi +						;going left, to negate
+	bne ++						;going right, leave
+*	jsr TwosCompliment			
+	sta SamusHorzAccel			;store change in horizontal accell
 
 ClearHorzMvmntData:
-  ldy #$00			;
+  ldy #$00						;
 SetHorzMvmntData:
-  sty ObjHorzSpeed		;Set Samus Horizontal speed and horizontal-->
-	sty HorzCntrLinear		;linear counter to #$00.
-*	rts				;
+  sty ObjHorzSpeed				;Set Samus Horizontal speed and horizontal-->
+	sty HorzCntrLinear			;linear counter to #$00.
+*	rts							;
 
 StopHorzMovement:
-  lda SamusHorzAccel		;Is Samus moving horizontally?-->
+  lda SamusHorzAccel			;Is Samus moving horizontally?-->
 	bne ClearHorzMvmtAnimData	;If so, branch to stop movement.
-	jsr SFX_SamusWalk		;($CB96)Play walk SFX.
+	jsr SFX_SamusWalk			;($CB96)Play walk SFX.
 
 ClearHorzMvmtAnimData:
-  jsr NoHorzMoveNoDelay		;($CF81)Clear horizontal movement and animation delay data.
-	sty ObjAction			;Samus is standing.
-	lda Joy1Status			;
-	and #$08			;Is The up button being pressed?-->
-	bne +				;If so, branch.
-	lda #an_SamusStand		;Set Samus animation for standing.
+  jsr NoHorzMoveNoDelay			;($CF81)Clear horizontal movement and animation delay data.
+	sty ObjAction				;Samus is standing.
+	lda Joy1Status				;
+	and #$08					;Is The up button being pressed?-->
+	bne +						;If so, branch.
+	lda #an_SamusStand			;Set Samus animation for standing.
 
 SetSamusAnim:
-	sta AnimResetIndex		;Set new animation reset index.
+	sta AnimResetIndex			;Set new animation reset index.
 
 SetSamusNextAnim:
-	sta AnimIndex			;Set new animation data index.
-	lda #$00			;
-	sta AnimDelay			;New animation to take effect immediately.
-	rts				;
+	sta AnimIndex				;Set new animation data index.
+	lda #$00					;
+	sta AnimDelay				;New animation to take effect immediately.
+	rts							;
 
 SetSamusPntUp:
-*	lda #sa_PntUp			;
-	sta ObjAction			;Samus is pointing up.
-	lda #an_SamusPntUp		;
-	jsr SetSamusAnim		;($CF6B)Set new animation values.
+*	lda #sa_PntUp				;
+	sta ObjAction				;Samus is pointing up.
+	lda #an_SamusPntUp			;
+	jsr SetSamusAnim			;($CF6B)Set new animation values.
 
 NoHorzMoveNoDelay:
-  jsr ClearHorzData		;($CFB7)Clear all horizontal movement data.
-	sty AnimDelay			;Clear animation delay data.
-	rts				;
+  jsr ClearHorzData				;($CFB7)Clear all horizontal movement data.
+	sty AnimDelay				;Clear animation delay data.
+	rts							;
 
 UnknownCF88: 
   lda Joy1Status
 	and #$03
 	beq +
-	jsr BitScan			;($E1E1)
+	jsr BitScan					;($E1E1)
 	tax
 	jsr SetSamusRunAccel
 	lda SamusGravity
@@ -2553,17 +2557,17 @@ SetSamusJump:
 SamusJump:
 	lda SamusJumpDsplcmnt
 	bit ObjVertSpeed
-	bpl +	   ; branch if falling down
+	bpl +	   					; branch if falling down
 	cmp #$20
-	bcc +	   ; branch if jumped less than 32 pixels upwards
+	bcc +	   					; branch if jumped less than 32 pixels upwards
 	bit Joy1Status
-	bmi +	   ; branch if JUMP button still pressed
+	bmi +	   					; branch if JUMP button still pressed
 	jsr StopVertMovement		;($D147)Stop jump (start falling).
-*       jsr UnknownD055
-	jsr UnknownCF2E
+*   jsr UnknownD055
+	jsr ReverseHoriAccelOnType04Collision
 	lda Joy1Status
-	and #$08     ; UP pressed?
-	beq +	   ; branch if not
+	and #$08     				; UP pressed?
+	beq +	   					; branch if not
 	lda #an_SamusJumpPntUp
 	sta AnimResetIndex
 	lda #sa_PntJump      ; "jumping & pointing up" handler
@@ -2663,7 +2667,7 @@ SetSamusRoll:
 	sta $0686
 	jmp SFX_SamusBall
 
-*       lda #sa_Stand
+*   lda #sa_Stand
 	sta ObjAction
 	rts
 
@@ -2706,9 +2710,9 @@ SetSamusRoll:
 	sta SamusDir
 	lda #an_SamusRoll
 	jsr SetSamusAnim
-*       ldx SamusDir
+*   ldx SamusDir
 	jsr SetSamusRunAccel
-	jsr UnknownCF2E
+	jsr ReverseHoriAccelOnType04Collision
 	jsr CheckBombLaunch
 	lda Joy1Status
 	and #$03
@@ -3915,16 +3919,16 @@ ElevatorStop:
 *	jmp ElevScrollRoom
 
 SamusOnElevatorOrEnemy:
-  lda #$00			;
+	lda #$00			;
 	sta SamusOnElevator		;Assume Samus is not on an elevator or on a frozen enemy.
 	sta OnFrozenEnemy		;
 	tay
-	ldx #$50
+	ldx #$50				;start ith enemy 1 and go down the 6 possible enemies
 	jsr UnknownF186
-*   lda EnStatus,x
-	cmp #$04
-	bne +
-	jsr UnknownF152
+*   lda EnStatus,x			; load enemt status
+	cmp #$04				; if the enemy is frozen		
+	bne +					; jump ahead and go to previous enemy
+	jsr UnknownF152			
 	jsr UnknownF1BF
 	jsr UnknownF1FA
 	bcs +
@@ -3933,7 +3937,7 @@ SamusOnElevatorOrEnemy:
 UnknownD99A:	
 	inc OnFrozenEnemy		;Samus is standing on a frozen enemy.
 	bne ++
-*       jsr Xminus16
+*   jsr Xminus16
 	bpl --
 *	lda ElevatorStatus
 	beq +
@@ -3947,7 +3951,7 @@ UnknownD99A:
 *   rts
 
 UnknownD9BA:
-  lda $10
+	lda $10
 	and #$02
 	bne +
 	ldy $11
@@ -5583,7 +5587,7 @@ HorzAccelerate:
 
 	lda #$FF
 
-*       adc ObjHorzSpeed
+*   adc ObjHorzSpeed
 	sta ObjHorzSpeed
 	tay
 	bpl +				;Branch if Samus accelerating to the right.
@@ -5597,7 +5601,7 @@ HorzAccelerate:
 	tay
 	jsr UnknownE449
 
-*       cpx $02
+*   cpx $02
 	tya
 	sbc $03
 	bcc +
@@ -5605,7 +5609,7 @@ HorzAccelerate:
 	sta HorzCntrLinear
 	lda $01
 	sta ObjHorzSpeed
-*       lda HorzCntrNonLinear
+*   lda HorzCntrNonLinear
 	clc
 	adc HorzCntrLinear
 	sta HorzCntrNonLinear
@@ -5629,34 +5633,34 @@ UnknownE449:
 ;Attempt to move Samus one pixel up.
 
 MoveSamusUp:
-	lda ObjectY			;Get Samus' y position in room.
-	sec				;
-	sbc ObjRadY			;Subtract Samus' vertical radius.
-	and #$07			;Check if result is a multiple of 8. If so, branch to-->
-	bne +				;Only call crash detection every 8th pixel.
-	jsr CheckMoveUp			;($E7A2)Check if Samus obstructed UPWARDS.-->
-	bcc +++++++			;If so, branch to exit(can't move any further).
-*       lda ObjAction			;
-	cmp #sa_Elevator		;Is Samus riding elevator?-->
-	beq +				;If so, branch.
+	lda ObjectY					;Get Samus' y position in room.
+	sec							;
+	sbc ObjRadY					;Subtract Samus' vertical radius.
+	and #$07					;Check if result is a multiple of 8. If so, branch to-->
+	bne +						;Only call crash detection every 8th pixel.
+	jsr CheckMoveUp				;($E7A2)Check if Samus obstructed UPWARDS.-->
+	bcc +++++++					;If so, branch to exit(can't move any further).
+*   lda ObjAction			;
+	cmp #sa_Elevator			;Is Samus riding elevator?-->
+	beq +						;If so, branch.
 	jsr SamusOnElevatorOrEnemy	;($D976)Calculate if Samus standing on elevator or enemy.
 	lda SamusHit
 	and #$42
 	cmp #$42
 	clc
 	beq ++++++
-*       lda SamusScrY
-	cmp #$66	; reached up scroll limit?
-	bcs +	   ; branch if not
+*   lda SamusScrY
+	cmp #$66					; reached up scroll limit?
+	bcs +	   					; branch if not
 	jsr ScrollUp
 	bcc ++
-*       dec SamusScrY
+*    dec SamusScrY
 *	lda ObjectY
 	bne ++
 	lda ScrollDir
 	and #$02
 	bne +
-	jsr ToggleSamusHi       ; toggle 9th bit of Samus' Y coord
+	jsr ToggleSamusHi       	; toggle 9th bit of Samus' Y coord
 *       lda #240
 	sta ObjectY
 *	dec ObjectY
@@ -6105,26 +6109,31 @@ GetRoomNum:
 
 ;-----------------------------------------------------------------------------------------------------
 
-UnknownE770:
-	ldx PageIndex
-	lda EnRadY,x
-	clc
-	adc #$08
-	jmp UnknownE783
+CreateEnemyYRadLowerBound:
+	ldx PageIndex	; load enemy index
+	lda EnRadY,x	; load enemy radius
+	clc				; clear carry
+	adc #$08		; add 8 to radius
+	jmp CreateEnemyCollisionCheck	;jump ahead
 
-UnknownE77B:
-  ldx PageIndex
-	lda #$00
-	sec
-	sbc EnRadY,x
-UnknownE783:  sta $02
-	lda #$08
-	sta $04
-	jsr UnknownE792
+
+CreateEnemyYRadUpperBound:
+	ldx PageIndex	;load enemy index
+	lda #$00		;load 0
+	sec				;set carry 
+	sbc EnRadY,x	;subtract Y radius
+	
+	
+CreateEnemyCollisionCheck:  
+	sta $02			;store our value into 02
+	lda #$08		;load 8
+	sta $04			;store that into 04
+	jsr MakeEnemyLocationStruct98B	
 	lda EnRadX,x
 	jmp UnknownE7BD
 
-UnknownE792:  lda EnXRoomPos,x
+MakeEnemyLocationStruct98B:  
+	lda EnXRoomPos,x		
 	sta $09     ; X coord
 	lda EnYRoomPos,x
 	sta $08     ; Y coord
@@ -6147,20 +6156,22 @@ CheckMoveDown:
 *       sta $02
 	jsr UnknownE8BE
 	lda ObjRadX,x
-UnknownE7BD:  bne +
-	sec
-	rts
 
-*       sta $03
-	tay
-	ldx #$00
-	lda $09
-	sec
-	sbc $03
-	and #$07
-	beq +
-	inx
-*       jsr UnknownE8CE
+UnknownE7BD:  
+	bne +			; radius is not 0, continue
+	sec				; 	else, set carry flag
+	rts				;	then return
+
+*   sta $03			; has x radius - store to 03 
+	tay				; put A in Y
+	ldx #$00		; load 0 into x
+	lda $09			; load cached enemy room x pos
+	sec				; set carry 
+	sbc $03			; subtract enemy x radius
+	and #$07		; compare with 0000 0111
+	beq +			; equal to, jump ahead
+	inx				; else, inx 
+*   jsr UnknownE8CE 
 	sta $04
 	jsr UnknownE90F
 	ldx #$00
@@ -6173,7 +6184,8 @@ UnknownE7DE:  bne +++
 
 ; object<-->background crash detection
 
-UnknownE7E6:  jsr MakeWRAMPtr ; set up ptr in $0004
+UnknownE7E6:  		
+	jsr MakeWRAMPtr ; set up ptr in $0004
 	ldy #$00
 	lda ($04),y     ; get tile value
 	cmp #$4E
@@ -6206,10 +6218,11 @@ IsWalkableTile:
 	Exit16:
 	rts
 
-UnknownE81E:  ldx UpdatingProjectile
-	beq ClcExit
-	ldx #$06
-*       lda $05
+UnknownE81E:  
+	ldx UpdatingProjectile		; load projectile update
+	beq ClcExit					; if not updating projectile, exit and clear carry
+	ldx #$06					; load 6 to x
+*   lda $05						; load 
 	eor $5D,x
 	and #$04
 	bne +++
@@ -6236,7 +6249,7 @@ UnknownE81E:  ldx UpdatingProjectile
 	lda AnimResetIndex,x
 	eor #$91
 	bne PlaySnd4
-*       lda $0683
+*   lda $0683
 	ora #$02
 	sta $0683
 *	lda #$04
@@ -6250,7 +6263,7 @@ UnknownE81E:  ldx UpdatingProjectile
 	and #$01
 	tax
 	inc $0366,x
-	ClcExit:
+ClcExit:
 	clc
 	rts
 
@@ -6301,7 +6314,8 @@ UnknownE8BE:
 	sta $09
 	rts
 
-UnknownE8CE:  eor #$FF
+UnknownE8CE:  
+	eor #$FF
 	clc
 	adc #$01
 	and #$07
@@ -6339,7 +6353,7 @@ UnknownE8FC:
 	sec
 	sbc EnRadX,x
 UnknownE904:  sta $03
-	jsr UnknownE792
+	jsr MakeEnemyLocationStruct98B
 	ldy EnRadY,x
 	jmp UnknownE89B
 
@@ -7831,13 +7845,17 @@ UnknownF266:  sta $01
 	inc $10
 *       rts
 
-UnknownF270:  ora $030A,x
+UnknownF270:  
+	ora $030A,x
 	sta $030A,x
 	rts
 
-UnknownF277:  bcs Exit17
-UnknownF279:  lda $10
-UnknownF27B:  ora $030A,y
+UnknownF277:  
+	bcs Exit17
+UnknownF279:  
+	lda $10
+UnknownF27B:  
+	ora $030A,y
 	sta $030A,y
 	Exit17:
 	rts
@@ -7881,7 +7899,7 @@ UnknownF2CA:  bcs +++
 	sta $040E,x
 	jsr UnknownF279
 *	jsr UnknownF332
-*       ora $0404,x
+*   ora $0404,x
 	sta $0404,x
 *       rts
 
@@ -8763,7 +8781,7 @@ UnknownF8F8:  lda $85
 
 UnknownF91D:  
 	ldx PageIndex
-	jsr UnknownE792
+	jsr MakeEnemyLocationStruct98B
 	tya
 	tax
 	jsr UnknownFD8F
@@ -8912,7 +8930,7 @@ EnemyBGCrashDetection:  lda InArea
 	sta $05
 	lda $0402,x
 	sta $04
-UnknownFA41:  jsr UnknownE792
+UnknownFA41:  jsr MakeEnemyLocationStruct98B
 	jsr UnknownFD8F
 	bcc KillObject			;($FA18)Free enemy data slot.
 UnknownFA49:  lda $08
