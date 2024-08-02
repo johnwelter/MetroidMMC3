@@ -4538,10 +4538,10 @@ UnknownDD75:
 	bne UnknownDD5B
 
 ClrObjCntrlIfFrameIsF7:
-  ldx PageIndex
-	lda EnAnimFrame,x
-	cmp #$F7
-	bne +++
+	ldx PageIndex				; load enemy index
+	lda EnAnimFrame,x			; load enemy frame
+	cmp #$F7					; compare to F7
+	bne +++						; not equal? jump way ahead
 	jmp ClearObjectCntrl		;($DF2D)Clear object control byte.
 
 ; AddToMaxMissiles
@@ -4564,6 +4564,7 @@ AddToMaxMissiles:
 *   sta MaxMissiles
 	rts
 
+;we got here from the clear control on f7 thing, when not f7 - so what's up?
 *	lda EnYRoomPos,x
 	sta $0A	 ; Y coord
 	lda EnXRoomPos,x
@@ -5018,27 +5019,27 @@ ExplodePlacementTbl:
 ;Advance to next frame of enemy's animation. Basically the same as UpdateObjAnim, only for enemies.
 
 UpdateEnemyAnim:
-	ldx PageIndex			;Load index to desired enemy.
-	ldy EnStatus,x			;
-	cpy #$05			;Is enemy in the process of dying?-->
-	beq +++				;If so, branch to exit.
-	ldy EnAnimDelay,x		;
-	beq +				;Check if current anumation frame is ready to be updated.
-	dec EnAnimDelay,x		;Not ready to update. decrement delay timer and-->
-	bne +++				;branch to exit.
-*	sta EnAnimDelay,x		;Save new animation delay value.
-	ldy EnAnimIndex,x		;Load enemy animation index.
+	ldx PageIndex				;Load index to desired enemy.
+	ldy EnStatus,x				;
+	cpy #$05					;Is enemy in the process of dying?-->
+	beq +++						;If so, branch to exit.
+	ldy EnAnimDelay,x			;
+	beq +						;Check if current anumation frame is ready to be updated.
+	dec EnAnimDelay,x			;Not ready to update. decrement delay timer and-->
+	bne +++						;branch to exit.
+*	sta EnAnimDelay,x			;Save new animation delay value.
+	ldy EnAnimIndex,x			;Load enemy animation index.
 *	lda (EnemyAnimPtr),y		;Get animation data.
-	cmp #$FF			;End of animation?
-	beq ++				;If so, branch to reset animation.
-	sta EnAnimFrame,x		;Store current animation frame data.
-	iny				;Increment to next animation data index.
-	tya				;
-	sta EnAnimIndex,x		;Save new animation index.
-*	rts				;
+	cmp #$FF					;End of animation?
+	beq ++						;If so, branch to reset animation.
+	sta EnAnimFrame,x			;Store current animation frame data.
+	iny							;Increment to next animation data index.
+	tya							;
+	sta EnAnimIndex,x			;Save new animation index.
+*	rts							;
 
 *	ldy EnResetAnimIndex,x		;reset animation index.
-	bcs ---				;Branch always.
+	bcs ---						;Branch always.
 
 ;---------------------------------------[ Display status bar ]---------------------------------------
 
@@ -7948,21 +7949,21 @@ UnknownF340:  lda $10
 
 UpdateEnemies:
 	ldx #$50						;Load x with #$50
-*       jsr DoOneEnemy						
+*   jsr DoOneEnemy						
 	ldx PageIndex
 	jsr Xminus16
 	bne -
 DoOneEnemy:
 	stx PageIndex					;PageIndex starts at $50 and is subtracted by $F each iteration.
 									;There is a max of 6 enemies at a time.
-	ldy EnStatus,x		
+	ldy EnStatus,x					;don't worry about visibility mismatch when slot not in use
 	beq +
-	cpy #$03
+	cpy #$03						;don't worry about visibility mismatch when dead, frozen, as a power up, or when hit
 	bcs +
 	jsr BreakOnVisibilityMismatch 	;check if we're visible- if we are in our status, and not in reality, break early
 *   jsr SetEnemyUpdateSkip			;update every other enemy per frame
 	lda EnStatus,x
-	sta $81
+	sta EnCachedStatus				;store out enemy status at start of update
 	cmp #$07						;compare EnStatus to the max status of 7
 	bcs +							;if our status is greater/equal, and therefore invalid, kill the enemy
 	jsr ChooseRoutine				;else, jump to this enemy's current routine
@@ -7981,7 +7982,7 @@ EnemyRoutineTable:
 	.word ExitSub       	;Enemy slot not in use
 	.word EnemyWaitState	;waiting
 	.word EnemyMoveState	;plain moving
-	.word EnemyDyingState	;dying
+	.word EnemySpecificUpdate	;dying
 	.word EnemyFrozenState	;frozen
 	.word EnemyPowerupState	;power up
 	.word EnemyHitState		;hit
@@ -8067,29 +8068,29 @@ EnemyMoveState:
 *	jsr UpdateEnemyDamage		;if the enemy was shot, update their damage
 
 ;;update enemy dying state
-EnemyDyingState:	
+EnemySpecificUpdate:	
 	jmp $95E5
 
 UpdateEnemyAnim0:	
 	jsr UpdateEnemyAnim
 	jsr $8058
 CheckObjectAttribs:
-	ldx PageIndex
-	lda EnSpecialAttribs,x
-	bpl +
-	lda ObjectCntrl
-	bmi +
-	lda #$A3
+	ldx PageIndex					; load enemy index
+	lda EnSpecialAttribs,x			; load special attributes (bit 7 = strong, bit 6 = boss)
+	bpl +							; jump ahead if not strong enemy
+	lda ObjectCntrl					; 	load object controls (mirroring/color)
+	bmi +							; 	if the high bit is set, jump ahead
+	lda #$A3						; 	else, load A3
 UnknownF423:  
-	sta ObjectCntrl
-*   lda EnStatus,x
-	beq UnknownF42D
-	jsr ClrObjCntrlIfFrameIsF7
-UnknownF42D:  
-	ldx PageIndex
-	lda #$00
-	sta $0404,x
-	sta $040E,x
+	sta ObjectCntrl					; store to object controls
+*   lda EnStatus,x					; load up the enemy status
+	beq ResetEnemyHitStatus			; if it's a clear slot, clear rhis hit status and leave
+	jsr ClrObjCntrlIfFrameIsF7		; else, 
+ResetEnemyHitStatus:  
+	ldx PageIndex					; load enemy index
+	lda #$00						;
+	sta $0404,x						; reset hit status
+	sta $040E,x						; reset hit source
 	rts
 
 UpdateEnemyAnim1:
@@ -8278,7 +8279,7 @@ PlayInvicibleSFX:
 	and #$20				; check if a metroid
 	bne ---- 				; 	added minus - if metroid, play metroid hit sound
 	jsr SFX_Metal			; play metal hit- nothing 
-	jmp UnknownF42D
+	jmp ResetEnemyHitStatus
 
 ContinueEnemyDamge0:
 *	lda EnHitPoints,x		;load enemy hit points	
@@ -8328,7 +8329,7 @@ ContinueEnemyDamge1:
 	ldy $040E,x						; if not set, load the missle type into y
 	cpy #$0B						; was it a missle?
 	beq +++++						; if it's equal, skip normal damage - instant kill
-	cpy #$81						; what about whatever the fuck this is?
+	cpy #$81						; ice beam? maybe? or screw attack?
 	beq +++++						; if equal, skip normal damage - instant kill
 *   lda #$06						; load 6
 	sta EnStatus,x					; store that into the status, probably "hit"
@@ -8363,7 +8364,7 @@ ContinueEnemyDamge1:
 	jsr UnknownDCFC					;the enemy kill/item drop routine - for normal explosions
 	ldx PageIndex					;I THINK THE REST OF THIS IS FINDING AND POPULATING AN EXPLOSION SLOT 
 *   jsr GetEnemyDirectionDataIndex	;get enemy direction animation index
-	lda $960B,y						;load that value at the index, and take it to the reset anim index
+	lda EnDirAnimTb0B,y				;load that value at the index, and take it to the reset anim index
 	jsr ResetAnimIndex
 	sta EnCounter,x					;store whatever we got out of that into the en counter
 	ldx #$C0						;load a specific enemy status, the one at offset #C0- 6BB4, or something
@@ -8408,7 +8409,7 @@ UnknownF676:
 
 UpdateEnAnimDirection963B:  
 	jsr GetEnemyDirectionDataIndex
-	lda $963B,y
+	lda EnDirAnimTb3B,y
 	cmp EnResetAnimIndex,x
 	beq +					;same animation, no need to set 
 ResetAnimIndex:  
@@ -8422,7 +8423,7 @@ ResetEnAnimDelay:
 
 UpdateEnAnimDirection965B:  
 	jsr GetEnemyDirectionDataIndex
-	lda $965B,y
+	lda EnDirAnimTb5B,y
 	cmp EnResetAnimIndex,x
 	beq Exit12
 	jsr ResetAnimIndex
@@ -8655,13 +8656,13 @@ GetEnemyDirectionDataIndex:
 	rts					
 
 GetRandom_EnIdxFrCnt:
-	txa
+	txa					;place enemy index into A
+	lsr					
 	lsr
-	lsr
-	lsr
-	adc FrameCount
-	lsr
-	rts
+	lsr					;div by 8, set carry if need be
+	adc FrameCount		;add frame count + carry
+	lsr					;halve
+	rts					;return 
 
 EnemyInitHealth:  
 	ldy EnDataIndex,x			;get enemy data index	
@@ -9072,46 +9073,47 @@ Exit13:
 	rts				;Exit from multiple routines.
 
 UnknownFB88:
-	ldx PageIndex
-	jsr GetEnemyDirectionDataIndex
-	lda $6B01,x
-	inc $6B03,x
-	dec $6B03,x	;see if we get to 0 with this so we don't have to sacrifice out A load
-	bne +
-	pha
-	pla
-*   bpl +
-	jsr TwosCompliment		;($C3D4)
-*   cmp #$08
-	bcc +
-	cmp #$10
-	bcs Exit13
-	tya
-	and #$01
-	tay
-	lda $0085,y
-	cmp EnResetAnimIndex,x
-	beq Exit13
-	sta EnAnimIndex,x
-	dec EnAnimIndex,x
+	ldx PageIndex					; get current enemy index
+	jsr GetEnemyDirectionDataIndex	; get the enemy directional data index into Y
+	lda $6B01,x						; get 6B01
+	inc $6B03,x						;
+	dec $6B03,x						; see if we get to 0 with this so we don't have to sacrifice out A load
+	bne +							; not zero? jump ahead and use 6B03 as our pos/neg check
+	pha								;	else push 6B01 to the stack
+	pla								;	then pop it right back out - simulates a fresh load for the N and Z flags
+*   bpl +							;	check the negative flag- positive? jump ahead
+	jsr TwosCompliment				;		take 6B01 and invert it
+*   cmp #$08						; cmp 6B01 to 8
+	bcc +							; less than 8, fallback to a 3B anim
+	cmp #$10						; 	else, compare with 10
+	bcs Exit13						;	if >= 10, return
+	tya								; else, yake our directional data index in A
+	and #$01						; get lower bit (left = 0, right = 1)
+	tay								; put that back into y
+	lda $0085,y						; get the value stored at either 85 or 86
+	cmp EnResetAnimIndex,x			; chek against the current animation
+	beq Exit13						; same animation? leave
+	sta EnAnimIndex,x				; 	else, set new animation
+	dec EnAnimIndex,x				;	and decrease it?
 
 UnknownFBB9:
-	sta EnResetAnimIndex,x	;called from area common after setting enemy hitpoints, hitpoints are in A
-	jmp ResetEnAnimDelay
+	sta EnResetAnimIndex,x			; set new animation starting index
+	jmp ResetEnAnimDelay			; reset the animation delay, and return
 
-*   lda $963B,y
+FallbackEnAnimDirection963B:
+*   lda EnDirAnimTb3B,y				
 	cmp EnResetAnimIndex,x
 	beq Exit13
 	jmp ResetAnimIndex
 
 UnknownFBCA:
-  ldx PageIndex
-	jsr GetEnemyDirectionDataIndex
-	lda $965B,y
-	cmp EnResetAnimIndex,x
-	beq Exit13
-	sta EnResetAnimIndex,x
-	jmp SetEnAnimIndex
+	ldx PageIndex					; get enemy index
+	jsr GetEnemyDirectionDataIndex	; get direction data index
+	lda EnDirAnimTb5B,y				; load anim from table
+	cmp EnResetAnimIndex,x			; if it's the same anim, 
+	beq Exit13						; leave
+	sta EnResetAnimIndex,x			; else, set the anim
+	jmp SetEnAnimIndex				; and finish setting 
 
 DestroyGeenSpinner:
   lda #$40
@@ -9123,7 +9125,8 @@ DestroyGeenSpinner:
 	dex
 	dex
 	bne -
-UnknownFBEC:  lda $A0,x
+UnknownFBEC:  		;this has something to do with enemies that explode
+	lda $A0,x
 	beq ++
 	dec $A0,x
 	txa

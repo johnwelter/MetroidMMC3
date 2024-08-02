@@ -279,7 +279,7 @@
 
 ;-----------------------------------------[ Sprite RAM ]---------------------------------------------
 
-.alias Sprite00RAM   		$0200	;$0200 thru $02FF
+.alias Sprite00RAM   	$0200	;$0200 thru $02FF
 .alias Sprite01RAM		$0204	;
 .alias Sprite02RAM		$0208	;
 .alias Sprite03RAM		$020C	;
@@ -295,7 +295,7 @@
 .alias Sprite0DRAM		$0234	;
 .alias Sprite0ERAM		$0238	;
 .alias Sprite0FRAM		$023C	;
-.alias Sprite10RAM   		$0240	;
+.alias Sprite10RAM   	$0240	;
 .alias Sprite11RAM		$0244	;
 .alias Sprite12RAM		$0248	;
 .alias Sprite13RAM		$024C	;
@@ -311,7 +311,7 @@
 .alias Sprite1DRAM		$0274	;
 .alias Sprite1ERAM		$0278	;
 .alias Sprite1FRAM		$027C	;
-.alias Sprite20RAM   		$0280	;
+.alias Sprite20RAM   	$0280	;
 .alias Sprite21RAM		$0284	;
 .alias Sprite22RAM		$0288	;
 .alias Sprite23RAM		$028C	;
@@ -327,7 +327,7 @@
 .alias Sprite2DRAM		$02B4	;
 .alias Sprite2ERAM		$02B8	;
 .alias Sprite2FRAM		$02BC	;
-.alias Sprite30RAM   		$02C0	;
+.alias Sprite30RAM   	$02C0	;
 .alias Sprite31RAM		$02C4	;
 .alias Sprite32RAM		$02C8	;
 .alias Sprite33RAM		$02CC	;
@@ -347,22 +347,22 @@
 ;-----------------------------------------[ Object RAM ]---------------------------------------------
 
 ;Samus RAM.
-.alias ObjAction		$0300	;Status of object. 0=object slot not in use.
-.alias ObjRadY			$0301	;Distance in pixels from object center to top or bottom.
-.alias ObjRadX			$0302	;Distance in pixels from object center to left or right side.
-.alias AnimFrame		$0303	;*2 = Index into FramePtrTable for current animation.
-.alias AnimDelay		$0304	;Number of frames to delay between animation frames.
+.alias ObjAction			$0300	;Status of object. 0=object slot not in use.
+.alias ObjRadY				$0301	;Distance in pixels from object center to top or bottom.
+.alias ObjRadX				$0302	;Distance in pixels from object center to left or right side.
+.alias AnimFrame			$0303	;*2 = Index into FramePtrTable for current animation.
+.alias AnimDelay			$0304	;Number of frames to delay between animation frames.
 .alias AnimResetIndex		$0305	;Restart index-1 when AnimIndex finished with last frame. 
-.alias AnimIndex		$0306	;Current index into ObjectAnimIndexTbl.
+.alias AnimIndex			$0306	;Current index into ObjectAnimIndexTbl.
 .alias SamusOnElevator		$0307   ;0=Samus not on elevator, 1=Samus on elevator.
-.alias ObjVertSpeed		$0308	;MSB set=moving up(#$FA max), MSB clear=moving down(#$05 max).
-.alias ObjHorzSpeed		$0309	;MSB set=moving lft(#$FE max), MSB clear=moving rt(#$01 max).
-.alias SamusHit			$030A	;Samus hit by enemy.
-.alias ObjectHit 		$030A 	;object registered a hit
-.alias ObjectOnScreen	$030B	;1=Object on screen, 0=Object beyond screen boundaries.
-.alias ObjectHi			$030C	;0=Object on nametable 0, 1=Object on nametable 3.
-.alias ObjectY			$030D	;Object y position in room(not actual screen position).
-.alias ObjectX			$030E	;Object x position in room(not actual screen position).
+.alias ObjVertSpeed			$0308	;MSB set=moving up(#$FA max), MSB clear=moving down(#$05 max).
+.alias ObjHorzSpeed			$0309	;MSB set=moving lft(#$FE max), MSB clear=moving rt(#$01 max).
+.alias SamusHit				$030A	;Samus hit by enemy.
+.alias ObjectHit 			$030A 	;object registered a hit
+.alias ObjectOnScreen		$030B	;1=Object on screen, 0=Object beyond screen boundaries.
+.alias ObjectHi				$030C	;0=Object on nametable 0, 1=Object on nametable 3.
+.alias ObjectY				$030D	;Object y position in room(not actual screen position).
+.alias ObjectX				$030E	;Object x position in room(not actual screen position).
 .alias SamusJumpDsplcmnt	$030F	;Number of pixels vertically displaced from jump point.
 .alias ObjectTimer 			$030F
 .alias VertCntrNonLinear	$0310	;Verticle movement counter. Exponential change in speed.
@@ -382,10 +382,29 @@
 ;-------------------------------------[ Title routine specific ]-------------------------------------
 
 .alias PasswordCursor		$0320	;Password write position (#$00 - #$17).
-.alias InputRow			$0321	;Password character select row (#$00 - #$04).
-.alias InputColumn		$0322	;Password character select column (#$00 - #$0C).
+.alias InputRow				$0321	;Password character select row (#$00 - #$04).
+.alias InputColumn			$0322	;Password character select column (#$00 - #$0C).
 .alias PasswordStat00		$0324	;Does not appear to have a function.
 .alias StartContinue		$0325	;0=START selected, 1=CONTINUE selected.
+
+
+;------------------------------------------[ Enemy zero page ]---------------------------------------
+
+.alias EnCachedStatus	$81		;enemy status pre update
+;						$82 	;something to do with being away from samus
+;
+
+
+;these are all the same data, but for replacement in code we need them to match the original
+.alias EnBurst0ZP		$A0
+.alias EnBurstYZP		$A1
+.alias EnBurstXZP		$A2
+.alias EnBurstNTZP		$A3
+
+.alias EnBurst0Addr		$00A0
+.alias EnBurstYPosAddr	$00A1
+.alias EnBurstXPosAddr	$00A2
+.alias EnBurstNTAddr	$00A3
 
 ;------------------------------------------[ Enemy RAM ]---------------------------------------------
 

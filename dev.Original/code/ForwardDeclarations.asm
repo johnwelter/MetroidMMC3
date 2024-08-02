@@ -41,4 +41,6 @@
 .alias AreaStartRoomY				$95D8
 .alias AreaStartYPos 				$95D9
 
-
+.alias EnDirAnimTb0B					$960B
+.alias EnDirAnimTb3B					$963B
+.alias EnDirAnimTb5B					$965B

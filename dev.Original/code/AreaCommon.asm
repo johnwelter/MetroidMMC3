@@ -35,20 +35,28 @@
 
 ;-----------------------------------------[ Start of code ]------------------------------------------
 
-AreaRefresh:
+CallUpdateEnemyAnim0:
 L8000:	JMP UpdateEnemyAnim0 
+CallUpdateEnemyAnim1:
 L8003:	JMP UpdateEnemyAnim1   
+CallCheckObjectAttribs:
 L8006:	JMP CheckObjectAttribs 
+CallGetRandomEnIdxFrCnt:
 L8009:	JMP GetRandom_EnIdxFrCnt
+CallUpdateEnemyAnim:
 L800C:	JMP UpdateEnemyAnim		;($E094)
+CallResetAnimIndex:
 L800F:	JMP ResetAnimIndex 
-L8012:	JMP GetEnemyXDirectionDataIndex	;this is useless, as Y gets squashed in init health
+CallGetEnemyXDirectionDataIndex:
+L8012:	JMP GetEnemyXDirectionDataIndex	
+CallEnemyInitHealth:
 L8015:	JMP EnemyInitHealth
 L8018:	JMP UnknownFBB9
 L801B:	JMP UnknownFB88
 L801E:	JMP UnknownFBCA
 L8021:	JMP UnknownF870
-L8024:	JMP ChooseRoutine		;($C27C)
+AreaChooseRoutine:
+		JMP ChooseRoutine		;($C27C)
 L8027:	JMP UnknownFD8F
 L802A:	JMP UnknownEB6E
 L802D:	JMP $8244

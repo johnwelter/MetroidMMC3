@@ -251,9 +251,11 @@ Unknown95E0: 	.byte $00, $00
 Unknown95E2:	.byte $00, $00
 Unknown95E4:	.byte $69 
 
+AreaEnemySpecificUpdate:
 L95E5:	LDA EnDataIndex, X
-L95E8:	JSR $8024
+L95E8:	JSR AreaChooseRoutine
 
+AreaEnemyRoutines:
 L95EB:	.word $99B8
 L95ED:	.word $99D3
 L95EF:	.word $99E5
@@ -290,6 +292,7 @@ L9609:	.word $0000
 ; F - 
 
 ;double width table, for animation indexes (left and right/up and down anims)
+EnDirAnimTb0B:
 L960B:	.byte $27, $27, $29, $29, $2D, $2B, $31, $2F, $33, $33, $41, $41, $4B, $4B, $55, $53
 L961B:	.byte $72, $74, $00, $00, $00, $00, $69, $69, $69, $69, $00, $00, $00, $00, $00, $00
 
@@ -297,10 +300,12 @@ EnemyHitPointTbl:
 L962B:	.byte $08, $08, $04, $FF, $02, $02, $04, $01, $20, $FF, $FF, $04, $01, $00, $00, $00
 
 ;double width table, for animation indexes (left and right/up and down anims)
+EnDirAnimTb3B:
 L963B:	.byte $05, $05, $0B, $0B, $17, $13, $1B, $19, $23, $23, $35, $35, $48, $48, $59, $57 
 L964B:	.byte $6C, $6F, $5B, $5D, $62, $67, $69, $69, $69, $69, $00, $00, $00, $00, $00, $00
 
 ;double width table, for animation indexes (left and right/up and down anims)
+EnDirAnimTb5B:
 L965B:	.byte $05, $05, $0B, $0B, $17, $13, $1B, $19, $23, $23, $35, $35, $48, $48, $50, $4D
 L966B:	.byte $6C, $6F, $5B, $5D, $5F, $64, $69, $69, $69, $69, $00, $00, $00, $00, $00, $00
 
@@ -431,111 +436,123 @@ L9983:	.byte $07, $C2, $06, $A2, $05, $92, $05, $12, $06, $22, $07, $42, $50, $7
 
 L9992:	.byte $05, $C2, $04, $A2, $03, $92, $03, $12, $04, $22, $05, $42, $50, $72, $FF
 
-L99A1:	LDA $81
-L99A3:	CMP #$01
-L99A5:	BEQ $99B0
-L99A7:	CMP #$03
-L99A9:	BEQ $99B5
-L99AB:	LDA $00
-L99AD:	JMP $8000
-L99B0:	LDA $01
-L99B2:	JMP $8003
-L99B5:	JMP $8006
+FinishEnemyAreaUpdate:
+L99A1:	LDA $81						; load enemy cached status
+L99A3:	CMP #$01					; comapre to waiting
+L99A5:	BEQ $99B0					; equal? jump ahead and go to CallUpdateEnemyAnim1
+L99A7:	CMP #$03					; 	else, compare to dead
+L99A9:	BEQ $99B5					; 	equal? jump to CallCheckObjectAttribs
+L99AB:	LDA $00						;		else, load temp0
+L99AD:	JMP CallUpdateEnemyAnim0	;		and go to CallUpdateEnemyAnim0
+L99B0:	LDA $01						; load temp1
+L99B2:	JMP CallUpdateEnemyAnim1	; update enemy anim 1
+L99B5:	JMP CallCheckObjectAttribs	; or if we're dead, check object attribs 
 
-L99B8:	LDA #$09
-L99BA:	STA $85
-L99BC:	STA $86
-L99BE:	LDA EnStatus,X
-L99C1:	CMP #$03
-L99C3:	BEQ $99C8
-L99C5:	JSR $801B
-L99C8:	LDA #$06
-L99CA:	STA $00
-L99CC:	LDA #$08
-L99CE:	STA $01
-L99D0:	JMP $99A1
+Enemy0Update:
+L99B8:	LDA #$09					; load 9
+L99BA:	STA $85						; store in 85
+L99BC:	STA $86						; and 86
+L99BE:	LDA EnStatus,X				; get the enemy status
+L99C1:	CMP #$03					; compare to dying
+L99C3:	BEQ PrepEnemyAnimUpdate		; if we're dying, jump ahead
+L99C5:	JSR $801B					; 	else, quick detour
 
-L99D3:	LDA #$0F
-L99D5:	JMP $99BA
-L99D8:	LDA EnStatus,X
-L99DB:	CMP #$03
-L99DD:	BEQ $99E2
-L99DF:	JSR $801E
-L99E2:	JMP $99C8
-L99E5:	LDA #$21
-L99E7:	STA $85
-L99E9:	LDA #$1E
-L99EB:	STA $86
-L99ED:	LDA EnStatus,X
-L99F0:	CMP #$03
-L99F2:	BEQ $99F7
-L99F4:	JSR $801B
-L99F7:	JMP $99C8
-L99FA:	LDA $81
-L99FC:	CMP #$01
-L99FE:	BEQ $9A44
-L9A00:	CMP #$03
-L9A02:	BEQ $9A49
-L9A04:	LDA EnCounter,X
-L9A07:	CMP #$0F
-L9A09:	BCC $9A3F
-L9A0B:	CMP #$11
-L9A0D:	BCS $9A16
-L9A0F:	LDA #$3A
-L9A11:	STA $6B01,X
-L9A14:	BNE $9A3F
-L9A16:	DEC $6B01,X
-L9A19:	BNE $9A3F
-L9A1B:	LDA #$00
-L9A1D:	STA EnStatus,X
-L9A20:	LDY #$0C
-L9A22:	LDA #$0A
-L9A24:	STA $00A0,Y
-L9A27:	LDA EnYRoomPos,X
-L9A2A:	STA $00A1,Y
-L9A2D:	LDA EnXRoomPos,X
-L9A30:	STA $00A2,Y
-L9A33:	LDA EnNameTable,X
-L9A36:	STA $00A3,Y
-L9A39:	DEY 
+PrepEnemyAnimUpdate:
+L99C8:	LDA #$06					; load 6 for enemy anim update 0
+L99CA:	STA $00						; store in temp0
+L99CC:	LDA #$08					; load 1 for enemy anim update 1
+L99CE:	STA $01						; store in temp1
+L99D0:	JMP FinishEnemyAreaUpdate	; jump to section above
+
+Enemy1Update:
+L99D3:	LDA #$0F					; load F
+L99D5:	JMP $99BA					; jump back and do the 0 enemy routine
+
+Enemy3Update:
+L99D8:	LDA EnStatus,X				; load enemy status
+L99DB:	CMP #$03					; check if we're dying
+L99DD:	BEQ $99E2					; if so, jump behind to the 0 routine
+L99DF:	JSR $801E					; else, take a detour
+L99E2:	JMP PrepEnemyAnimUpdate		; THEN jump back
+
+Enemy2Update:
+L99E5:	LDA #$21					; load 21
+L99E7:	STA $85						; store in 85
+L99E9:	LDA #$1E					; load 1E
+L99EB:	STA $86						; store in 86
+L99ED:	LDA EnStatus,X				; load enemy status
+L99F0:	CMP #$03					; check if we're dying
+L99F2:	BEQ $99F7					; if so, jump back to enemy 0 routine
+L99F4:	JSR $801B					; else, quick detour
+L99F7:	JMP PrepEnemyAnimUpdate		; THEN jump back
+
+Enemy4Update:
+L99FA:	LDA $81						; load cached enemy status
+L99FC:	CMP #$01					; compare with waiting
+L99FE:	BEQ $9A44					; if wating, jump ahead to updating anim 1
+L9A00:	CMP #$03					; compare to dying
+L9A02:	BEQ $9A49					; if dying, go check the anim attributes
+L9A04:	LDA EnCounter,X				; else, get the enemy counter
+L9A07:	CMP #$0F					; compare with F 
+L9A09:	BCC $9A3F					; less than? jump ahead to updateing anim 0
+L9A0B:	CMP #$11					; compare with 11
+L9A0D:	BCS $9A16					; greater ot equal? jump ahead
+L9A0F:	LDA #$3A					; 	else load 3A
+L9A11:	STA $6B01,X					; 	store in 6B01
+L9A14:	BNE $9A3F					; 	not equal, jump ahead to updating anim 0
+L9A16:	DEC $6B01,X					;		else, dec 6B01
+L9A19:	BNE $9A3F					;		not 0? jump ahead to anim 0 update
+L9A1B:	LDA #$00					;			else, load 0
+L9A1D:	STA EnStatus,X				;			clear enemy 
+L9A20:	LDY #$0C					;			
+L9A22:	LDA #$0A					;			
+L9A24:	STA EnBurst0Addr,Y			;			store 0A into AC
+L9A27:	LDA EnYRoomPos,X			;			load enemy y pos
+L9A2A:	STA EnBurstYPosAddr,Y		;			store in AD
+L9A2D:	LDA EnXRoomPos,X			;			load enemy x pos
+L9A30:	STA EnBurstXPosAddr,Y		;			store in AE
+L9A33:	LDA EnNameTable,X			;			get enemy name table
+L9A36:	STA EnBurstNTAddr,Y			;			store in AF
+L9A39:	DEY 						;			
 L9A3A:	DEY 
 L9A3B:	DEY 
-L9A3C:	DEY 
-L9A3D:	BPL $9A22
-L9A3F:	LDA #$02
-L9A41:	JMP $8000
+L9A3C:	DEY 						;			Sub 4 from Y
+L9A3D:	BPL $9A22					;			repeat while positive (4 times)
+L9A3F:	LDA #$02					;
+L9A41:	JMP CallUpdateEnemyAnim0
 L9A44:	LDA #$08
-L9A46:	JMP $8003
-L9A49:	JMP $8006
+L9A46:	JMP CallUpdateEnemyAnim1
+L9A49:	JMP CallCheckObjectAttribs
 
-L9A4C:	JSR $8009
-L9A4F:	AND #$03
-L9A51:	BEQ $9A87
-L9A53:	LDA $81
-L9A55:	CMP #$01
-L9A57:	BEQ $9A44
-L9A59:	CMP #$03
-L9A5B:	BEQ $9A49
-L9A5D:	LDA EnStatus,X
-L9A60:	CMP #$03
-L9A62:	BEQ $9A87
-L9A64:	LDA $040A,X
-L9A67:	AND #$03
-L9A69:	CMP #$01
-L9A6B:	BNE $9A7E
-L9A6D:	LDY EnYRoomPos,X
-L9A70:	CPY #$E4
-L9A72:	BNE $9A7E
-L9A74:	JSR $9ABD
-L9A77:	LDA #$03
-L9A79:	STA $040A,X
-L9A7C:	BNE $9A84
-L9A7E:	JSR $9AE2
+Enemy5Update:
+L9A4C:	JSR $8009							; get random value 
+L9A4F:	AND #$03							; keep the least 2 bits
+L9A51:	BEQ $9A87							; if it was 0 jump ahead
+L9A53:	LDA $81								; 	else, load cached enemty status
+L9A55:	CMP #$01							;	if waiting
+L9A57:	BEQ $9A44							;		jump behind to update anim 1
+L9A59:	CMP #$03							;	if dying
+L9A5B:	BEQ $9A49							;		jump behind to cehck object attributes
+L9A5D:	LDA EnStatus,X						;	load current enemy status
+L9A60:	CMP #$03							;	if dying
+L9A62:	BEQ $9A87							;		jump ahead to update enemy anim
+L9A64:	LDA $040A,X							;	not dying, load orientation
+L9A67:	AND #$03							;	keep bottom two bits
+L9A69:	CMP #$01							; 	compare with right facing
+L9A6B:	BNE $9A7E							;	jump ahead if not
+L9A6D:	LDY EnYRoomPos,X					;		else, load enemy Y pos into Y
+L9A70:	CPY #$E4							;		compare to near below the room
+L9A72:	BNE $9A7E							; 	not equal? jump ahead
+L9A74:	JSR ToggleEnHoriRealtionFlag		;		if we are below, 
+L9A77:	LDA #$03							;		load 3 (normal to the left)
+L9A79:	STA $040A,X							;		store in orientation
+L9A7C:	BNE $9A84							;	branch always
+L9A7E:	JSR $9AE2							;
 L9A81:	JSR $9AA8
 L9A84:	JSR $9AC6
-L9A87:	LDA #$03
-L9A89:	JSR $800C
-L9A8C:	JMP $8006
+L9A87:	LDA #$03							; load 3
+L9A89:	JSR $800C							; update enemy anim
+L9A8C:	JMP CallCheckObjectAttribs			
 L9A8F:	LDA $0405,X
 L9A92:	LSR 
 L9A93:	LDA $040A,X
@@ -550,17 +567,19 @@ L9AA0:	.byte $35, $35, $3E, $38, $3B, $3B, $38, $3E
 L9AA8:	LDX PageIndex
 L9AAA:	BCS $9AC5
 L9AAC:	LDA $00
-L9AAE:	BNE $9ABD
+L9AAE:	BNE ToggleEnHoriRealtionFlag
 L9AB0:	LDY $040A,X
 L9AB3:	DEY 
 L9AB4:	TYA 
 L9AB5:	AND #$03
 L9AB7:	STA $040A,X
 L9ABA:	JMP $9A8F
-L9ABD:	LDA $0405,X
-L9AC0:	EOR #$01
-L9AC2:	STA $0405,X
-L9AC5:	RTS
+
+ToggleEnHoriRealtionFlag:
+L9ABD:	LDA $0405,X		;load enemy status flags
+L9AC0:	EOR #$01		;flip the bit
+L9AC2:	STA $0405,X		;store the new flags
+L9AC5:	RTS				;return
 
 L9AC6:	JSR $9ADA
 L9AC9:	JSR $9AE2
@@ -577,18 +596,20 @@ L9ADE:	TYA
 L9ADF:	AND #$03
 L9AE1:	RTS
 
-L9AE2:	LDY $0405,X
-L9AE5:	STY $00
-L9AE7:	LSR $00
-L9AE9:	ROL 
-L9AEA:	ASL 
-L9AEB:	TAY 
-L9AEC:	LDA $8049,Y
-L9AEF:	PHA 
-L9AF0:	LDA $8048,Y
-L9AF3:	PHA 
-L9AF4:	RTS
+;enter here with orientation in A, 0000 00rr
+L9AE2:	LDY $0405,X		; load enemy status flags to Y
+L9AE5:	STY $00			; store in temp0
+L9AE7:	LSR $00			; shift temp0 to right, kicking hori relation bit to carry
+L9AE9:	ROL 			; 0000 0rrh
+L9AEA:	ASL 			; 0000 rrh0
+L9AEB:	TAY 			; move to y
+L9AEC:	LDA $8049,Y		; read from table
+L9AEF:	PHA 			; push A to stack
+L9AF0:	LDA $8048,Y		; get previous byte from table
+L9AF3:	PHA 			; push A to stack
+L9AF4:	RTS				; RTS to new location
 
+Enemy6Update:
 L9AF5:	LDA $81
 L9AF7:	CMP #$01
 L9AF9:	BEQ $9B2D
@@ -611,10 +632,10 @@ L9B1E:	BCS $9B25
 L9B20:	LDA #$00
 L9B22:	STA $6AFE,X
 L9B25:	LDA #$03
-L9B27:	JMP $8000
-L9B2A:	JMP $8006
+L9B27:	JMP CallUpdateEnemyAnim0
+L9B2A:	JMP CallCheckObjectAttribs
 L9B2D:	LDA #$08
-L9B2F:	JMP $8003
+L9B2F:	JMP CallUpdateEnemyAnim1
 L9B32:	LDA EnStatus,X
 L9B35:	CMP #$02
 L9B37:	BNE $9B71
@@ -658,7 +679,7 @@ L9B8D:	JSR $8027
 L9B90:	BCC $9B9A
 L9B92:	JSR $9C96
 L9B95:	LDA #$03
-L9B97:	JMP $8003
+L9B97:	JMP CallUpdateEnemyAnim1
 L9B9A:	LDA #$00
 L9B9C:	STA EnStatus,X
 L9B9F:	RTS
@@ -713,7 +734,7 @@ L9C0D:	LDA #$03
 L9C0F:	STA EnStatus,X
 L9C12:	LDA #$01
 L9C14:	JSR $800C
-L9C17:	JMP $8006
+L9C17:	JMP CallCheckObjectAttribs
 L9C1A:	JMP $9BD2
 L9C1D:	LDX #$50
 L9C1F:	JSR $9C2A
