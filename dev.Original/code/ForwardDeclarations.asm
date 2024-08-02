@@ -1,5 +1,5 @@
 ;;AreaCommon declares
-.alias AreaUpdate 						$8000
+.alias AreaRefresh 						$8000
 .alias ExtractVerticalNibble 			$8296
 .alias ExtractHorizontalNibble 			$832F
 .alias ObjectAnimIndexTbl				$8572

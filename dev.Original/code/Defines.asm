@@ -398,7 +398,7 @@
 								;|||| ||||
 								;|||| |||+-enemy in relation to player horizontal (0 = left, 1 = right)
 								;|||| ||+--visibility
-								;|||| |+---enemy in relation to player vertical (
+								;|||| |+---enemy in relation to player vertical (0 = below, 1 = above)
 								;|||| +----??
 								;|||| 
 								;|||+------??

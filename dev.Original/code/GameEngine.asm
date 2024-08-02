@@ -231,7 +231,7 @@ NMI:
 GoMainRoutine:
 	lda GameMode			;0 if game is running, 1 if at intro screen.
 	beq +					;Branch if mode=Play.
-	jmp AreaUpdate				;Jump to $8000, where a routine similar to the one-->
+	jmp AreaRefresh			;Jump to $8000, where a routine similar to the one-->
 							;below is executed, only using TitleRoutine instead
 							;of MainRoutine as index into a jump table.
 *	lda Joy1Change			;
@@ -8022,7 +8022,7 @@ SetEnemyUpdateSkip:
 	tay					;move A to Y
 	txa					;move enemy index to A
 	jsr Adiv16			;move high nibble to low nibble
-	eor FrameCount		;get current frame count, flip bits
+	eor FrameCount		;get current frame count, return 1 if the frame count and enemy are the opposite parity (even v odd)
 	lsr					;shift right to get LSB into carry (n)
 	tya					;  .... ..0d	return to status flags
 	ror					;  n... ...0 d	bring in inverted skip update flag, pop distance flag
@@ -8032,17 +8032,17 @@ SetEnemyUpdateSkip:
 
 ;;update enemy wait state
 EnemyWaitState:  				
-	lda $0405,x					;load the status flags
-	asl							;push skip update flag left
-	bmi +						;skip to damage checks if skipping update (high bit set)
-	lda #$00					;load 0
-	sta $6B01,x					;store into enemy data
-	sta EnCounter,x				;store into enemy counter
-	sta $040A,x					;store into enemy orientation
-	jsr EnemyDirectionToSamus	;
-	jsr CheckDistanceToPlayer	;
-	jsr UnknownF682
-	jsr UnknownF676
+	lda $0405,x						;load the status flags
+	asl								;push skip update flag left
+	bmi +							;skip to damage checks if skipping update (high bit set)
+	lda #$00						;load 0
+	sta $6B01,x						;store into enemy data
+	sta EnCounter,x					;clear enemy counter
+	sta $040A,x						;reset enemy orientation
+	jsr EnemyDirectionToSamus		;update enemy relation to samus, as well as velocity direction
+	jsr CheckDistanceToSamus		;update distance related triggers to samus
+	jsr UpdateEnAnimDirection963B	;update direction of wait animation
+	jsr UnknownF676					;
 	lda EnDelay,x
 	beq +
 	jsr UnknownF7BA
@@ -8062,7 +8062,7 @@ EnemyMoveState:
 	dec EnStatus,x				;set us back to a delay/wait status
 	bne ++						;skip move updates for enemy damage
 *   jsr EnemyDirectionToSamus	;for enemies that home in on samus while moving, update it
-	jsr CheckDistanceToPlayer	;not sure exactly what this does yet
+	jsr CheckDistanceToSamus	;not sure exactly what this does yet
 	jsr EnemyUnderRoom			;kill enemies that somehow get under the map in horizontal rooms
 *	jsr UpdateEnemyDamage		;if the enemy was shot, update their damage
 
@@ -8362,7 +8362,7 @@ ContinueEnemyDamge1:
 	lda #$00						;otherwise, load 0 and jump to 
 	jsr UnknownDCFC					;the enemy kill/item drop routine - for normal explosions
 	ldx PageIndex					;I THINK THE REST OF THIS IS FINDING AND POPULATING AN EXPLOSION SLOT 
-*   jsr UnknownF844					;gets us some kinda index into 960B- by loading up the eney data, bit shifting down (based on the neg flag), then roling the carry left onto the enemy index
+*   jsr GetEnemyDirectionDataIndex	;get enemy direction animation index
 	lda $960B,y						;load that value at the index, and take it to the reset anim index
 	jsr ResetAnimIndex
 	sta EnCounter,x					;store whatever we got out of that into the en counter
@@ -8398,46 +8398,46 @@ GetPageIndex:
 	rts
 
 UnknownF676:  
-	jsr $80B0
-	asl
-	asl
-	asl
-	and #$C0
-	sta $6B03,x
+	jsr $80B0	;get the enemy data at 977B, MSB in carry everything else shifted left
+	asl			;
+	asl			;
+	asl			;shift the rest left to move the low nibble to the high nibble
+	and #$C0	;and with 1100 000
+	sta $6B03,x	;store into 6B03
 	rts
 
-UnknownF682:  
-	jsr UnknownF844
+UpdateEnAnimDirection963B:  
+	jsr GetEnemyDirectionDataIndex
 	lda $963B,y
 	cmp EnResetAnimIndex,x
-	beq +
+	beq +					;same animation, no need to set 
 ResetAnimIndex:  
-	sta EnResetAnimIndex,x
-UnknownF690:  
-	sta EnAnimIndex,x
-UnknownF693:  
-	lda #$00
+	sta EnResetAnimIndex,x	;else, reset with new anim index
+SetEnAnimIndex:  
+	sta EnAnimIndex,x		;set anim index
+ResetEnAnimDelay:  
+	lda #$00				;reset anim delay
 	sta EnAnimDelay,x
 *   rts
 
-UnknownF699:  
-	jsr UnknownF844
+UpdateEnAnimDirection965B:  
+	jsr GetEnemyDirectionDataIndex
 	lda $965B,y
 	cmp EnResetAnimIndex,x
 	beq Exit12
 	jsr ResetAnimIndex
 	ldy EnDataIndex,x
 	lda $967B,y
-	and #$7F
-	beq Exit12
-	tay
-*       dec EnAnimIndex,x
-	dey
-	bne -
+	and #$7F			;check if MSB is set... could BPL/BMI instead to save an instruction?
+	beq Exit12			;leave if MSB was not set
+	tay					;	else, move the set flag to Y
+*   dec EnAnimIndex,x	;dec the index until y is 0
+	dey					;at 1000 0000 -> takes 128, takes 256 at 0000 0000
+	bne -				
 Exit12: rts
 
 EnemyDirectionToSamus:  	
-	lda #$00
+	lda #$00				;this gets used per enemy, so we'll need to figure out what this does
 	sta $82
 	jsr LoadFromEn968B		; get movement attributes for enemy
 	tay						; store it off (for constant use)
@@ -8462,11 +8462,11 @@ CheckHorizontalToSamus:
 	jsr ClearEnStatusFlags	; 	clear horizontal relation flag on enemy
 	lda ScrollDir			; 	check the current scroll direction
 	cmp #$02
-	bcc +					; 	scroll direction is vertical, jump ahead
+	bcc +					; 	scroll direction is vertical, jump ahead - X values will always be the same
 	jsr OnPlayerNametable	; 		if horizontal- check if we're on the same name table as samus
 	bcc +					; 		carry is clear if true - we can compare distances
 	tya						; 			else, move enemy name table to A
-	eor PPUCNT0ZP			; 			only return 1 if the current PPU nametable is ALSO different from the enemy
+	eor PPUCNT0ZP			; 			use the current PPU nametable to determine direction
 	bcs +++					; 		
 *   lda EnXRoomPos,x		; 	if in vertical scroll/ same nametable as samus in horizontal scroll
 	cmp ObjectX				; 	compare enemy and player horizontal position
@@ -8482,33 +8482,33 @@ CheckHorizontalToSamus:
 	jsr $81DA				; 	flip horizontal velocity to match relation to samus
 
 CheckVerticalToSamus:
-*	lda #$FB				; 	
-	jsr ClearEnStatusFlags
-	lda ScrollDir			;get scroll direction
-	cmp #$02				;compare with vertical
-	bcs +					;if we ARE horizontal, jump ahead
-	jsr OnPlayerNametable		;else, vertical- check if on same name talbe
-	bcc +					;clear if on same table- jump ahead
-	tya						;else, not on same table- put table in A
-	eor PPUCNT0ZP			;toggle or keep bit of PPUCNT0ZP
-	bcs +++					;if we weren't on the same name table, jump further ahead
-*	lda EnYRoomPos,x		;else, get enemy y position
-	cmp ObjectY				;get samus y position
-	bne +					;if they aren't equal, jump ahead
-	inc $82					;else, inc 82
-	inc $82					; twice
-*	rol						;move MSB to LSB of enemy room position
-*	and #$01				;mask with 0000 0001 (enemy y pos if same table, table number if not)
+*	lda #$FB				;	set enemy vertical relation flag	
+	jsr ClearEnStatusFlags	;	clear vertical relation flag on enemy
+	lda ScrollDir			;	check the current scroll direction
+	cmp #$02				;	
+	bcs +					;	scroll direction is horizontal, jump ahead - Y values will always be the same
+	jsr OnPlayerNametable	; 		if verttical- check if we're on the same name table as samus
+	bcc +					; 		carry is clear if true - we can compare distances
+	tya						; 			else, move enemy name table to A
+	eor PPUCNT0ZP			; 			use the current PPU nametable to determine direction
+	bcs +++					;
+*	lda EnYRoomPos,x		; 	if in horizontal scroll/ same nametable as samus in vertical scroll
+	cmp ObjectY				; 	compare enemy and player vertical position
+	bne +					; 	if they aren't the same, jump over
+	inc $82					; 		else, inc 82
+	inc $82					; 		twice!
+*	rol						; 	A = 1 if greater/equal, 0 if less than
+*	and #$01				;	get final horizontal relation flag (same table? use difference : use enemy nametable in relation to current PPU nametable )
 	asl						;
-	asl						; up to 0100
-	jsr EnableEnStatusFlags	; enable flag
+	asl						; 	move to proper flag position
+	jsr EnableEnStatusFlags	; 	enable flag
 	lsr						;
-	lsr
-	lsr						;pop it out
-	ror						;roll it back to MSB
-	eor $0402,x				;flip bits with vert speed
-	bpl +					;if still positive, return 
-	jmp $820F				;else, do thing
+	lsr						;
+	lsr						;	get the direction back out to carry flag (0 = below samus, 1 = above samus)
+	ror						;	roll it back to MSB
+	eor $0402,x				;	if the velocity direction does not match, we'll get a negative number
+	bpl +					; 	if we're still positive, jump ahead
+	jmp $820F				; 	flip vertical velocity to match relation to samus
 
 EnableEnStatusFlags:
 	ora $0405,x
@@ -8527,51 +8527,54 @@ OnPlayerNametable:
 	lsr					;set the carry flag with the result
 	rts					;return
 
-CheckDistanceToPlayer:  
-	lda #$E7						;1110 0111	create default mask
-	sta $06							;store in zero page
-	lda #$18						;0001 1000  set the flags on the status 
-	jsr EnableEnStatusFlags
-	ldy EnDataIndex,x				;get enemy data index
-	lda $96AB,y						;load data from area for this enemy
-	beq +++++						;if 0, return with flags set
-	tay								;place A into Y
-	lda $0405,x						;load status flags
-	and #$02						;check visibility flag
-	beq ++++						;not visible, clear the flags
-	tya								;visible, move the data back into A
-	ldy #$F7						;make new mask 1111 0111
-	asl								;check if bit 7 of data was set
-	bcs +							;if so, keep current mask
-	ldy #$EF						;else, create 1110 1111 mask
-*   lsr								;get data back with upper flag removed
-	sta $02							;store data in zero page
-	sty $06							;store mask in zero page
-	lda ObjectY						; prep for a comparison between samus' Y position
+;you may notice we use nametabes to compare distance, but not using the PPU control to check screen direction
+;it's probably not needesd, since we're doing an ABS check anyways
+;i believe this tracks the trigger direction for a distance check
+CheckDistanceToSamus:  
+	lda #$E7						; 1110 0111	create default mask
+	sta $06							; store in temp 6
+	lda #$18						; 0001 1000
+	jsr EnableEnStatusFlags			; start with flags set by default
+	ldy EnDataIndex,x				; get enemy data index
+	lda $96AB,y						; load distance check data
+	beq +++++						; if 0, return with flags set
+	tay								; 	place distance data into Y
+	lda $0405,x						; 	load status flags
+	and #$02						; 	check visibility flag
+	beq ++++						; 	not visible, clear the flags
+	tya								; 		visible, move the distance data back into A
+	ldy #$F7						; 		make new mask 1111 0111
+	asl								; 		check if distance data MSB was set
+	bcs +							; 		if so, keep current mask
+	ldy #$EF						; 			else, create 1110 1111 mask
+*   lsr								; 		get data back with upper flag removed
+	sta $02							; 		store distacne in zero page
+	sty $06							; 		store mask in zero page
+	lda ObjectY						; 	prep for a comparison between samus' Y position
 	sta $00							;
-	ldy EnYRoomPos,x				; and the enemy's Y position
+	ldy EnYRoomPos,x				; 	and the enemy's Y position
 	lda $0405,x						;  
-	bmi +							; else if the highest bit isn't set on the enemy's status flags 
-	ldy ObjectX						; prep for a comparison between samus' x position
+	bmi +							; 	check distance check flag on enemy status flags- 1 = vert, 0 = hori
+	ldy ObjectX						; 	prep for a comparison between samus' x position
 	sty $00							; 
-	ldy EnXRoomPos,x				; and the enemy's X position
-*   lda ObjectHi					; Get Samus' nametable
-	lsr								; pop nametable out
-	ror $00							; shift player position right, with name table coming in the MSB
-	lda EnNameTable,x				;load enemy name table
-	lsr								;pop name table out
-	tya								;move enemy position into A
-	ror								;shift position right, bring in enemy name table into MSB
-	sec								;set the carry flag
-	sbc $00							;subtract the player position
-	bpl +							;if the result is positive, jump ahead
-	jsr TwosCompliment				;else if it's negative, flip it- we want ABS
-*   lsr								;
-	lsr								;divide result by 8
+	ldy EnXRoomPos,x				; 	and the enemy's X position
+*   lda ObjectHi					; 	Get Samus' nametable
+	lsr								; 	pop nametable out
+	ror $00							; 	shift player position right, with name table coming in the MSB
+	lda EnNameTable,x				; load enemy name table
+	lsr								; pop name table out
+	tya								; move enemy position into A
+	ror								; shift position right, bring in enemy name table into MSB
+	sec								; set the carry flag
+	sbc $00							; subtract the player position
+	bpl +							; if the result is positive, jump ahead
+	jsr TwosCompliment				; else if it's negative, flip it- we want ABS
+*   lsr								; 
+	lsr								; divide result by 8, fully moving everything back to the low nibble
 	lsr								;
-	cmp $02							;compare to leftover data from table- a distance?
-	bcc ++							;if we're less than, leave
-*	lda $06							;use either 1110 0111, 1111 0111, or 1110 1111 for the status flags
+	cmp $02							; check if the number is grater than the distance we're checking
+	bcc ++							; if we're less than, leave - if greater or equal, leave with flags set
+*	lda $06							; use either 1110 0111, 1111 0111, or 1110 1111 for the status flags
 ClearEnStatusFlags:  
 	and $0405,x				;clear flags from process
 	sta $0405,x				;store flags in enemy
@@ -8592,7 +8595,7 @@ UnknownF7BA:
 	jsr SFX_OutOfHole
 	ldx PageIndex
 *	inc EnStatus,x
-	jsr UnknownF699
+	jsr UpdateEnAnimDirection965B
 	ldy EnDataIndex,x
 	lda $96CB,y
 	clc
@@ -8636,20 +8639,20 @@ UnknownF7BA:
 *	lda #$DF
 	jmp ClearEnStatusFlags
 
-UnknownF83E:
-  lda $0405,x
-  jmp +
+GetEnemyXDirectionDataIndex:
+  lda $0405,x			;load enemy status flag as is, get the X relation bit into the carry flag
+  jmp +					;jump ahead, skipping the check for Y relation - not sure if this is useful? only used once in AreaCommon and deos nothing
 
-UnknownF844:  
-	lda $0405,x
-	bpl +
+GetEnemyDirectionDataIndex:  
+	lda $0405,x			;load enemy status flags
+	bpl +				;if we're checking X direction, not Y, only get the X relation bit into carry
+	lsr				
 	lsr
-	lsr
-*	lsr
-	lda EnDataIndex,x
-	rol
-	tay
-	rts
+*	lsr					;else, we'll move a couple more over to get the Y realtion bit into carry
+	lda EnDataIndex,x	;load the enemy daya index
+	rol					;take our relation bit and put it in the LSB- effectifly double the index, and add 1
+	tay					;move this to Y 
+	rts					
 
 GetRandom_EnIdxFrCnt:
 	txa
@@ -8728,7 +8731,7 @@ UnknownF870:
 	and #$01
 	tay
 	lda $0083,y
-	jmp UnknownF690
+	jmp SetEnAnimIndex
 
 UnknownF8E8:  ldy #$60
 	clc
@@ -9069,17 +9072,17 @@ Exit13:
 	rts				;Exit from multiple routines.
 
 UnknownFB88:
-  ldx PageIndex
-	jsr UnknownF844
+	ldx PageIndex
+	jsr GetEnemyDirectionDataIndex
 	lda $6B01,x
 	inc $6B03,x
-	dec $6B03,x
+	dec $6B03,x	;see if we get to 0 with this so we don't have to sacrifice out A load
 	bne +
 	pha
 	pla
-*       bpl +
+*   bpl +
 	jsr TwosCompliment		;($C3D4)
-*       cmp #$08
+*   cmp #$08
 	bcc +
 	cmp #$10
 	bcs Exit13
@@ -9093,22 +9096,22 @@ UnknownFB88:
 	dec EnAnimIndex,x
 
 UnknownFBB9:
-	sta EnResetAnimIndex,x
-	jmp UnknownF693
+	sta EnResetAnimIndex,x	;called from area common after setting enemy hitpoints, hitpoints are in A
+	jmp ResetEnAnimDelay
 
-*       lda $963B,y
+*   lda $963B,y
 	cmp EnResetAnimIndex,x
 	beq Exit13
 	jmp ResetAnimIndex
 
 UnknownFBCA:
   ldx PageIndex
-	jsr UnknownF844
+	jsr GetEnemyDirectionDataIndex
 	lda $965B,y
 	cmp EnResetAnimIndex,x
 	beq Exit13
 	sta EnResetAnimIndex,x
-	jmp UnknownF690
+	jmp SetEnAnimIndex
 
 DestroyGeenSpinner:
   lda #$40

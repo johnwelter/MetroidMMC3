@@ -271,12 +271,7 @@ L9605:	.word $0000
 L9607:	.word $0000
 L9609:	.word $0000
 
-L960B:	.byte $27, $27, $29, $29, $2D, $2B, $31, $2F, $33, $33, $41, $41, $4B, $4B, $55, $53
-
-L961B:	.byte $72, $74, $00, $00, $00, $00, $69, $69, $69, $69, $00, $00, $00, $00, $00, $00
-
-EnemyHitPointTbl:
-
+;enemy data tables
 ; 0 -
 ; 1 -
 ; 2 - glider
@@ -294,14 +289,19 @@ EnemyHitPointTbl:
 ; E - 
 ; F - 
 
+;double width table, for animation indexes (left and right/up and down anims)
+L960B:	.byte $27, $27, $29, $29, $2D, $2B, $31, $2F, $33, $33, $41, $41, $4B, $4B, $55, $53
+L961B:	.byte $72, $74, $00, $00, $00, $00, $69, $69, $69, $69, $00, $00, $00, $00, $00, $00
+
+EnemyHitPointTbl:
 L962B:	.byte $08, $08, $04, $FF, $02, $02, $04, $01, $20, $FF, $FF, $04, $01, $00, $00, $00
 
+;double width table, for animation indexes (left and right/up and down anims)
 L963B:	.byte $05, $05, $0B, $0B, $17, $13, $1B, $19, $23, $23, $35, $35, $48, $48, $59, $57 
-
 L964B:	.byte $6C, $6F, $5B, $5D, $62, $67, $69, $69, $69, $69, $00, $00, $00, $00, $00, $00
 
+;double width table, for animation indexes (left and right/up and down anims)
 L965B:	.byte $05, $05, $0B, $0B, $17, $13, $1B, $19, $23, $23, $35, $35, $48, $48, $50, $4D
-
 L966B:	.byte $6C, $6F, $5B, $5D, $5F, $64, $69, $69, $69, $69, $00, $00, $00, $00, $00, $00
 
 ;some kinda data, so fuckin obfuscated.. used in area common
@@ -322,7 +322,11 @@ L968B:	.byte $01, $01, $01, $00, $86, $04, $89, $80, $81, $00, $00, $00, $82, $0
 ;some kind of timer for 40D
 L969B:	.byte $01, $01, $01, $01, $01, $01, $01, $01, $20, $01, $01, $01, $40, $00, $00, $00 
 
-;I know it contains something in x000 0000 regarding flag clears and if we wait for player position
+;disntace to samus for distancce checks
+;0000 0000
+;|||| ||||
+;|||| ++++-distance to check
+;+---------switch between which direction trigger was set (less than or greater) ?
 L96AB:	.byte $00, $00, $06, $00, $83, $00, $88, $00, $00, $00, $00, $00, $00, $00, $00, $00 
 
 EnemyInitDelayTbl:
@@ -347,6 +351,7 @@ L9773:	.byte $00, $00, $00, $00, $00, $00, $00, $00
 ;sure it's a quick carry flag check for the MSB
 ;0000 0000
 ;|||| ||||
+;|||| ++---- ? used in F676 to populate a byte on an enemy at 6B03, checked mostly in area common
 ;|||+------- if the enemy is a metroid for damage and SFX purposes
 ;|+--------- wether to flip 407(?) as well as 406(EnCounter) when flipping velocities for enemies that check relation to samus
 L977B:	.byte $64, $6C, $21, $01, $04, $00, $4C, $40, $04, $00, $00, $40, $40, $00, $00, $00 

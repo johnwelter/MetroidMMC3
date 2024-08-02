@@ -23,7 +23,7 @@
 
 ;-----------------------------------------[ Start of code ]------------------------------------------
 
-AreaUpdate:
+AreaRefresh:
 L8000:	lda TitleRoutine		;
 L8002:	cmp #$15			;If intro routines not running, branch.
 L8004:	bcs ++				;

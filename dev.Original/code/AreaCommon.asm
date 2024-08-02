@@ -35,14 +35,14 @@
 
 ;-----------------------------------------[ Start of code ]------------------------------------------
 
-AreaUpdate:
+AreaRefresh:
 L8000:	JMP UpdateEnemyAnim0 
 L8003:	JMP UpdateEnemyAnim1   
 L8006:	JMP CheckObjectAttribs 
 L8009:	JMP GetRandom_EnIdxFrCnt
 L800C:	JMP UpdateEnemyAnim		;($E094)
 L800F:	JMP ResetAnimIndex 
-L8012:	JMP UnknownF83E
+L8012:	JMP GetEnemyXDirectionDataIndex	;this is useless, as Y gets squashed in init health
 L8015:	JMP EnemyInitHealth
 L8018:	JMP UnknownFBB9
 L801B:	JMP UnknownFB88
