@@ -1,1 +1,1 @@
-.require "../code/Title.asm" ; Title, pg 0
+.require "../code/AreaBanks/Title.asm" ; Title, pg 0

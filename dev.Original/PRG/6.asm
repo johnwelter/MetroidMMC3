@@ -1,1 +1,1 @@
-.require "../code/Graphics.asm" ; gfx, pg 6
+.require "../code/Defines/Graphics.asm" ; gfx, pg 6

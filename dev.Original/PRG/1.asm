@@ -1,1 +1,1 @@
-.require "../code/Brinstar.asm"  ; Brinstar, pg 1
+.require "../code/AreaBanks/Brinstar.asm"  ; Brinstar, pg 1

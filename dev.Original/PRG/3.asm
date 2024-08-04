@@ -1,1 +1,1 @@
-.require "../code/Tourian.asm" ; pg 3
+.require "../code/AreaBanks/Tourian.asm" ; pg 3

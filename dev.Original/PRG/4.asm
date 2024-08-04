@@ -1,1 +1,1 @@
-.require "../code/Kraid.asm" ; pg 4
+.require "../code/AreaBanks/Kraid.asm" ; pg 4

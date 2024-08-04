@@ -18,8 +18,8 @@
 
 .org $8000
 
-.require "Defines.asm"
-.require "GameEngineDeclarations.asm"
+.require "../Defines/Defines.asm"
+.require "../GameEngineDeclarations.asm"
 
 ;-----------------------------------------[ Start of code ]------------------------------------------
 

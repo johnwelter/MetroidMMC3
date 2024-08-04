@@ -16,8 +16,8 @@
 
 ;Brinstar (memory page 1)
 
-.require "Defines.asm"
-.require "GameEngineDeclarations.asm"
+.require "../Defines/Defines.asm"
+.require "../GameEngineDeclarations.asm"
 
 ;--------------------------------------[ Forward declarations ]--------------------------------------
 
@@ -51,10 +51,14 @@ CallGetEnemyXDirectionDataIndex:
 L8012:	JMP GetEnemyXDirectionDataIndex	
 CallEnemyInitHealth:
 L8015:	JMP EnemyInitHealth
-L8018:	JMP UnknownFBB9
+CallQueueEnAnimation:
+L8018:	JMP QueueEnAnimation
+CallUnknownFB88:
 L801B:	JMP UnknownFB88
-L801E:	JMP UnknownFBCA
-L8021:	JMP UnknownF870
+CallUpdateEnAnimationDirection:
+L801E:	JMP UpdateEnAnimationDirection
+CallLaunchEnProjectile:
+L8021:	JMP LaunchEnProjectile
 
 
 AreaChooseRoutine:

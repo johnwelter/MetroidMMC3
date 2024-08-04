@@ -13,7 +13,7 @@
 
 ;Graphics data (memory page 6)
 
-.require "GameEngineDeclarations.asm"
+.require "../GameEngineDeclarations.asm"
 
 .org $8000
 

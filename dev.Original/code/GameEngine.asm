@@ -20,11 +20,11 @@
 
 .org $C000
 
-.require "Defines.asm"
+.require "Defines/Defines.asm"
 
 ;-------------------------------------[ Forward declarations ]--------------------------------------
 
-.require "ForwardDeclarations.asm"
+.require "Defines/ForwardDeclarations.asm"
 
 ;----------------------------------------[ Start of code ]------------------------------------------
 
@@ -1788,7 +1788,7 @@ UpdateWorld:
 	jsr UpdateStatues		;($D9D4)Display of Ridley & Kraid statues.
 	jsr EnemyDestruction    ; destruction of enemies
 	jsr UpdateMellowEnemies ; update of Mellow/Memu enemies
-	jsr UnknownF93B
+	jsr UpdateEnProjectiles
 	jsr DestroyGeenSpinner  ; destruction of green spinners
 	jsr SamusEnterDoor		;($8B13)Check if Samus entered a door.
 	jsr DisplayDoors      	; display of doors
@@ -2087,8 +2087,8 @@ RunAnimationTbl:
 	.byte an_SamusRunPntUp
 
 RunAccelerationTbl:
-	.byte $30						;Accelerate right.
-	.byte $D0					;Accelerate left.
+	.byte $30								;Accelerate right.
+	.byte $D0								;Accelerate left.
 
 ; SamusRun
 ; ========
@@ -2104,7 +2104,7 @@ SamusRun:
 	bcs ++++
 	lda #an_SamusJump
 	sta AnimResetIndex
-	bcc ++++	  				; branch always
+	bcc ++++	  							; branch always
 *   cpy #$18
 	bcc +++
 	lda AnimResetIndex
@@ -2121,7 +2121,7 @@ SamusRun:
 	sta AnimResetIndex
 *   bit Joy1Status
 	bmi +
-	jsr StopVertMovement		;($D147)
+	jsr StopVertMovement					;($D147)
 *	lda #an_SamusRun
 	cmp AnimResetIndex
 	bne +
@@ -2130,24 +2130,24 @@ SamusRun:
 *   lda SamusInLava
 	beq +
 	lda Joy1Change
-	bmi JumpPressed       		; branch if JUMP pressed
+	bmi JumpPressed       					; branch if JUMP pressed
 *   jsr UnknownCF88
 	jsr UnknownD09C
 	jsr ReverseHoriAccelOnType04Collision
 	lda #$02
-	bne SetSamusData       		; branch always
+	bne SetSamusData       					; branch always
 *	lda SamusOnElevator	
 	bne +
 	jsr SetSamusRunAccel
 *   jsr UnknownCDBF
-	dec WalkSoundDelay  		; time to play walk sound?
-	bne +	       				; branch if not
+	dec WalkSoundDelay  					; time to play walk sound?
+	bne +	       							; branch if not
 	lda #$09
-	sta WalkSoundDelay  		; # of frames till next walk sound trigger
+	sta WalkSoundDelay  					; # of frames till next walk sound trigger
 	jsr SFX_SamusWalk
 *   jsr ReverseHoriAccelOnType04Collision
 	lda Joy1Change
-	bpl +	   					; branch if JUMP not pressed
+	bpl +	   								; branch if JUMP not pressed
 JumpPressed:
 	jsr SetSamusJump
 	lda #$12
@@ -2156,7 +2156,7 @@ JumpPressed:
 
 *   ora Joy1Retrig
 	asl
-	bpl +	   					; branch if FIRE not pressed
+	bpl +	   								; branch if FIRE not pressed
 	jsr UnknownCDD7
 *   lda Joy1Status
 	and #$03
@@ -2164,7 +2164,7 @@ JumpPressed:
 	jsr StopHorzMovement
 	jmp UnknownCD6B
 
-*   jsr BitScan					;($E1E1)
+*   jsr BitScan								;($E1E1)
 	cmp SamusDir
 	beq UnknownCD6B
 	sta SamusDir
@@ -2691,7 +2691,7 @@ SetSamusRoll:
 	jsr CheckMoveUp
 	bcc +	  ; branch if not possible to stand up
 	ldx #$00
-	jsr UnknownE8BE
+	jsr MakeObjectLocationStruct98B
 	stx $05
 	lda #$F5
 	sta $04
@@ -2977,7 +2977,7 @@ UnknownD2FD:
 
 UnknownD306:
   ldx #$00
-	jsr UnknownE8BE
+	jsr MakeObjectLocationStruct98B
 	tya
 	tax
 	jsr UnknownFD8F
@@ -3476,7 +3476,7 @@ UnknownD624:
 	sta $05
 	lda ObjVertSpeed,x
 	sta $04
-	jsr UnknownE8BE
+	jsr MakeObjectLocationStruct98B
 	jsr UnknownFD8F
 	bcc --
 	
@@ -5023,27 +5023,27 @@ ExplodePlacementTbl:
 ;Advance to next frame of enemy's animation. Basically the same as UpdateObjAnim, only for enemies.
 
 UpdateEnemyAnim:
-	ldx PageIndex				;Load index to desired enemy.
+	ldx PageIndex				; Load index to desired enemy.
 	ldy EnStatus,x				;
-	cpy #$05					;Is enemy in the process of dying?-->
-	beq +++						;If so, branch to exit.
+	cpy #$05					; Is enemy in the process of dying?-->
+	beq +++						; If so, branch to exit.
 	ldy EnAnimDelay,x			;
-	beq +						;Check if current anumation frame is ready to be updated.
-	dec EnAnimDelay,x			;Not ready to update. decrement delay timer and-->
-	bne +++						;branch to exit.
-*	sta EnAnimDelay,x			;Save new animation delay value.
-	ldy EnAnimIndex,x			;Load enemy animation index.
-*	lda (EnemyAnimPtr),y		;Get animation data.
-	cmp #$FF					;End of animation?
-	beq ++						;If so, branch to reset animation.
-	sta EnAnimFrame,x			;Store current animation frame data.
-	iny							;Increment to next animation data index.
+	beq +						; Check if current anumation frame is ready to be updated.
+	dec EnAnimDelay,x			;	Not ready to update. decrement delay timer and-->
+	bne +++						;	branch to exit.
+*	sta EnAnimDelay,x			; Save new animation delay value.
+	ldy EnAnimIndex,x			; Load enemy animation index.
+*	lda (EnemyAnimPtr),y		; Get animation data.
+	cmp #$FF					; End of animation?
+	beq ++						; If so, branch to reset animation.
+	sta EnAnimFrame,x			; Store current animation frame data.
+	iny							; Increment to next animation data index.
 	tya							;
-	sta EnAnimIndex,x			;Save new animation index.
+	sta EnAnimIndex,x			; Save new animation index.
 *	rts							;
 
-*	ldy EnResetAnimIndex,x		;reset animation index.
-	bcs ---						;Branch always.
+*	ldy EnResetAnimIndex,x		; reset animation index.
+	bcs ---						; Branch always.
 
 ;---------------------------------------[ Display status bar ]---------------------------------------
 
@@ -6153,8 +6153,8 @@ CheckMoveDown:
 	lda #$00
 	sec
 	sbc ObjRadY,x
-*       sta $02
-	jsr UnknownE8BE
+*   sta $02
+	jsr MakeObjectLocationStruct98B
 	lda ObjRadX,x
 
 UnknownE7BD:  
@@ -6185,17 +6185,17 @@ UnknownE7DE:  bne +++
 ; object<-->background crash detection
 
 UnknownE7E6:  		
-	jsr MakeWRAMPtr ; set up ptr in $0004
+	jsr MakeWRAMPtr 	; set up ptr in $0004
 	ldy #$00
-	lda ($04),y     ; get tile value
+	lda ($04),y     	; get tile value
 	cmp #$4E
 	beq UnknownE81E
 	jsr Tourian95C0
 	jsr UnknownD651
-	bcc Exit16      ; CF = 0 if tile # < $80 (solid tile)... CRASH!!!
-	cmp #$A0	; is tile >= A0h? (walkable tile)
+	bcc Exit16      	; CF = 0 if tile # < $80 (solid tile)... CRASH!!!
+	cmp #$A0			; is tile >= A0h? (walkable tile)
 	bcs IsWalkableTile
-	jmp IsBlastTile  ; tile is $80-$9F (blastable tiles)
+	jmp IsBlastTile  	; tile is $80-$9F (blastable tiles)
 
 IsWalkableTile:
 	ldy IsSamus
@@ -6282,14 +6282,16 @@ CheckMoveRight:
 	lda #$00
 	sec
 	sbc ObjRadX,x
-*       sta $03
-	jsr UnknownE8BE
+*   sta $03
+	jsr MakeObjectLocationStruct98B
 	ldy ObjRadY,x
-UnknownE89B:  bne +
+	
+UnknownE89B:  
+	bne +
 	sec
 	rts
 
-*       sty $02
+*   sty $02
 	ldx #$00
 	lda $08
 	sec
@@ -6297,7 +6299,7 @@ UnknownE89B:  bne +
 	and #$07
 	beq +
 	inx
-*       jsr UnknownE8CE
+*   jsr UnknownE8CE
 	sta $04
 	jsr UnknownE90F
 	ldx #$08
@@ -6305,8 +6307,8 @@ UnknownE89B:  bne +
 	lda $01
 	jmp UnknownE7DE
 
-UnknownE8BE:
-  lda ObjectHi,x
+MakeObjectLocationStruct98B:
+	lda ObjectHi,x
 	sta $0B
 	lda ObjectY,x
 	sta $08
@@ -6326,7 +6328,7 @@ UnknownE8CE:
 	sbc $04
 	bcs +
 	adc #$08
-*       tay
+*   tay
 	lsr
 	lsr
 	lsr
@@ -6335,7 +6337,7 @@ UnknownE8CE:
 	and #$07
 	beq +
 	inx
-*       txa
+*   txa
 	clc
 	adc $04
 	rts
@@ -6357,13 +6359,14 @@ UnknownE904:  sta $03
 	ldy EnRadY,x
 	jmp UnknownE89B
 
-UnknownE90F:  lda $02
+UnknownE90F:  
+	lda $02
 	bpl ++
 	jsr UnknownE95F
 	bcs +
 	cpx #$F0
 	bcc +++
-*       txa
+*   txa
 	adc #$0F
 	jmp UnknownE934
 
@@ -6387,7 +6390,7 @@ UnknownE934:  tax
 	lda $03
 	bmi +
 	dex
-*       lda $09
+*   lda $09
 	sec
 	sbc $03
 	sta $03
@@ -6400,9 +6403,10 @@ UnknownE934:  tax
 	and #$02
 	beq +
 	inc $0B
-*       rts
+*   rts
 
-UnknownE95F:  lda $08
+UnknownE95F:  
+	lda $08
 	sec
 	sbc $02
 	tax
@@ -8693,55 +8697,55 @@ EnemyInitHealth:
 *   sta EnHitPoints,x			;store into enemy hit points
 *   rts
 
-UnknownF870:
-  lda $0405,x
-	and #$10
-	beq -
-	lda $87
-	and EnStatus,x
-	beq -
-	lda $87
-	bpl +
-	ldy $6B01,x
-	bne -
-*       jsr UnknownF8E8
-	bcs ++
-	sta $0404,y
-	jsr UnknownF92C
-	lda $0405,x
-	lsr
-	lda $85
-	pha
-	rol
-	tax
-	lda $978B,x
-	pha
-	tya
-	tax
-	pla
-	jsr ResetAnimIndex
-	ldx PageIndex
-	lda #$01
-	sta EnStatus,y
-	and $0405,x
-	tax
-	lda Table15,x
-	sta $0403,y
-	lda #$00
-	sta $0402,y
-	ldx PageIndex
-	jsr UnknownF8F8
-	lda $0405,x
-	lsr
-	pla
-	tax
-	lda $97A3,x
-	sta $04
-	txa
-	rol
-	tax
-	lda $979B,x
-	sta $05
+LaunchEnProjectile:
+	lda $0405,x							; load enemy status flags
+	and #$10							; get the ??? flag
+	beq -								;	not 0? Return
+	lda $87								; else, load the data in $87 
+	and EnStatus,x						; AND with the current status
+	beq -								; 	not zero? return
+	lda $87								; load the data at $87 again
+	bpl +								; positive? jump ahead
+	ldy $6B01,x							;	else, negative - load 6B01
+	bne -								;		not 0? return
+*   jsr FindEnProjectileSlot			; load the next available enemy projectile slot into Y
+	bcs ++								;	 if the carry flag was set, we had no avaiable slots- return
+	sta $0404,y							; we found a slot! clear the hit status here to 0 - though, this might mean soemthing different here
+	jsr CreateEnProjectileCollision		; create the collision radius for the projectile
+	lda $0405,x							; load the status flags for the current enemy
+	lsr									; shift right - placing horizontal relation bit into carry
+	lda $85								; load index from $85
+	pha									; place onto stack
+	rol									; bring the relation flag into the LSB
+	tax									; then place A into X
+	lda $978B,x							; double width animation table 
+	pha									; push to the stack
+	tya									; push the projectile slot index into A 
+	tax									; then move that to X
+	pla									; pop the table data back into A
+	jsr ResetAnimIndex					; set the animation for the projectile
+	ldx PageIndex						; load back the original enemy index
+	lda #$01							; load 1
+	sta EnStatus,y						; activate projectile
+	and $0405,x							; AND with horizonatal relation bit
+	tax									; put that into x
+	lda Table15,x						; and use it as our index into the two-byte table below (2 or -2)
+	sta $0403,y							; store in horizontal speed
+	lda #$00							; load 0
+	sta $0402,y							; store in vertical speed
+	ldx PageIndex						; load the enemy index again, in case we break early in the next routine
+	jsr UnknownF8F8						; this sets up some extra data on some projectiles, just not sure what for 
+	lda $0405,x							; load status flags
+	lsr									; put horizontal relation byte into carry flag
+	pla									; get that animation index back ($85)
+	tax									; put it into X
+	lda $97A3,x							; load the non- doubled data from 97A3
+	sta $04								; store into $04
+	txa									; 
+	rol									; get the double direction index
+	tax									;
+	lda $979B,x							; load from 979B
+	sta $05								; place into $05
 	jsr UnknownF91D
 	ldx PageIndex
 	bit $87
@@ -8752,40 +8756,42 @@ UnknownF870:
 	lda $0083,y
 	jmp SetEnAnimIndex
 
-UnknownF8E8:  ldy #$60
-	clc
-*       lda EnStatus,y
-	beq +
-	jsr Yplus16
-	cmp #$C0
-	bne -
-*       rts
-
-UnknownF8F8:  lda $85
-	cmp #$02
-	bcc +
-	ldx PageIndex
-	lda $0405,x
-	lsr
-	lda $88
-	rol
-	and #$07
-	sta $040A,y
-	lda #$02
-	sta EnStatus,y
-	lda #$00
-	sta EnDelay,y
-	sta EnAnimDelay,y
-	sta $0408,y
-*       rts
+FindEnProjectileSlot:  
+	ldy #$60			; load the next slot after the enemies in the WRAM section
+	clc					; clear carry 	
+*   lda EnStatus,y		; load the state byte 
+	beq +				; 0? return 
+	jsr Yplus16			; 	else, get the next availabe slot
+	cmp #$C0			; 	up to 6 slots
+	bne -				;	repeat until we find an available slot or run out of slots
+*   rts					; return with available slot in Y and 0 in A, if we found one
+		
+UnknownF8F8:  
+	lda $85				; load the cached anim table index for this projectile launcher
+	cmp #$02			; compare with 2
+	bcc +				; A>=2? return - this projectile doesn't need anything else
+	ldx PageIndex		; load the enemy index
+	lda $0405,x			; load the enemy status flags
+	lsr					; shift right, get horizontal relation bit in carry
+	lda $88				; load data at $88
+	rol					; double it and add the horizzontal bit to the end, making it a double index
+	and #$07			; %8
+	sta $040A,y			; store result into orientation byte of projectile
+	lda #$02			; load 2
+	sta EnStatus,y		; status is moving
+	lda #$00			; load 0
+	sta EnDelay,y		; no delay on enemy
+	sta EnAnimDelay,y	; no delay on anim
+	sta $0408,y			; not sure what this is yet, but store to it
+*   rts					; return
 
 UnknownF91D:  
-	ldx PageIndex
-	jsr MakeEnemyLocationStruct98B
-	tya
-	tax
+	ldx PageIndex					; get current enemy index
+	jsr MakeEnemyLocationStruct98B	; make a location struct 
+	tya								; put the current projectile index into A
+	tax								; then, X
 	jsr UnknownFD8F
-	jmp UnknownFA49
+	jmp CopyEnemyLocationStruct98B	; copy enemy location data we cached off into the projectile
 
 ; Table used by above subroutine
 
@@ -8793,42 +8799,44 @@ Table15:
 	.byte $02
 	.byte $FE
 
-UnknownF92C:  
-	lda #$02
-	sta EnRadY,y
-	sta EnRadX,y
-	ora $0405,y
-	sta $0405,y
-	rts
+CreateEnProjectileCollision:  
+	lda #$02		; load 2
+	sta EnRadY,y	; store as collision radius in both x and y
+	sta EnRadX,y	; directions
+	ora $0405,y		; set the visibility flag in the status flags to true
+	sta $0405,y		;
+	rts				; return
 
-UnknownF93B:
-    ldx #$B0
-*   jsr UnknownF949
-	ldx PageIndex
-	jsr Xminus16
-	cmp #$60
+UpdateEnProjectiles:
+    ldx #$B0				; start at offset B0, the last slot index for enemy projectiles
+*   jsr DoOneEnProjectile	; update one projectile
+	ldx PageIndex			; load the current index
+	jsr Xminus16			; sub 16
+	cmp #$60				; continue until we've reached the finnal projectile
 	bne -
-UnknownF949:  stx PageIndex
-	lda $0405,x
-	and #$02
-	bne +
-	jsr KillObject			;($FA18)Free enemy data slot.
-*       lda EnStatus,x
-	beq Exit19
-	jsr ChooseRoutine
+DoOneEnProjectile:  
+	stx PageIndex			; store projectile slot into page index
+	lda $0405,x				; load the enemy status flags
+	and #$02				; check visibility
+	bne +					; if visible, jump ahead
+	jsr KillObject			; 	else, free the slot
+*   lda EnStatus,x			; load the status of the enemy 
+	beq Exit19				; if it's 0, return to above and go to next projectile
+	jsr ChooseRoutine		; else, go update the projectile
 
 ; Pointer table to code
 
-	.word ExitSub     ;($C45C) rts
+	.word ExitSub     		;($C45C) rts
 	.word UnknownF96A
 	.word UnknownF991       ; spit dragon's fireball
-	.word ExitSub     ;($C45C) rts
+	.word ExitSub     		;($C45C) rts
 	.word UnknownFA6B
 	.word UnknownFA91
 
 Exit19: rts
 
-UnknownF96A:  jsr UnknownFA5B
+UnknownF96A:  
+	jsr UnknownFA5B
 	jsr EnemyBGCrashDetection
 	ldx PageIndex
 	bcs UnknownF97C
@@ -8840,13 +8848,13 @@ UnknownF97C:
 UnknownF97E:  
 	jsr UpdateEnemyAnim
 	jmp ClrObjCntrlIfFrameIsF7
-
 *   inc $0408,x
 UnknownF987:  
 	inc $0408,x
 	lda #$00
 	sta EnDelay,x
 	beq +
+	
 UnknownF991:  
 	jsr UnknownFA5B
 	lda $040A,x
@@ -8856,13 +8864,12 @@ UnknownF991:
 	sta $0A
 	lda AreaEnemyMovementTable+1,y
 	sta $0B
-*       ldy $0408,x
+*   ldy $0408,x
 	lda ($0A),y
 	cmp #$FF
 	bne +
 	sta $0408,x
 	jmp UnknownF987
-
 *   cmp EnDelay,x
 	beq ---
 	inc EnDelay,x
@@ -8901,12 +8908,12 @@ UnknownF991:
 	lsr
 	beq +
 	iny
-*       lda $95E2,y
+*   lda $95E2,y
 	jsr ResetAnimIndex
 	jsr FreezeEnemy
 	lda #$0A
 	sta EnDelay,x
-*       jmp UnknownF97C
+*   jmp UnknownF97C
 
 KillObject:
 	lda #$00			;
@@ -8930,17 +8937,19 @@ EnemyBGCrashDetection:  lda InArea
 	sta $05
 	lda $0402,x
 	sta $04
-UnknownFA41:  jsr MakeEnemyLocationStruct98B
+UnknownFA41:  
+	jsr MakeEnemyLocationStruct98B
 	jsr UnknownFD8F
 	bcc KillObject			;($FA18)Free enemy data slot.
-UnknownFA49:  lda $08
+CopyEnemyLocationStruct98B: 
+	lda $08
 	sta EnYRoomPos,x
 	lda $09
 	sta EnXRoomPos,x
 	lda $0B
 	and #$01
 	sta EnNameTable,x
-*       rts
+*   rts
 
 UnknownFA5B:  lda $0404,x
 	beq Exit20
@@ -8950,15 +8959,17 @@ UnknownFA60:  lda #$00
 	sta EnStatus,x
 Exit20: rts
 
-UnknownFA6B:  lda EnAnimFrame,x
+UnknownFA6B:  
+	lda EnAnimFrame,x
 	cmp #$F7
 	beq +
 	dec EnDelay,x
 	bne ++
-*       jsr KillObject			;($FA18)Free enemy data slot.
-*       jmp UnknownF97C
+*   jsr KillObject			;($FA18)Free enemy data slot.
+*   jmp UnknownF97C
 
-UnknownFA7D:  ldx PageIndex
+UnknownFA7D:  
+	ldx PageIndex
 	lda EnYRoomPos,x
 	sta $02
 	lda EnXRoomPos,x
@@ -9114,7 +9125,7 @@ UnknownFB88:
 	sta EnAnimIndex,x				; 	else, set new animation
 	dec EnAnimIndex,x				;	and decrease it?
 
-UnknownFBB9:
+QueueEnAnimation:					; 
 	sta EnResetAnimIndex,x			; set new animation starting index
 	jmp ResetEnAnimDelay			; reset the animation delay, and return
 
@@ -9124,7 +9135,7 @@ FallbackEnAnimDirection963B:
 	beq Exit13
 	jmp ResetAnimIndex
 
-UnknownFBCA:
+UpdateEnAnimationDirection:
 	ldx PageIndex					; get enemy index
 	jsr GetEnemyDirectionDataIndex	; get direction data index
 	lda EnDirAnimTb5B,y				; load anim from table
@@ -9134,10 +9145,10 @@ UnknownFBCA:
 	jmp SetEnAnimIndex				; and finish setting 
 
 DestroyGeenSpinner:
-  lda #$40
+	lda #$40
 	sta PageIndex
 	ldx #$0C
-*       jsr UnknownFBEC
+*   jsr UnknownFBEC
 	dex
 	dex
 	dex
@@ -9363,7 +9374,8 @@ UnknownFD5F:  lda $B3,x
 	sta $09
 	rts
 
-UnknownFD6C:  lda $08
+UnknownFD6C:  
+	lda $08
 	sta $B1,x
 	sta $04F0
 	lda $09
@@ -9375,63 +9387,66 @@ UnknownFD6C:  lda $08
 	sta $6BEB
 	rts
 
-UnknownFD84:  lda $B6,x
+UnknownFD84:  
+	lda $B6,x
 	and #$04
 	beq +
 	lda #$03
 	sta $B0,x
-*       rts
+*   rts
 
 UnknownFD8F:
-  lda ScrollDir
-	and #$02
-	sta $02
-	lda $04
-	clc
-	bmi +++
-	beq UnknownFDBF
-	adc $08
+	lda ScrollDir			; load scroll direction
+	and #$02				; and with the horizontal bit
+	sta $02					; store in $02
+	lda $04					; load whatever we stored in $04
+	clc						; clear carry
+	bmi +++					; if we stored a negative value, jump ahead
+	beq UnknownFDBF			; 	else, branch below 
+	adc $08					; add the value in $08 
 	bcs +
 	cmp #$F0
 	bcc ++
-*       adc #$0F
+*   adc #$0F
 	ldy $02
 	bne ClcExit2
 	inc $0B
-*       sta $08
+*   sta $08
 	jmp UnknownFDBF
 
-*      adc $08
+*   adc $08
 	bcs +
 	sbc #$0F
 	ldy $02
 	bne ClcExit2
 	inc $0B
-*       sta $08
-UnknownFDBF:  lda $05
-	clc
-	bmi ++
+*   sta $08
+
+UnknownFDBF:  
+	lda $05		; load the data $in 05
+	clc			; clear carry
+	bmi ++		; 
 	beq SecExit
 	adc $09
 	bcc +
 	ldy $02
 	beq ClcExit2
 	inc $0B
-*       jmp ++
+*   jmp ++
 
-*       adc $09
+*   adc $09
 	bcs +
 	ldy $02
 	beq ClcExit2
 	inc $0B
-*       sta $09
-	SecExit:
+*   sta $09
+SecExit:
 	sec
 	rts
 
-	ClcExit2:
+ClcExit2:
 	clc
-*      rts
+*   rts
 
 
 UpdateEndTimer:

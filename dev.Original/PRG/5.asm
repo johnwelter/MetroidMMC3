@@ -1,1 +1,1 @@
-.require "../code/Ridley.asm" ; pg 5
+.require "../code/AreaBanks/Ridley.asm" ; pg 5
