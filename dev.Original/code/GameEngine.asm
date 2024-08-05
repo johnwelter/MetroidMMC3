@@ -396,20 +396,20 @@ CheckPalWrite:
 
 ;Prepare to write palette data to PPU.
 
-*	dey						;Palette # = PalDataPending - 1.
-	tya						;
-	asl						;* 2, each pal data ptr is 2 bytes (16-bit).
-	tay						;
-	ldx Unknown9560,y		;X = low byte of PPU data pointer.
-	lda Unknown9561,y		;
-	tay						;Y = high byte of PPU data pointer.
-	lda #$00				;Clear A.
-	sta PalDataPending		;Reset palette data pending byte.
+*	dey										;Palette # = PalDataPending - 1.
+	tya										;
+	asl										;* 2, each pal data ptr is 2 bytes (16-bit).
+	tay										;
+	ldx PaletteColorsPointerTable,y			;X = low byte of PPU data pointer.
+	lda PaletteColorsPointerTable+1,y		;
+	tay										;Y = high byte of PPU data pointer.
+	lda #$00								;Clear A.
+	sta PalDataPending						;Reset palette data pending byte.
 	
 PreparePPUProcess_:
-	stx $00					;Lower byte of pointer to PPU string.
-	sty $01					;Upper byte of pointer to PPU string.
-	jmp ProcessPPUString	;Write data string to PPU.
+	stx $00									;Lower byte of pointer to PPU string.
+	sty $01									;Upper byte of pointer to PPU string.
+	jmp ProcessPPUString					;Write data string to PPU.
 
 ;----------------------------------------[Read joy pad status ]--------------------------------------
 
@@ -1027,16 +1027,16 @@ BankInitTable:
 
 InitBank0:
 	ldy #$00					;
-	sty GamePaused				;Ensure game is not paused.
-	iny							;Y=1.
-	sty GameMode				;Game is at title routines.
-	jsr ScreenNmiOff			;($C45D)Waits for NMI to end then turns it off.
-	jsr CopyMap					;($A93E)Copy game map from ROM to cartridge RAM $7000-$73FF
-	jsr ClearNameTables			;($C158)Erase name table data.
+	sty GamePaused				; Ensure game is not paused.
+	iny							; Y=1.
+	sty GameMode				; Game is at title routines.
+	jsr ScreenNmiOff			; Waits for NMI to end then turns it off.
+	jsr CopyMap					; Copy game map from ROM to cartridge RAM $7000-$73FF
+	jsr ClearNameTables			; Erase name table data.
 
 	ldy #$A0					;
-*	lda Unknown98BF,y			;
-	sta IntroStarSpriteMem,y	;Loads sprite info for stars into RAM $6E00 thru 6E9F.
+*	lda IntroStarsData-1,y		; start from end of Intro stars data table, go down till 0
+	sta IntroStarSpriteMem,y	; Loads sprite info for stars into RAM $6E00 thru 6E9F.
 	dey							;
 	bne -						;
 
@@ -1386,60 +1386,60 @@ AreaInit:
 	sta ABStatus	 		;Appears to never be accessed.
 	jsr EraseAllSprites		;($C1A3)Clear all sprite info.
 	lda #$10				;Prepare to load Brinstar memory page.
-	jsr IsEngineRunning		;($CA18)Check to see if ok to switch lower memory page.
+	jsr SwitchBankIfEngineRunning		;($CA18)Check to see if ok to switch lower memory page.
 
 ;------------------------------------------[ MoreInit ]---------------------------------------------
 
 MoreInit:
 	ldy #$01				;
-	sty PalDataPending		;Palette data pending = yes.
+	sty PalDataPending		; Palette data pending = yes.
 	ldx #$FF				;
-	stx SpareMem75			;$75 Not referenced ever again in the game.
-	inx						;X=0.
-	stx AtEnding			;Not playing ending scenes.
-	stx DoorStatus			;Samus not in door.
-	stx SamusDoorData		;Samus is not inside a door.
-	stx UpdatingProjectile	;No projectiles need to be updated.
-	txa						;A=0.
+	stx SpareMem75			; $75 Not referenced ever again in the game.
+	inx						; X=0.
+	stx AtEnding			; Not playing ending scenes.
+	stx DoorStatus			; Samus not in door.
+	stx SamusDoorData		; Samus is not inside a door.
+	stx UpdatingProjectile	; No projectiles need to be updated.
+	txa						; A=0.
 
-*	cpx #$65				;Check to see if more RAM to clear in $7A thru $DE.
-	bcs +					;
-	sta $7A,x				;Clear RAM $7A thru $DE.
-*	cpx #$FF				;Check to see if more RAM to clear in $300 thru $3FE.
-	bcs +					;
-	sta ObjAction,x			;Clear RAM $300 thru $3FE.
-*	inx				;
-	bne ---					;Loop until all required RAM is cleared.
+*	cpx #$65					; Check to see if more RAM to clear in $7A thru $DE.
+	bcs +						;
+	sta $7A,x					; Clear RAM $7A thru $DE.
+*	cpx #$FF					; Check to see if more RAM to clear in $300 thru $3FE.
+	bcs +						;
+	sta ObjAction,x				; Clear RAM $300 thru $3FE.
+*	inx							;
+	bne ---						; Loop until all required RAM is cleared.
 
-	jsr ScreenOff			;($C439)Turn off Background and visibility.
-	jsr ClearNameTables		;($C158)Clear screen data.
-	jsr EraseAllSprites		;($C1A3)Erase all sprites from sprite RAM.
-	jsr DestroyEnemies		;($C8BB)
+	jsr ScreenOff				; Turn off Background and visibility.
+	jsr ClearNameTables			; Clear screen data.
+	jsr EraseAllSprites			; Erase all sprites from sprite RAM.
+	jsr DestroyEnemies			; Clear Enemies
 
-	stx DoorOnNameTable3	;Clear data about doors on the name tables.
-	stx DoorOnNameTable0	;
-	inx						;X=1.
-	stx SpareMem30			;Not accessed by game.
-	inx						;X=2.
-	stx ScrollDir			;Set initial scroll direction as left.
+	stx DoorOnNameTable3		; Clear data about doors on the name tables.
+	stx DoorOnNameTable0		; 
+	inx							; X=1.
+	stx SpareMem30				; Not accessed by game.
+	inx							; X=2.
+	stx ScrollDir				; Set initial scroll direction as left.
 
-	lda AreaStartRoomX		;Get Samus start x pos on map.
-	sta MapPosX				;
-	lda AreaStartRoomY		;Get Samus start y pos on map.
-	sta MapPosY				;
+	lda AreaStartRoomX			; Get Samus start x pos on map.
+	sta MapPosX					;
+	lda AreaStartRoomY			; Get Samus start y pos on map.
+	sta MapPosY					;
 
-	lda Unknown95DA       	; Get ??? Something to do with palette switch
+	lda AreaPaletteToggleValue  ; this will have two values, 01 or 06 - toggled with an EOR of 0000 0111 to go back and forth
 	sta PalToggle
 	lda #$FF
-	sta RoomNumber			;Room number = $FF(undefined room).
-	jsr CopyPtrs    		; copy pointers from ROM to RAM 
-	jsr GetRoomNum			;($E720)Put room number at current map pos in $5A.
-*       jsr SetupRoom		;($EA2B)
-	ldy RoomNumber  		; load room number
-	iny
-	bne -
+	sta RoomNumber				; Room number = $FF(undefined room).
+	jsr CopyPtrs    			; copy area pointers from ROM to RAM 
+	jsr GetRoomNum				; Put room number at current map pos in $5A.
+*   jsr SetupRoom				; 
+	ldy RoomNumber  			; load room number to y
+	iny							; inc room number
+	bne -						; if room number isn't updating during this (as far as I know), how does this not loop forever?
 
-	ldy CartRAMPtr+1
+	ldy CartRAMPtr+1			
 	sty $01
 	ldy CartRAMPtr
 	sty $00
@@ -1465,7 +1465,7 @@ MoreInit:
 	bne -
 
 	stx $91
-	inx	     ; X = 1
+	inx	     				; X = 1
 	stx PalDataPending
 	stx SpareMem30			;Not accessed by game.
 	inc MainRoutine			;SamusInit is next routine to run.
@@ -1489,17 +1489,17 @@ CopyPtrs:
 DestroyEnemies:
 	lda #$00
 	tax
-*       cpx #$48
+*   cpx #$48
 	bcs +
 	sta $97,x
-*       sta EnStatus,x
+*   sta EnStatus,x
 	pha
 	pla
 	inx
 	bne --
-	stx MetroidOnSamus		;Samus had no Metroid stuck to her.
-	jmp Unknown95AB
-
+	stx MetroidOnSamus				; Samus had no Metroid stuck to her.
+	jmp TourianRoutine95AB			; tourian routine - auto return from other areas
+	
 ; SamusInit
 ; =========
 ; Code that sets up Samus, when the game is first started.
@@ -1515,10 +1515,10 @@ SamusInit:
 	ldx #$00
 	stx SamusBlink
 	dex						;X = $FF
-	stx $0728
-	stx $0730
-	stx $0732
-	stx $0738
+	stx EnSpawnerStatus				;init all spawner slots to inactive
+	stx EnSpawnerStatus	+ 8			;...or, at least, it should? it looks like we 
+	stx EnSpawnerStatus	+ 16		; only actually change 3 of them, then set one of the y pos to 0
+	stx EnSpawnerStatus	+ 24		; this might be bugged! changing to match the actual 4 slot starts
 	stx EndTimerLo			;Set end timer bytes to #$FF as-->
 	stx EndTimerHi			;escape timer not currently active.
 	stx $8B
@@ -1703,7 +1703,7 @@ SamusFadeInTimeTbl:
 
 ;---------------------------------[ Check if game engine running ]-----------------------------------
 
-IsEngineRunning:
+SwitchBankIfEngineRunning:
 	ldy MainRoutine			;If Samus is fading in or the wait timer is-->
 	cpy #$07				;active, return from routine.
 	beq +					;
@@ -1795,7 +1795,7 @@ UpdateWorld:
 	jsr UpdateTiles 		; tile de/regeneration
 	jsr CrashDetection      ; Samus <--> enemies crash detection
 	jsr DisplayBar			;($E0C1)Display of status bar.
-	jsr UnknownFAF2
+	jsr UpdatePipeSpawns
 	jsr CheckMissileToggle
 	jsr UpdateItems 		; display of special items
 	jsr UpdateEndTimer
@@ -2136,6 +2136,8 @@ SamusRun:
 	jsr ReverseHoriAccelOnType04Collision
 	lda #$02
 	bne SetSamusData       					; branch always
+	
+
 *	lda SamusOnElevator	
 	bne +
 	jsr SetSamusRunAccel
@@ -2494,10 +2496,10 @@ NoHorzMoveNoDelay:
 	rts							;
 
 UnknownCF88: 
-  lda Joy1Status
+	lda Joy1Status
 	and #$03
 	beq +
-	jsr BitScan					;($E1E1)
+	jsr BitScan					
 	tax
 	jsr SetSamusRunAccel
 	lda SamusGravity
@@ -2509,7 +2511,7 @@ UnknownCF88:
 	lda Table06+1,x
 	jmp SetSamusAnim
 
-*       lda SamusGravity
+*  	lda SamusGravity
 	bmi +
 	beq +
 	lda AnimResetIndex
@@ -3078,7 +3080,7 @@ SamusDoor:
 	bne +++++++
 *       jsr UnknownD48C
 	jsr UnknownED65
-	jsr Unknown95AB
+	jsr TourianRoutine95AB
 	lda ItemRoomMusicStatus
 	beq ++
 	pha
@@ -3175,18 +3177,18 @@ SamusElevator:
 	cmp #$07
 	beq +
 UnknownD47E:
-  lda FrameCount
+	lda FrameCount
 	lsr
 	bcc ++
-*       jsr SetmirrorCntrlBit		;($CD92)Mirror Samus, if necessary.
+*   jsr SetmirrorCntrlBit		;($CD92)Mirror Samus, if necessary.
 	lda #$01
 	jmp AnimDrawObject
 *	rts
 
 UnknownD48C:
-  ldx #$60
+	ldx #$60
 	sec
-*       jsr UnknownD4B4
+*   jsr UnknownD4B4
 	txa
 	sbc #$20
 	tax
@@ -3194,7 +3196,7 @@ UnknownD48C:
 	jsr GetNameTable		;($EB85)
 	tay
 	ldx #$18
-*       jsr UnknownD4A8
+*   jsr UnknownD4A8
 	txa
 	sec
 	sbc #$08
@@ -3202,12 +3204,12 @@ UnknownD48C:
 	bne -
 	
 UnknownD4A8:
-  tya
-	cmp $072C,x
+	tya
+	cmp EnSpawnerNametable,x
 	bne +
 	lda #$FF
-	sta $0728,x
-*       rts
+	sta EnSpawnerStatus,x
+*   rts
 
 UnknownD4B4:
 	lda $0405,x
@@ -3697,13 +3699,13 @@ UpdateElevator:
 
 ; Pointer table to elevator handlers
 
-	.word ExitSub       ;($C45C) rts
+	.word ExitSub       	;($C45C) rts
 	.word ElevatorIdle
 	.word UnknownD80E
 	.word ElevatorMove
 	.word ElevatorScroll
 	.word UnknownD8A3
-	.word UnknownD8BF
+	.word ElevatorAreaSwitch		; elevator reached new area
 	.word UnknownD8A3
 	.word ElevatorMove
 	.word ElevatorStop
@@ -3715,7 +3717,7 @@ UpdateElevator:
 	bit $032F       ; elevator direction in bit 7 (1 = up)
 	bpl +
 	asl		; btn_UP
-*       and Joy1Status
+*   and Joy1Status
 	beq ShowElevator
     ; start elevator!
 	jsr StopVertMovement		;($D147)
@@ -3750,7 +3752,7 @@ UnknownD80E:
 	inc ObjAction,x
 	jmp ShowElevator
 
-*       lda #$80
+*   lda #$80
 	sta ObjectX
 	lda ObjectX,x
 	sec
@@ -3759,10 +3761,10 @@ UnknownD80E:
 	jsr ScrollLeft
 	jmp ShowElevator
 
-*       jsr ScrollRight
+*   jsr ScrollRight
 	jmp ShowElevator
 
-	ElevatorMove:
+ElevatorMove:
 	lda $030F,x
 	bpl ++	  ; branch if elevator going down
     ; move elevator up one pixel
@@ -3770,7 +3772,7 @@ UnknownD80E:
 	bne +
 	jsr ToggleObjectHi
 	ldy #240
-*       dey
+*   dey
 	tya
 	sta ObjectY,x
 	jmp ++
@@ -3786,9 +3788,9 @@ UnknownD80E:
 *	cmp #$83
 	bne +	   ; move until Y coord = $83
 	inc ObjAction,x
-*       jmp ShowElevator
+*   jmp ShowElevator
 
-	ElevatorScroll:
+ElevatorScroll:
 	lda ScrollY
 	bne ElevScrollRoom  ; scroll until ScrollY = 0
 	lda #$4E
@@ -3804,36 +3806,37 @@ UnknownD80E:
 	sta Timer1
 	jmp ShowElevator
 
-	ElevScrollRoom:
+ElevScrollRoom:
 	lda $030F,x
-	bpl +	   ; branch if elevator going down
+	bpl +	   			; branch if elevator going down
 	jsr ScrollUp
 	jmp ShowElevator
 
-*       jsr ScrollDown
+*   jsr ScrollDown
 	jmp ShowElevator
 
 UnknownD8A3:
-  inc ObjAction,x
-	lda ObjAction,x
-	cmp #$08	; ElevatorMove
-	bne +
-	lda #$23
-	sta $0303,x
-	lda #an_SamusFront
-	jsr SetSamusAnim
-	jmp ShowElevator
+	inc ObjAction,x		; inc elevator action
+	lda ObjAction,x		; load elevator action
+	cmp #$08			; ElevatorMove
+	bne +				; not move? jump to draw object
+	lda #$23			; else
+	sta $0303,x			; store 23 in elevator 3rd byte
+	lda #an_SamusFront	; 
+	jsr SetSamusAnim	; set samus to front facing anim
+	jmp ShowElevator	; 
 
-*       lda #$01
+*   lda #$01
 	jmp AnimDrawObject
 
-UnknownD8BF:
-  lda $030F,x
-	tay
-	cmp #$8F	; Leads-To-Ending elevator?
-	bne +
-    ; Samus made it! YAY!
-	lda #$07
+ElevatorAreaSwitch:
+	lda $030F,x			; load elevator something or other
+	tay					; move to Y
+	cmp #$8F			; Leads-To-Ending elevator?
+	bne +				; if not, jump ahead
+	
+; Samus made it! YAY! run ending routine
+	lda #$07			
 	sta MainRoutine
 	inc AtEnding
 	ldy #$00
@@ -3844,61 +3847,61 @@ UnknownD8BF:
 	sta TitleRoutine
 	rts
 
-*       tya
-	bpl ++
-	ldy #$00
-	cmp #$84
-	bne +
-	iny
-*       tya
-*	ora #$10
-	jsr IsEngineRunning
-	lda PalToggle
-	eor #$07
-	sta PalToggle
-	ldy InArea
-	cpy #$12
-	bcc +
-	lda #$01
-*       sta PalDataPending
-	jsr WaitNMIPass_
-	jsr SelectSamusPal
-	jsr StartMusic			;($LD92C)Start music.
-	jsr ScreenOn
-	jsr CopyPtrs
-	jsr DestroyEnemies
-	ldx #$20
-	stx PageIndex
-	lda #$6B
-	sta AnimResetIndex
-	lda #$5F
-	sta AnimIndex
-	lda #$7A
-	sta AnimResetIndex,x
-	lda #$6E
-	sta AnimIndex,x
-	inc ObjAction,x
-	lda #$40
-	sta Timer1
-	rts
+*   tya								; put Y back into A
+	bpl ++							; positive number? jump ahead
+	ldy #$00						; else, load 0 into Y
+	cmp #$84						; check against 0x84 instead
+	bne +							; not equal? jump ahead
+	iny								; else, increment y 
+*   tya								; move Y into A
+*	ora #$10						; set the last bit 
+	jsr SwitchBankIfEngineRunning	; A has the bank we want to load... somehow
+	lda PalToggle					; load pallete toggle (01 / 06)
+	eor #$07						; toggle it			  (06 / 01)
+	sta PalToggle					; store back in palette toggle
+	ldy InArea						; load area index into Y
+	cpy #$12						; compare with Kraid
+	bcc +							; less than kraid (brinstar, norfair), jump ahead
+	lda #$01						;	kraid, tourian or ridley - load 1 , completely ignoring the 06 value of the toggle
+*   sta PalDataPending				; store current toggle into palette data pending
+	jsr WaitNMIPass_				; wait for NMI
+	jsr SelectSamusPal				; select Samus Pal
+	jsr StartMusic					; start new music
+	jsr ScreenOn					; turn on screen 
+	jsr CopyPtrs					; copy area pointers to RAM
+	jsr DestroyEnemies				; clear out enemies
+	ldx #$20						; load elevator offset into X
+	stx PageIndex					; store into page index
+	lda #$6B						; 
+	sta AnimResetIndex				;
+	lda #$5F						;
+	sta AnimIndex					;
+	lda #$7A						; reset elevator animation
+	sta AnimResetIndex,x			;
+	lda #$6E						;
+	sta AnimIndex,x					;
+	inc ObjAction,x					; inc object action for elevator
+	lda #$40						; load 0x40 frames into Timer
+	sta Timer1						;
+	rts								; return
 
 StartMusic:
-	lda ElevatorStatus
-	cmp #$06
-	bne +
-	lda $032F
-	bmi ++
-*       lda AreaMusicFlag			;Load proper bit flag for area music.
-	ldy ItemRoomMusicStatus
-	bmi ++
-	beq ++
-*	lda #$81
-	sta ItemRoomMusicStatus
-	lda #$20			;Set flag to play item room music.
+	lda ElevatorStatus			; load the elevator status
+	cmp #$06					; if we're elevator step 6, we'll check the elevator direction to set the music
+	bne +						; else, we'll jump ahead to start either the item room or level music depending on item room status
+	lda $032F					; 	Load elevator direction (bit 7 - 1 = up)
+	bmi ++						; 	elevator going up? jump to setting up item room music
+*   lda AreaMusicFlag			; else, just Load proper bit flag for area music.
+	ldy ItemRoomMusicStatus		; load item room music status into y
+	bmi ++						; bit seven of Item room music status is set? jump to set up area music
+	beq ++						; item room music status is 0? jump to set up area music - else, set up item room music... for some reason
+*	lda #$81					; 	load 81 to item room music status, start item room music
+	sta ItemRoomMusicStatus		; 	store into item room music status
+	lda #$20					; Set flag to play item room music.
 
-*	ora MusicInitFlag		;
-	sta MusicInitFlag		;Store music flag info.
-	rts				;
+*	ora MusicInitFlag			;
+	sta MusicInitFlag			; Store music flag info.
+	rts							;
 
 ElevatorStop:
 	lda ScrollY
@@ -3924,11 +3927,11 @@ SamusOnElevatorOrEnemy:
 	sta OnFrozenEnemy		;
 	tay
 	ldx #$50				;start ith enemy 1 and go down the 6 possible enemies
-	jsr UnknownF186
+	jsr CreatePlayerLocationStruct68PPUdiffA
 *   lda EnStatus,x			; load enemt status
 	cmp #$04				; if the enemy is frozen		
 	bne +					; jump ahead and go to previous enemy
-	jsr UnknownF152			
+	jsr CreateEnemyLocationStruct79PPUdiffB			
 	jsr UnknownF1BF
 	jsr UnknownF1FA
 	bcs +
@@ -4373,9 +4376,9 @@ CreateItemID:
 
 
 UnknownDC7F: 
-	jsr UnknownF186
+	jsr CreatePlayerLocationStruct68PPUdiffA
 UnknownDC82:  
-	jsr UnknownF172
+	jsr CreatePlayerLocationStruct79PPUdiffB
 UnknownDC85:	
 	jsr UnknownF1A7
 UnknownDC88:	
@@ -6200,21 +6203,21 @@ UnknownE7E6:
 IsWalkableTile:
 	ldy IsSamus
 	beq ++
-    ; special case for Samus
-	dey	     ; = 0
+								; special case for Samus
+	dey	     					; = 0
 	sty SamusDoorData
-	cmp #$A0	; crash with tile #$A0? (scroll toggling door)
+	cmp #$A0					; crash with tile #$A0? (scroll toggling door)
 	beq +
-	cmp #$A1	; crash with tile #$A1? (horizontal scrolling door)
+	cmp #$A1					; crash with tile #$A1? (horizontal scrolling door)
 	bne ++
 	inc SamusDoorData
-*       inc SamusDoorData
+*   inc SamusDoorData
 *	dex
 	beq +
 	jsr UnknownE98E
 	jmp UnknownE7E6
 
-*	sec	     ; no crash
+*	sec	     					; no crash
 	Exit16:
 	rts
 
@@ -6549,7 +6552,7 @@ RoomFinished:
 ;------------------------------------------[ Setup room ]--------------------------------------------
 
 SetupRoom:
-	lda RoomNumber			;Room number.
+	lda RoomNumber		;Room number.
 	cmp #$FF			;
 	beq -				;Branch to exit if room is undefined.
 	cmp #$FE			;
@@ -6659,18 +6662,18 @@ AddToRoomPtr:
 EndOfObjs:
 	lda RoomPtr			;
 	sta $00				;Store room pointer in $0000.
-	lda RoomPtr+1			;
+	lda RoomPtr+1		;
 	sta $01				;
 	lda #$01			;Prepare to increment to enemy/door data.
 
 EnemyLoop:
-	jsr AddToPtr00			;($EF09)Add A to pointer at $0000.
+	jsr AddToPtr00		;($EF09)Add A to pointer at $0000.
 	ldy #$00			;
 	lda ($00),y			;Get first byte of enemy/door data.
 	cmp #$FF			;End of enemy/door data?-->
-	beq EndOfRoom			;If so, branch to finish room setup.
+	beq EndOfRoom		;If so, branch to finish room setup.
 	and #$0F			;Discard upper four bits of data.
-	jsr ChooseRoutine		;Jump to proper enemy/door handling routine.
+	jsr ChooseRoutine	;Jump to proper enemy/door handling routine.
 
 ;Pointer table to code.
 
@@ -6714,28 +6717,29 @@ GetEnemyData:
 *       lda #$03			;Number of bytes to add to ptr to find next room item.
 	rts				;
 
-GetEnemyType:	pha				;Store enemy type.
-	and #$C0			;If MSB is set, the "tough" version of the enemy  
-	sta EnSpecialAttribs,x		;is to be loaded(more hit points, except rippers).
-	asl				;
-	bpl ++				;If bit 6 is set, the enemy is either Kraid or Ridley.
-	lda InArea			;Load current area Samus is in(to check if Kraid or-->
-	and #$06			;Ridley is alive or dead).
-	lsr				;Use InArea to find status of Kraid/Ridley statue.
-	tay				;
+GetEnemyType:	
+	pha						;Store enemy type.
+	and #$C0				;If MSB is set, the "tough" version of the enemy  
+	sta EnSpecialAttribs,x	;is to be loaded(more hit points, except rippers).
+	asl						;
+	bpl ++					;If bit 6 is set, the enemy is either Kraid or Ridley.
+	lda InArea				;Load current area Samus is in(to check if Kraid or-->
+	and #$06				;Ridley is alive or dead).
+	lsr						;Use InArea to find status of Kraid/Ridley statue.
+	tay						;
 	lda MaxMissiles,y		;Load status of Kraid/Ridley statue.
-	beq +				;Branch if Kraid or Ridley needs to be loaded.
-	pla				;
-	pla				;Mini boss is dead so pull enemy info and last address off-->
-	jmp --				;stack so next enemy/door item can be loaded.
+	beq +					;Branch if Kraid or Ridley needs to be loaded.
+	; pla						;
+	pla						;Mini boss is dead so pull enemy info and last address off-->
+	jmp --					;stack so next enemy/door item can be loaded.
 
-*       lda #$01			;Samus is in Kraid or Ridley's room and the-->
+*   lda #$01					;Samus is in Kraid or Ridley's room and the-->
 	sta KraidRidleyPresent		;mini boss is alive and needs to be loaded.
 
-*	pla				;Restore enemy type data.
-	and #$3F			;Keep 6 lower bits to use as index for enemy data tables.
+*	pla						;Restore enemy type data.
+	and #$3F				;Keep 6 lower bits to use as index for enemy data tables.
 	sta EnDataIndex,x		;Store index byte.
-	rts				;
+	rts						;
 
 UnknownEB4D:  tay				;Save enemy position data in Y.
 	and #$F0			;Extract Enemy y position.
@@ -6885,23 +6889,25 @@ UnknownEC00:  .byte $80
 ; LoadElevator
 ; ============
 
-	LoadElevator:
+LoadElevator:
 	jsr UnknownEC09
-	bne ----	   ; branch always
+	bne ----	   			; branch always
 
-UnknownEC09:  lda ElevatorStatus
-	bne +	   ; exit if elevator already present
-	iny
+UnknownEC09:  
+
+	lda ElevatorStatus
+	bne +	   				; exit if elevator already present
+	iny						
 	lda ($00),y
 	sta $032F
 	ldy #$83
-	sty $032D       ; elevator Y coord
+	sty $032D       		; elevator Y coord
 	lda #$80
-	sta $032E       ; elevator X coord
+	sta $032E       		; elevator X coord
 	jsr GetNameTable		;($EB85)
-	sta $032C       ; high Y coord
+	sta $032C       		; high Y coord
 	lda #$23
-	sta $0323       ; elevator frame
+	sta $0323       		; elevator frame
 	inc ElevatorStatus		;1
 *       lda #$02
 	rts
@@ -6910,61 +6916,61 @@ UnknownEC09:  lda ElevatorStatus
 ; ===========
 
 	LoadStatues:
-	jsr GetNameTable		;($EB85)
+	jsr GetNameTable		;
 	sta $036C
 	lda #$40
 	ldx RidleyStatueStatus
-	bpl +	   ; branch if Ridley statue not hit
+	bpl +	   				; branch if Ridley statue not hit
 	lda #$30
-*       sta $0370
+*   sta $0370
 	lda #$60
 	ldx KraidStatueStatus
-	bpl +	   ; branch if Kraid statue not hit
+	bpl +	   				; branch if Kraid statue not hit
 	lda #$50
-*       sta $036F
+*   sta $036F
 	sty $54
 	lda #$01
 	sta $0360
-*	jmp EnemyLoop   ; do next room object
+*	jmp EnemyLoop   		; do next room object
 
 ZebHole:
-  ldx #$20
-*       txa
+	ldx #$20
+*   txa
 	sec
 	sbc #$08
 	bmi +
 	tax
-	ldy $0728,x
+	ldy EnSpawnerStatus,x
 	iny
 	bne -
 	ldy #$00
 	lda ($00),y
 	and #$F0
-	sta $0729,x
+	sta EnSpawnerEnSlot,x
 	iny
 	lda ($00),y
-	sta $0728,x
+	sta EnSpawnerStatus,x
 	iny
 	lda ($00),y
 	tay
 	and #$F0
 	ora #$08
-	sta $072A,x
+	sta EnSpawnerYRoomPos,x
 	tya
-	jsr Amul16       ; * 16
+	jsr Amul16      		; * 16
 	ora #$00
-	sta $072B,x
+	sta EnSpawnerXRoomPos,x
 	jsr GetNameTable		;($EB85)
-	sta $072C,x
-*       lda #$03
+	sta EnSpawnerNametable,x
+*   lda #$03
 	bne ---
 
 OnNameTable0:
 	lda PPUCNT0ZP			;
-	eor #$01			;If currently on name table 0,-->
-	and #$01			;return #$01. Else return #$00.
-	tay				;
-	rts				;
+	eor #$01				;If currently on name table 0,-->
+	and #$01				;return #$01. Else return #$00.
+	tay						;
+	rts						;
 
 UpdateRoomSpriteInfo:
 	ldx ScrollDir
@@ -6976,7 +6982,7 @@ UpdateRoomSpriteInfo:
 	ldx #$50
 	jsr GetNameTable		;($EB85)
 	tay
-*       tya
+*   tya
 	eor EnNameTable,x
 	lsr
 	bcs +
@@ -6984,16 +6990,16 @@ UpdateRoomSpriteInfo:
 	and #$02
 	bne +
 	sta EnStatus,x
-*       jsr Xminus16
+*   jsr Xminus16
 	bpl --
 	ldx #$18
-*       tya
+*   tya
 	eor $B3,x
 	lsr
 	bcs +
 	lda #$00
 	sta $B0,x
-*       txa
+*   txa
 	sec
 	sbc #$08
 	tax
@@ -7005,12 +7011,12 @@ UpdateRoomSpriteInfo:
 	asl
 	tay
 	ldx #$C0
-*       tya
+*   tya
 	eor TileWRAMHi,x
 	and #$04
 	bne +
 	sta $0500,x
-*       jsr Xminus16
+*   jsr Xminus16
 	cmp #$F0
 	bne --
 	tya
@@ -7028,12 +7034,12 @@ UpdateRoomSpriteInfo:
 	sbc $032C
 	bne +
 	sta ElevatorStatus
-*       ldx #$1E
-*       lda $0704,x
+*   ldx #$1E
+*   lda $0704,x
 	bne +
 	lda #$FF
 	sta $0700,x
-*       txa
+*   txa
 	sec
 	sbc #$06
 	tax
@@ -7042,13 +7048,13 @@ UpdateRoomSpriteInfo:
 	bne +
 	lda #$00
 	sta $0360
-*       ldx #$18
-*       tya
-	cmp $072C,x
+*   ldx #$18
+*   tya
+	cmp EnSpawnerNametable,x
 	bne +
 	lda #$FF
-	sta $0728,x
-*       txa
+	sta EnSpawnerStatus,x
+*   txa
 	sec
 	sbc #$08
 	tax
@@ -7066,23 +7072,25 @@ UpdateDoorData:
 *	sta $006C,y			;when the room is transferred across name tables.
 	rts				;
 
-UnknownED5B:  jsr GetNameTable		;($EB85)
+UnknownED5B:  
+	jsr GetNameTable		;($EB85)
 	eor #$01
 	tay
 	lda #$00
 	beq -
 UnknownED65:
-  ldx #$B0
-*       lda ObjAction,x
+	ldx #$B0
+*   lda ObjAction,x
 	beq +
 	lda ObjectOnScreen,x
 	bne +
 	sta ObjAction,x
-*       jsr Xminus16
+*   jsr Xminus16
 	bmi --
 	rts
 
-UnknownED7A:  lda ObjAction,x
+UnknownED7A:  
+	lda ObjAction,x
 	cmp #$05
 	bcc +
 	tya
@@ -7090,14 +7098,17 @@ UnknownED7A:  lda ObjAction,x
 	lsr
 	bcs +
 	sta ObjAction,x
-*       rts
+*   rts
 
-UnknownED8C:  tya
+UnknownED8C:  
+	tya
 	cmp PowerUpNameTable,x
 	bne Exit11
 	lda #$FF
 	sta PowerUpType,x
-Exit11: rts
+	
+Exit11: 
+	rts
 
 ;---------------------------------------[ Setup special items ]--------------------------------------
 
@@ -7248,7 +7259,7 @@ SpecEnemyHandler:
 	sta $6BEA
 	lda #$01
 	sta $6BE4
-*       jmp ChooseHandlerRoutine	;($EDD6)Exit handler routines.
+*   jmp ChooseHandlerRoutine	;($EDD6)Exit handler routines.
 
 UnknownEE86:  lda $B0,x
 	bne +
@@ -7267,7 +7278,7 @@ UnknownEE86:  lda $B0,x
 
 ElevatorHandler:
   jsr UnknownEC09
-	bne --				;Branch always.
+  bne --				;Branch always.
 
 CannonHandler:
   jsr $95B1
@@ -7610,16 +7621,17 @@ CrashDetection:
 	bmi --
 ; enemy <--> bullet/missile/bomb detection
 *	ldx #$50		; start with enemy slot #5
-UnknownF09F:  lda EnStatus,x	     ; slot active?
+UnknownF09F:  
+	lda EnStatus,x	     ; slot active?
 	beq +		   ; branch if not
 	cmp #$03
-*       beq NextEnemy	   ; next slot
-	jsr UnknownF152
+*   beq NextEnemy	   ; next slot
+	jsr CreateEnemyLocationStruct79PPUdiffB
 	lda EnStatus,x
 	cmp #$05
 	beq ++++
 	ldy #$D0		; first projectile slot
-*       lda ObjAction,y	 ; is it active?
+*   lda ObjAction,y	 ; is it active?
 	beq ++		  ; branch if not
 	cmp #wa_BulletExplode
 	bcc +
@@ -7630,7 +7642,7 @@ UnknownF09F:  lda EnStatus,x	     ; slot active?
 	cmp #wa_Missile
 	bne ++
 ; check if enemy is actually hit
-*       jsr UnknownF140
+*   jsr UnknownF140
 	jsr UnknownF2CA
 *	jsr Yplus16	     ; next projectile slot
 	bne ---
@@ -7646,10 +7658,10 @@ UnknownF09F:  lda EnStatus,x	     ; slot active?
 	bmi +
 	jmp UnknownF09F
 
-*       ldx #$00
-	jsr UnknownF172
+*   ldx #$00
+	jsr CreatePlayerLocationStruct79PPUdiffB
 	ldy #$60
-*       lda EnStatus,y
+*   lda EnStatus,y
 	beq +
 	cmp #$05
 	beq +
@@ -7658,79 +7670,89 @@ UnknownF09F:  lda EnStatus,x	     ; slot active?
 	jsr IsSamusDead
 	beq +
 	jsr UnknownF1B3
-	jsr UnknownF162
+	jsr CreateEnemyLocationStruct68PPUdiffA
 	jsr UnknownF1FA
 	jsr UnknownF2ED
-*       jsr Yplus16
+*   jsr Yplus16
 	cmp #$C0
 	bne --
 	ldy #$00
 	jsr IsSamusDead
 	beq ++++
-	jsr UnknownF186
+	jsr CreatePlayerLocationStruct68PPUdiffA
 	ldx #$F0
-*       lda ObjAction,x
+*   lda ObjAction,x
 	cmp #$07
 	beq +
 	cmp #$0A
 	bne ++
-*       jsr UnknownDC82
+*   jsr UnknownDC82
 	jsr UnknownF311
 *	jsr Xminus16
 	cmp #$C0
 	bne ---			
 *	jmp SubtractHealth		;($CE92)
 
-UnknownF140:  jsr UnknownF1BF
-	jsr UnknownF186
+UnknownF140:  
+	jsr UnknownF1BF
+	jsr CreatePlayerLocationStruct68PPUdiffA
 	jmp UnknownF1FA
 
-UnknownF149:  jsr UnknownF186
+UnknownF149:  
+	jsr CreatePlayerLocationStruct68PPUdiffA
 	jsr UnknownF1D2
 	jmp UnknownF1FA
 
-UnknownF152:  lda EnYRoomPos,x
+CreateEnemyLocationStruct79PPUdiffB:  
+	lda EnYRoomPos,x
 	sta $07	 ; Y coord
 	lda EnXRoomPos,x
 	sta $09	 ; X coord
 	lda EnNameTable,x     ; hi coord
-	jmp UnknownF17F
+	jmp StoreNametableMismatchB
 
-UnknownF162:  lda EnYRoomPos,y     ; Y coord
+CreateEnemyLocationStruct68PPUdiffA:  
+	lda EnYRoomPos,y     ; Y coord
 	sta $06
 	lda EnXRoomPos,y     ; X coord
 	sta $08
 	lda EnNameTable,y     ; hi coord
-	jmp UnknownF193
+	jmp StoreNametableMismatchA
 
-UnknownF172:  lda ObjectY,x
+CreatePlayerLocationStruct79PPUdiffB:  
+	lda ObjectY,x
 	sta $07
 	lda ObjectX,x
 	sta $09
 	lda ObjectHi,x
-UnknownF17F:  eor PPUCNT0ZP
+StoreNametableMismatchB: 
+	eor PPUCNT0ZP		;instead of storing off the nametable, store off it the nametable doesn't match
 	and #$01
 	sta $0B
 	rts
 
-UnknownF186:  lda ObjectY,y
+CreatePlayerLocationStruct68PPUdiffA:  
+	lda ObjectY,y
 	sta $06
 	lda ObjectX,y
 	sta $08
 	lda ObjectHi,y
-UnknownF193:  eor PPUCNT0ZP
+StoreNametableMismatchA:  
+	eor PPUCNT0ZP
 	and #$01
 	sta $0A
 	rts
 
-UnknownF19A:  lda $B1,x
+UnknownF19A:  
+	lda $B1,x
 	sta $07
 	lda $B2,x
 	sta $09
 	lda $B3,x
-	jmp UnknownF17F
+	jmp StoreNametableMismatchB
 
-UnknownF1A7:  lda ObjRadY,x
+UnknownF1A7:  
+	lda ObjRadY,x
 	jsr UnknownF1E0
 	lda ObjRadX,x
 	jmp UnknownF1D9
@@ -9033,47 +9055,48 @@ Table16:
 	.byte $F0
 	.byte $08
 
-UnknownFAF2:
-  ldy #$18
-*       jsr UnknownFAFF
+UpdatePipeSpawns:
+	ldy #$18			; load spawner offset
+*   jsr DoOneSpawner
 	lda PageIndex
 	sec
 	sbc #$08
 	tay
 	bne -
 
-UnknownFAFF:  sty PageIndex
-	ldx $0728,y
-	inx
-	beq -----
-	ldx $0729,y
-	lda EnStatus,x
-	beq +
-	lda $0405,x
-	and #$02
-	bne Exit13
-*       sta $0404,x
-	lda #$FF
-	cmp EnDataIndex,x
-	bne +
-	dec EnDelay,x
-	bne Exit13
-	lda $0728,y
-	jsr GetEnemyType
-	ldy PageIndex
-	lda $072A,y
-	sta EnYRoomPos,x
-	lda $072B,y
-	sta EnXRoomPos,x
-	lda $072C,y
-	sta EnNameTable,x
-	lda #$18
-	sta EnRadX,x
-	lda #$0C
-	sta EnRadY,x
-	ldy #$00
-	jsr UnknownF186
-	jsr UnknownF152
+DoOneSpawner:  
+	sty PageIndex					; store 0x18 into page index
+	ldx EnSpawnerStatus,y			; load spawner status into X
+	inx								; inc x (if inactive, will be FF)
+	beq -----						; if zero, return 
+	ldx EnSpawnerEnSlot,y			; else, load the enemy slot alloted for this spawner
+	lda EnStatus,x					; load the enemy status at the slot
+	beq +							; if it's an empty slot, jump ahead
+	lda $0405,x						; 	else, load the en status flags
+	and #$02						; 	check and with visibility flag
+	bne Exit13						; 	visible? exit - nothing to do while it exists
+*   sta $0404,x						; not visible - store 0 into enemy hit status
+	lda #$FF						; load 0xFF 
+	cmp EnDataIndex,x				; check against the enemy data index - should be FF if the enemy is gone enough
+	bne +							; not equal, jump ahead
+	dec EnDelay,x					; 	else, count down the enemy delay
+	bne Exit13						; 		if it's not 0 yet, leave
+	lda EnSpawnerStatus,y			; 	load the spawner status again
+	jsr GetEnemyType				; 	get the enemy type for this spawner
+	ldy PageIndex					; load y again (?) 
+	lda EnSpawnerYRoomPos,y			; 
+	sta EnYRoomPos,x				;
+	lda EnSpawnerXRoomPos,y			; copy spawner position info to enemy
+	sta EnXRoomPos,x				;
+	lda EnSpawnerNametable,y		;
+	sta EnNameTable,x				;
+	lda #$18						; the spawner enemies apparently have a consistent hit box
+	sta EnRadX,x					; 
+	lda #$0C						;
+	sta EnRadY,x					; set enemy hitbox
+	ldy #$00						;
+	jsr CreatePlayerLocationStruct68PPUdiffA		
+	jsr CreateEnemyLocationStruct79PPUdiffB
 	jsr UnknownF1BF
 	jsr UnknownF1FA
 	bcc Exit13
@@ -9087,7 +9110,7 @@ UnknownFAFF:  sty PageIndex
 	jsr UnknownFB7B
 	jmp EnemyInitHealth
 
-*       sta EnDataIndex,x
+*   sta EnDataIndex,x
 	lda #$01
 	sta EnDelay,x
 	jmp KillObject			;($FA18)Free enemy data slot.
@@ -9555,7 +9578,7 @@ UnknownFE83:  lda #$00
 	and #$01
 	sta $0B
 	ldy #$00
-	jsr UnknownF186
+	jsr CreatePlayerLocationStruct68PPUdiffA
 	lda #$04
 	clc
 	adc ObjRadY

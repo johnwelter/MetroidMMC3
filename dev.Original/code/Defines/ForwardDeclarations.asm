@@ -11,7 +11,7 @@
 
 ;Common Area declares (very different to above)
 
-.alias Unknown9560 						$9560
+.alias PaletteColorsPointerTable 						$9560
 .alias Unknown9561 						$9561
 .alias AreaPointers						$9598
 .alias SpecItmsTable					$9598
@@ -28,9 +28,10 @@
 
 
 .alias Unknown98BF $98BF
+.alias IntroStarsData 					$98C0
 
-.alias Unknown95DA $95DA
-.alias Unknown95AB $95AB
+.alias AreaPaletteToggleValue $95DA
+.alias TourianRoutine95AB $95AB
 
 .alias Tourian95C0 					$95C0
 .alias AreaMusicFlag 				$95CD

@@ -374,7 +374,7 @@
 .alias SamusHorzSpeedMax	$0316	;Used to calc maximum horizontal speed Samus can reach.
 
 ;Elevator RAM.
-.alias ElevatorStatus		$0320	;#$01=Elevator present, #$00=Elevator not present.
+.alias ElevatorStatus		$0320	;#$01=Elevator present, #$00=Elevator not present. there's also a 06 apparently, will need to find out what causes that
 
 ;Power-up item RAM.
 
@@ -592,30 +592,39 @@
 
 .alias CurrentMusic		$068D	;Stores the flag of the current music being played 
 
+;---------------------------------------------------------------------------------------------------
+
+.alias EnSpawnerStatus		$0728	; status for enemy spawner pipe
+.alias EnSpawnerEnSlot		$0729 	; slot alloted for this spawner to spawn enemies to
+.alias EnSpawnerYRoomPos	$072A	; y room pos of spawner
+.alias EnSpawnerXRoomPos	$072B	; x room pos of spawner
+.alias EnSpawnerNametable	$072C	; nametable of spawner
+;next three bytes seem to be unused
+
 ;----------------------------------------------------------------------------------------------------
 
-.alias PowerUpType		$0748	;Holds the byte describing what power-up is on name table.
+.alias PowerUpType			$0748	;Holds the byte describing what power-up is on name table.
 .alias PowerUpYCoord		$0749	;Y coordinate of the power-up.
 .alias PowerUpXCoord		$074A	;X coordiante of the power-up
 .alias PowerUpNameTable		$074B	;#$00 if on name table 0, #$01 if on name table 3.
 
 .alias PowerUpAnimIndex		$074F	;Entry into FramePtrTable for item animation.
 
-.alias PowerUpBType		$0750	;Holds the description byte of a second power-up(if any).
+.alias PowerUpBType			$0750	;Holds the description byte of a second power-up(if any).
 .alias PowerUpBYCoord		$0751	;Y coordinate of second power-up.
 .alias PowerUpBXCoord		$0752	;X coordiante of second power-up.
 .alias PowerUpBNameTable	$0753	;#$00 if on name table 0, #$01 if on name table 3.
 
-.alias TileSize			$0780	;4 MSBs = Y size of tile to erase.-->
-					;4 LSBs = X size of tile to erase.
-.alias TileInfo0		$0781	;
-.alias TileInfo1		$0782	;
-.alias TileInfo2		$0783	;Tile patterns to replace blasted tiles.
-.alias TileInfo3		$0784	;
-.alias TileInfo4		$0785	;
-.alias TileInfo5		$0786	;
+.alias TileSize				$0780	;4 MSBs = Y size of tile to erase.-->
+									;4 LSBs = X size of tile to erase.
+.alias TileInfo0			$0781	;
+.alias TileInfo1			$0782	;
+.alias TileInfo2			$0783	;Tile patterns to replace blasted tiles.
+.alias TileInfo3			$0784	;
+.alias TileInfo4			$0785	;
+.alias TileInfo5			$0786	;
 
-.alias PPUStrIndex		$07A0	;# of bytes of data in PPUDataString. #$4F bytes max.
+.alias PPUStrIndex			$07A0	;# of bytes of data in PPUDataString. #$4F bytes max.
 
 ;$07A1 thru $07F0 contain a byte string of data to be written the the PPU. The first
 ;byte in the string is the upper address byte of the starting point in the PPU to write

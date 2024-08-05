@@ -1620,9 +1620,9 @@ L8C97:	JSR Adiv16
 L8C9A:	EOR $91
 L8C9C:	LSR 
 L8C9D:	BCC $8CA7
-L8C9F:	LDA $76
-L8CA1:	EOR #$07
-L8CA3:	STA $76
+L8C9F:	LDA $76					;fingers crossed, this is the PalToggle
+L8CA1:	EOR #$07				; ... ah, it is, and it's useless I think- we just assign to it again, and don't use it?? we just flip the first 3 bits
+L8CA3:	STA $76					; and then store it back
 L8CA5:	STA $1C
 L8CA7:	INC $0300,X
 L8CAA:	LDA #$00

@@ -244,11 +244,16 @@ AreaStartYPos:	.byte $B0			;Samus start verticle screen position.
 ;;byte 8 - something to do with enemy movement, read in UnknownF991, indexed with y
 ;;byte 9 - ''
 ;;byte A - something to do with special and mellow enemies, read in SpecEnemyHandler and UpdateMellowEnemies
-Unknown95DA:	.byte $01, $00
+AreaPaletteToggleValue:	.byte $01 
+Unknown95CB:	.byte $00
 Unknown95DC:	.byte $03
-Unknown95DD:	.byte $43, $00, $00
-Unknown95E0: 	.byte $00, $00 
-Unknown95E2:	.byte $00, $00
+Unknown95DD:	.byte $43
+Unknown95DE:	.byte $00
+Unknown95DF:	.byte $00
+Unknown95E0: 	.byte $00 
+Unknown95E1:	.byte $00 
+Unknown95E2:	.byte $00
+Unknown95E3:	.byte $00
 Unknown95E4:	.byte $69 
 
 AreaEnemySpecificUpdate:
