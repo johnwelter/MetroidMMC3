@@ -35,13 +35,13 @@
 .alias LeftButton $02
 .alias RightButton $01
 
-.alias Joy1Change   		$12	;These addresses store any button changes-->
+.alias Joy1Change   	$12	;These addresses store any button changes-->
 .alias Joy2Change		$13	;that happened since last frame(pads 1 and 2).
-.alias Joy1Status   		$14	;These two addresses store all buttons-->
+.alias Joy1Status   	$14	;These two addresses store all buttons-->
 .alias Joy2Status		$15	;currently being pressed on the two controllers.
-.alias Joy1Retrig   		$16	;These two addresses store any buttons that need-->
+.alias Joy1Retrig   	$16	;These two addresses store any buttons that need-->
 .alias Joy2Retrig		$17	;to retrigger after being held down by player.
-.alias RetrigDelay1   		$18	;These two addresses are counters that control-->
+.alias RetrigDelay1   	$18	;These two addresses are counters that control-->
 .alias RetrigDelay2		$19	;The retriggering of held down buttons.
 
 .alias NMIStatus		$1A	;0=NMI in progress. anything else, NMI not in progress.

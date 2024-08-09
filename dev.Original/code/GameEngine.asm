@@ -2094,27 +2094,27 @@ RunAccelerationTbl:
 ; ========
 
 SamusRun:
-	ldx SamusDir
-	lda SamusGravity
-	beq +++++++
-	ldy SamusJumpDsplcmnt
-	bit ObjVertSpeed
-	bmi +
-	cpy #$18
-	bcs ++++
-	lda #an_SamusJump
-	sta AnimResetIndex
-	bcc ++++	  							; branch always
-*   cpy #$18
-	bcc +++
-	lda AnimResetIndex
-	cmp #an_SamusFireJump
-	beq +
-	lda #an_SamusSalto
-	sta AnimResetIndex
-*   cpy #$20
-	bcc ++
-	lda Joy1Status
+	ldx SamusDir							; load samus direction into x
+	lda SamusGravity						; load samus gravity into A - we need to check if we move to different states
+	beq +++++++								; 	if the gravity is 0, jump way ahead to elevator stuff
+	ldy SamusJumpDsplcmnt					; 	else, load jump displacement to y
+	bit ObjVertSpeed						; 	bit vert speed
+	bmi +									; 	grounded or going up? jump ahead	
+	cpy #$18								; 		falling down - check our jump dispalement instead
+	bcs ++++								;   	jump dispalcement is >= 0x18, jump ahead
+	lda #an_SamusJump						; 			else, we're close to where we jumped from - switch to jump anim 
+	sta AnimResetIndex						; 		set jump anim
+	bcc ++++	  							; 		branch always, jump to in lava checks
+*   cpy #$18								;	going up, check the jump displacement
+	bcc +++									;		jump displacement is < 0x18, jump ahead to lava checks 
+	lda AnimResetIndex						; 			else, load current anim starting frame index
+	cmp #an_SamusFireJump					; 			if it's the fire+jump anim
+	beq +									; 			jump ahead
+	lda #an_SamusSalto						; 			else, load mid air spin anim
+	sta AnimResetIndex						;			and queue it up
+*   cpy #$20								; 		check the jump dispalcement again 
+	bcc ++									; 		if displacement is < 0x20, jump ahead and load samus run anim 
+	lda Joy1Status							; 		
 	and #$08
 	beq +
 	lda #an_SamusJumpPntUp
@@ -2127,12 +2127,12 @@ SamusRun:
 	bne +
 	lda #an_SamusJump
 	sta AnimResetIndex
-*   lda SamusInLava
-	beq +
-	lda Joy1Change
+*   lda SamusInLava							; load samus in lava status
+	beq +									; if not, jump ahead
+	lda Joy1Change							; else, check jump- we can retrigger in lava
 	bmi JumpPressed       					; branch if JUMP pressed
-*   jsr UnknownCF88
-	jsr UnknownD09C
+*   jsr UpdateSamusJumpDirection
+	jsr UpdateSamusJumpFireAnim
 	jsr ReverseHoriAccelOnType04Collision
 	lda #$02
 	bne SetSamusData       					; branch always
@@ -2495,32 +2495,32 @@ NoHorzMoveNoDelay:
 	sty AnimDelay				;Clear animation delay data.
 	rts							;
 
-UnknownCF88: 
-	lda Joy1Status
-	and #$03
-	beq +
-	jsr BitScan					
-	tax
-	jsr SetSamusRunAccel
-	lda SamusGravity
-	bmi ++
-	lda AnimResetIndex
-	cmp #an_SamusSalto
-	beq ++
-	stx SamusDir
-	lda Table06+1,x
-	jmp SetSamusAnim
+UpdateSamusJumpDirection: 
+	lda Joy1Status						; load controller status
+	and #$03							; check left and right bits 
+	beq +								; 0? left and right not pressed - jump ahead
+	jsr BitScan							; 	else, bit scan to find out if it was left or right - A holds the bit index
+	tax									; 	move A into x ( should be either 0 = r or 1 = l)
+	jsr SetSamusRunAccel				;	set samus run accel to match inoput direction
+	lda SamusGravity					; 	load samus gravity
+	bmi ++								; 	if it's negative, return
+	lda AnimResetIndex					; 		else positive- load reset anim index
+	cmp #an_SamusSalto					; 		check summersault anim 
+	beq ++								; 			equal? return
+	stx SamusDir						; 		else, move direction from x to samus' direction
+	lda SamusJumpAnimTable+1,x			; 		pick one of the animations from the table
+	jmp SetSamusAnim					; 		set anim, return
 
-*  	lda SamusGravity
-	bmi +
-	beq +
-	lda AnimResetIndex
-	cmp #an_SamusJump
-	bne +
-
-ClearHorzData:
-  jsr ClearHorzMvmntData		;($CF4C)Clear horizontal speed and linear counter.
-	sty SamusHorzAccel		;Clear horizontal acceleration data.
+*  	lda SamusGravity					; load samus gravity
+	bmi +								; if it's negative, return
+	beq +								; or if it's zero, return
+	lda AnimResetIndex					; load the anim reset index, gravity positive
+	cmp #an_SamusJump					; compare to jump
+	bne +								; not jumping? return
+										; we're jumping, gravity is positive, no hori input- kill horizontal speed
+ClearHorzData:						
+  jsr ClearHorzMvmntData				;($CF4C)Clear horizontal speed and linear counter.
+	sty SamusHorzAccel					;Clear horizontal acceleration data.
 *	rts				;
 
 UnknownCFBE:
@@ -2574,7 +2574,7 @@ SamusJump:
 	sta AnimResetIndex
 	lda #sa_PntJump      ; "jumping & pointing up" handler
 	sta ObjAction
-*       jsr UnknownD09C
+*       jsr UpdateSamusJumpFireAnim
 	lda SamusInLava
 	beq +
 	lda Joy1Change
@@ -2610,15 +2610,15 @@ UnknownD055:
 	cmp #sa_PntJump
 	bne +
 	lda AnimResetIndex
-	cmp Table04,y
+	cmp SamusJumpPntUpAnimTable,y
 	bne ++
-	lda Table04+1,y
+	lda SamusJumpPntUpAnimTable+1,y
 	jmp ++
 
-*       lda AnimResetIndex
-	cmp Table06,y
+*   lda AnimResetIndex
+	cmp SamusJumpAnimTable,y
 	bne +
-	lda Table06+1,y
+	lda SamusJumpAnimTable+1,y
 *	jsr SetSamusAnim
 	lda #$08
 	sta AnimDelay
@@ -2628,27 +2628,27 @@ UnknownD055:
 
 ; Table used by above subroutine
 
-Table06:
-	.byte $0C
-	.byte $0C
-	.byte $0C
-Table04:
-	.byte $35
-	.byte $35
-	.byte $35
+SamusJumpAnimTable:
+	.byte an_SamusJump
+	.byte an_SamusJump
+	.byte an_SamusJump
+SamusJumpPntUpAnimTable:
+	.byte an_SamusJumpPntUp
+	.byte an_SamusJumpPntUp
+	.byte an_SamusJumpPntUp
 
-UnknownD09C:
-  lda Joy1Change
-	ora Joy1Retrig
-	asl
-	bpl -	   ; exit if FIRE not pressed
-	lda AnimResetIndex
-	cmp #an_SamusJumpPntUp
-	bne +
-	jmp FireVertical
-*   jsr FireHorizontal
-	lda #an_SamusFireJump
-	jmp SetSamusAnim
+UpdateSamusJumpFireAnim:
+	lda Joy1Change				; load changes from last frame
+	ora Joy1Retrig				; or with retrigger
+	asl							; 
+	bpl -	   					; exit if FIRE not pressed
+	lda AnimResetIndex			; load samus anim 
+	cmp #an_SamusJumpPntUp		; compare to pnt up jump
+	bne +						; not that? jump ahead
+	jmp FireVertical			; 	else, fire vertical and return 
+*   jsr FireHorizontal			; fire horizontal
+	lda #an_SamusFireJump		; load fire jump anim 
+	jmp SetSamusAnim			; set it as the anim for hiring horizontal
 
 SetSamusRoll:
   lda SamusGear
@@ -5233,14 +5233,14 @@ DataDisplayTbl:
 BitScan:
 	stx $0E				;Save X.
 	ldx #$00			;First bit is bit 0.
-*	lsr				;Transfer bit to carry flag.
+*	lsr					;Transfer bit to carry flag.
 	bcs +				;If the shifted bit was 1, Branch out of loop.
-	inx				;Increment X to keep of # of bits checked.
+	inx					;Increment X to keep of # of bits checked.
 	cpx #$08			;Have all 8 bit been tested?-->
 	bne -				;If not, branch to check the next bit.
-*	txa				;Return which bit number was set.
+*	txa					;Return which bit number was set.
 	ldx $0E				;Restore X.
-*	rts				;
+*	rts					;
 
 ;------------------------------------------[ Scroll door ]-------------------------------------------
 
