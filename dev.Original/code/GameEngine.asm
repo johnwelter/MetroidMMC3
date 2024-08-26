@@ -1397,7 +1397,7 @@ MoreInit:
 	stx SpareMem75			; $75 Not referenced ever again in the game.
 	inx						; X=0.
 	stx AtEnding			; Not playing ending scenes.
-	stx DoorStatus			; Samus not in door.
+	stx SamusDoorStatus			; Samus not in door.
 	stx SamusDoorData		; Samus is not inside a door.
 	stx UpdatingProjectile	; No projectiles need to be updated.
 	txa						; A=0.
@@ -2138,9 +2138,9 @@ SamusRun:
 	bne SetSamusData       					; branch always
 	
 
-*	lda SamusOnElevator	
-	bne +
-	jsr SetSamusRunAccel
+*	lda SamusOnElevator						; check if samus is on an elevator
+	bne +									; no? jump ahead
+	jsr SetSamusRunAccel					; 	else, 
 *   jsr UnknownCDBF
 	dec WalkSoundDelay  					; time to play walk sound?
 	bne +	       							; branch if not
@@ -2697,8 +2697,8 @@ SetSamusRoll:
 	stx $05
 	lda #$F5
 	sta $04
-	jsr UnknownFD8F
-	jsr UnknownD638
+	jsr CalcPotentialPosition
+	jsr SetPositionDataFromStruct98B
 	jsr StopHorzMovement
 	dec AnimIndex
 	jsr StopVertMovement		;($D147)
@@ -2961,7 +2961,7 @@ Table09:
 	.byte $F0
 
 UnknownD2EB:
-  tya
+	tya
 	tax
 	inc ObjAction,x
 	lda #$02
@@ -2971,21 +2971,21 @@ UnknownD2EB:
 
 SetProjectileAnim:
 	sta AnimResetIndex,x
-UnknownD2FD:
- sta AnimIndex,x
+PlayProjectileAnim:
+	sta AnimIndex,x
 	lda #$00
 	sta AnimDelay,x
-*       rts
+*   rts
 
 UnknownD306:
-  ldx #$00
+	ldx #$00							
 	jsr MakeObjectLocationStruct98B
 	tya
 	tax
-	jsr UnknownFD8F
+	jsr CalcPotentialPosition
 	txa
 	tay
-	jmp UnknownD638
+	jmp SetPositionDataFromStruct98B
 
 CheckMissileLaunch:
 	lda MissileToggle
@@ -2994,7 +2994,7 @@ CheckMissileLaunch:
 	bne Exit4
 	ldx SamusDir
 	lda MissileAnims,x
-*       jsr SetBulletAnim
+*   jsr SetBulletAnim
 	jsr SFX_MissileLaunch
 	lda #wa_Missile	; missile handler
 	sta ObjAction,y
@@ -3011,7 +3011,7 @@ MissileAnims:
 	.byte an_MissileLeft
 
 UnknownD340:
-  lda MissileToggle
+	lda MissileToggle
 	beq Exit4
 	cpy #$D0
 	bne Exit4
@@ -3048,10 +3048,10 @@ FireWaveBeam:
 	jmp SFX_WaveFire
 
 FireIceBeam:
-  lda #$02
+	lda #$02
 	bne --
 UnknownD38E:
-  lda MissileToggle
+	lda MissileToggle
 	bne Exit4
 	lda SamusGear
 	bpl Exit4       ; branch if Samus doesn't have Ice Beam
@@ -3066,7 +3066,7 @@ UnknownD38E:
 ; =========
 
 SamusDoor:
-	lda DoorStatus
+	lda SamusDoorStatus
 	cmp #$05
 	bcc +++++++
     ; move Samus out of door, how far depends on initial value of DoorDelay
@@ -3076,9 +3076,9 @@ SamusDoor:
 	asl
 	bcc +
 	lsr
-	sta DoorStatus
+	sta SamusDoorStatus
 	bne +++++++
-*       jsr UnknownD48C
+*   jsr UnknownD48C
 	jsr UnknownED65
 	jsr TourianRoutine95AB
 	lda ItemRoomMusicStatus
@@ -3090,20 +3090,20 @@ SamusDoor:
 	lda #$00
 	sta ItemRoomMusicStatus
 	beq ++
-*       lda #$80
+*   lda #$80
 	sta ItemRoomMusicStatus
-*       lda KraidRidleyPresent
+*   lda KraidRidleyPresent
 	beq +
 	jsr TourianMusic
 	lda #$00
 	sta KraidRidleyPresent
 	beq --	   ; branch always
-*       lda SamusDoorData
+*   lda SamusDoorData
 	and #$0F
 	sta ObjAction
 	lda #$00
 	sta SamusDoorData
-	sta DoorStatus
+	sta SamusDoorStatus
 	jsr StopVertMovement		;($D147)
 
 MoveOutDoor:
@@ -3112,7 +3112,7 @@ MoveOutDoor:
 	ldy ObjectX
 	bne +
 	jsr ToggleSamusHi       ; toggle 9th bit of Samus' X coord
-*       dec ObjectX
+*   dec ObjectX
 	jmp ++
 
 *	inc ObjectX
@@ -3134,55 +3134,57 @@ SamusDead2:
 ; =============
 
 SamusElevator:
-	lda ElevatorStatus
-	cmp #$03
-	beq +
-	cmp #$08
-	bne +++++++
-*       lda $032F
-	bmi +++
-	lda ObjectY
-	sec
-	sbc ScrollY     ; A = Samus' Y position on the visual screen
-	cmp #$84
-	bcc +	   ; if ScreenY < $84, don't scroll
-	jsr ScrollDown  ; otherwise, attempt to scroll
-*       ldy ObjectY
-	cpy #239	; wrap-around required?
-	bne +
+	lda ElevatorStatus		; load current elevator status
+	cmp #$03				; compare to elevator move
+	beq +					; 	moving? jump ahead
+	cmp #$08				; else, compare to OTHER move
+	bne +++++++				; 	not the other move? jump WAY ahead and check for the interstitial states instead
+*   lda $032F				; load elevator direction
+	bmi +++					; 	negative? jump ahead - moving in the opposite direction
+	lda ObjectY				; load samus Y position
+	sec						; set carry flag
+	sbc ScrollY     		; A = Samus' Y position on the visual screen
+	cmp #$84				; 
+	bcc +	  				; if ScreenY < $84, don't scroll
+	jsr ScrollDown  		; otherwise, attempt to scroll
+*   ldy ObjectY				; load samus position
+	cpy #239				; wrap-around required?
+	bne +					; 	no wrap around, skip name table toggle
 	jsr ToggleSamusHi       ; toggle 9th bit of Samus' Y coord
-	ldy #$FF	; ObjectY will now be 0
-*       iny
-	sty ObjectY
-	jmp UnknownD47E
+	ldy #$FF				; ObjectY will now be FF
+*   iny						; increment object position (0 on a wrap around)
+	sty ObjectY				; store new position into samus Y 
+	jmp DrawElevatorSamus			; jump to odd frame draw call
 
-*	lda ObjectY
+*	lda ObjectY				; 
 	sec
-	sbc ScrollY     ; A = Samus' Y position on the visual screen
+	sbc ScrollY     		; A = Samus' Y position on the visual screen
 	cmp #$64
-	bcs +	   ; if ScreenY >= $64, don't scroll
-	jsr ScrollUp    ; otherwise, attempt to scroll
-*       ldy ObjectY
-	bne +	   ; wraparound required? (branch if not)
+	bcs +	   				; if ScreenY >= $64, don't scroll
+	jsr ScrollUp    		; otherwise, attempt to scroll
+*   ldy ObjectY
+	bne +	   				; wraparound required? (branch if not)
 	jsr ToggleSamusHi       ; toggle 9th bit of Samus' Y coord
-	ldy #240	; ObjectY will now be 239
-*       dey
+	ldy #240				; ObjectY will now be 239
+*   dey
 	sty ObjectY
-	jmp UnknownD47E
+	jmp DrawElevatorSamus
 
+;elevator NOT in the moving state
 *	ldy #$00
-	sty ObjVertSpeed
-	cmp #$05
-	beq +
-	cmp #$07
-	beq +
-UnknownD47E:
-	lda FrameCount
-	lsr
-	bcc ++
-*   jsr SetmirrorCntrlBit		;($CD92)Mirror Samus, if necessary.
-	lda #$01
-	jmp AnimDrawObject
+	sty ObjVertSpeed			; samus not moving
+	cmp #$05					; A is elevator status
+	beq +						;  if state is 5 or 7, draw samus
+	cmp #$07					
+	beq +						; else, we're going to gate draws by frame
+	
+DrawElevatorSamus:
+	lda FrameCount				; load frame count
+	lsr							; pop out lsb into carry
+	bcc ++						; if carry is clear (even frame), leave
+*   jsr SetmirrorCntrlBit		; on odd frame- Mirror Samus, if necessary.
+	lda #$01					; load 1
+	jmp AnimDrawObject			; draw samus
 *	rts
 
 UnknownD48C:
@@ -3232,8 +3234,8 @@ DoOneProjectile:
 	lda ObjAction,x
 	jsr ChooseRoutine
 
-	.word ExitSub     	;($C45C) rts
-	.word UpdateBullet 	; regular beam
+	.word ExitSub     		; rts, inactive
+	.word UpdateBullet 		; regular beam
 	.word UpdateWaveBullet  ; wave beam
 	.word UpdateIceBullet   ; ice beam
 	.word BulletExplode    	; bullet/missile explode
@@ -3243,7 +3245,7 @@ DoOneProjectile:
 	.word LayBomb      		; lay bomb
 	.word UpdateBomb       	; bomb countdown
 	.word ExplodeBomb       ; bomb explode
-	.word UpdateBullet  ; missile
+	.word UpdateBullet  	; missile
 
 UpdateBullet:
 	lda #$01
@@ -3272,10 +3274,10 @@ DrawBullet:
 	rts								; return
 
 DoubleIncrementWaveTableIndex:
-* inc ProjectileWaveTableIndex,x			;increment table index
+* 	inc ProjectileWaveTableIndex,x			;increment table index
 
 IncrementWaveTableIndex:
-  inc ProjectileWaveTableIndex,x			; increment table index
+	inc ProjectileWaveTableIndex,x			; increment table index
 	lda #$00								; reset timer for next speed
 	sta ProjectileWaveSpeedTimer,x			
 	beq +	   ; branch always				; go to sample the table again
@@ -3323,7 +3325,7 @@ UpdateWaveBulletSpeed:
 UpdateWaveBulletCollision:
 *   jsr BulletCrashDetection
 	bcs +									; no collision? no problem
-	jsr UnknownD624							; if there WAS collision... do stuff as if it didn't
+	jsr MoveObjectByVelocity				; if there WAS collision- fuck it, move anyway, WAVE BEAM!!
 *   jmp CheckBulletStat		
 
 WaveDirectionTable:
@@ -3427,7 +3429,7 @@ VerticalWaveTable:
 	sbc #$F7
 	bne +
 	sta ObjAction,x	 ; kill bullet
-*       jmp DrawBullet
+*   jmp DrawBullet
 
 ExplodeProjectileOnHit:
 	lda ObjectHit,x
@@ -3435,7 +3437,7 @@ ExplodeProjectileOnHit:
 	lda #$00
 	sta ObjectHit,x
 StartProjectileExplosion:
-  lda #$1D
+	lda #$1D
 	ldy ObjAction,x
 	cpy #wa_BulletExplode
 	beq Exit5
@@ -3454,49 +3456,49 @@ DeleteProjectileIfOffscreen:
 *	lda #$00				;
 	beq --	 				; else, set the object action to 0 and free the projectile slot by jumping to the code above
 	
-*   jmp UnknownE81E			; 
+*   jmp ProcessObjectDoorCrash	; process door collision
 
 ; bullet <--> background crash detection
 
 BulletCrashDetection:
-	jsr GetObjCoords
+	jsr GetObjCoords23B45
 	ldy #$00
-	lda ($04),y     ; get tile # that bullet touches
-	cmp #$A0		; compare with tile index A0
-	bcs UnknownD624	; go tp d624 if the tile index is >= than A0 - no tile collision so far
-	jsr Tourian95C0 ; jump to 95C0 - will return immediately if not in Tourian
-	cmp #$4E		; if it's tile 4E, 
-	beq -			; jump up to E81E
-	jsr UnknownD651	; else, go to D651 and check tile (also check against 70 if we're outside of brinstar)
-	bcc ++			; if tile index is < 80 (and less than 70 outside brinstar), return
-	clc				; clear the carry flag if it wasn't 
-	jmp IsBlastTile	; jump to blast tile (will return immediately if we got here not updating a projectile)
+	lda ($04),y    						; get tile # that bullet touches IN WRAM (not the actual nametable)
+	cmp #$A0							; compare with tile index A0
+	bcs MoveObjectByVelocity			; if the tile index is >= than A0 - no tile collision, move bullet
+	jsr MotherBrainCollision 					; jump to 95C0 - will return immediately if not in Tourian
+	cmp #$4E							; if it's tile 4E - the door tile
+	beq -								; jump up to E81E - obj hori speed in 5, obj vert speed in 4
+	jsr SetCarryIfCollisionTile			; else check for generic collision
+	bcc ++								; 	if tile index is < 80 (and less than 70 outside brinstar), return
+	clc									; clear the carry flag if it wasn't 
+	jmp IsBlastTile						; jump to blast tile (will return immediately if we got here not updating a projectile)
 
-UnknownD624:
-	ldx PageIndex
-	lda ObjHorzSpeed,x
-	sta $05
-	lda ObjVertSpeed,x
-	sta $04
-	jsr MakeObjectLocationStruct98B
-	jsr UnknownFD8F
-	bcc --
+MoveObjectByVelocity:
+	ldx PageIndex						; get bullet index
+	lda ObjHorzSpeed,x					; get horizontal speed of object
+	sta $05								;
+	lda ObjVertSpeed,x					;
+	sta $04								; cache bullet velocity into 05 (hori) and 04 (vert)
+	jsr MakeObjectLocationStruct98B		; create a location struct in 8 (obj Y), 9(obj X), and B(obj nt)
+	jsr CalcPotentialPosition			; make new potential position for projectile
+	bcc --								; potential positioning failed, clear bullet
 	
-UnknownD638:
-	lda $08
+SetPositionDataFromStruct98B:
+	lda $08								; copy from pos sturct to object y
 	sta ObjectY,x
-	lda $09
+	lda $09								; copy from pos struct to object x
 	sta ObjectX,x
 	lda $0B
-	and #$01
-	bpl +	   ; branch always
-	ToggleObjectHi:
-	lda ObjectHi,x
-	eor #$01
-*       sta ObjectHi,x
-*	rts
+	and #$01							; truncate nametable value
+	bpl +	   ; branch always			
+ToggleObjectHi:
+	lda ObjectHi,x						; load object high
+	eor #$01							; flip it
+*   sta ObjectHi,x						; store object name table
+*	rts									; return 
 
-UnknownD651:
+SetCarryIfCollisionTile:
 	ldy InArea
 	cpy #$10	;check if we're in brinstar
 	beq +		;if we're in brinstar, skip to comapre with 80
@@ -3506,7 +3508,7 @@ UnknownD651:
 *	rts
 
 LayBomb:
-  lda #an_BombTick
+	lda #an_BombTick
 	jsr SetProjectileAnim
 	lda #$18	; fuse length :-)
 	sta $030F,x
@@ -3516,7 +3518,7 @@ LayBomb:
 	jmp AnimDrawObject
 
 UpdateBomb:
-  lda FrameCount
+	lda FrameCount
 	lsr
 	bcc ++	  ; only update counter on odd frames
 	dec $030F,x
@@ -3526,13 +3528,13 @@ UpdateBomb:
 	cpy #$09
 	bne +
 	lda #an_BombExplode
-*       jsr SetProjectileAnim
+*   jsr SetProjectileAnim
 	inc ObjAction,x
 	jsr SFX_BombExplode
 *	jmp DrawBomb
 
 ExplodeBomb:
-  inc $030F,x
+	inc $030F,x
 	jsr UnknownD6A7
 	ldx PageIndex
 	lda $0303,x
@@ -3540,10 +3542,10 @@ ExplodeBomb:
 	sbc #$F7
 	bne +
 	sta ObjAction,x     ; kill bomb
-*       jmp DrawBomb
+*   jmp DrawBomb
 
 UnknownD6A7:
-  jsr GetObjCoords
+	jsr GetObjCoords23B45
 	lda $04
 	sta $0A
 	lda $05
@@ -3561,7 +3563,7 @@ UnknownD6A7:
 	lda $04
 	and #$20
 	beq Exit6
-*       lda $05
+*   lda $05
 	and #$03
 	cmp #$03
 	bne +
@@ -3574,8 +3576,11 @@ UnknownD6A7:
 	lda #$80
 	jsr UnknownD78B
 *	jsr UnknownD76A
-Exit6:  rts
 
+Exit6:  
+	rts
+	
+	
 *	dey
 	bne +++
 	lda #$40
@@ -3597,7 +3602,7 @@ Exit6:  rts
 	bne Exit6
 	lda #$80
 	jsr UnknownD77F
-*       jmp UnknownD76A
+*   jmp UnknownD76A
 
 *	dey
 	bne +++
@@ -3608,7 +3613,7 @@ Exit6:  rts
 	lda $04
 	lsr
 	bcc Exit7
-*       lda $04
+*   lda $04
 	and #$1F
 	cmp #$1E
 	bcc +
@@ -3620,7 +3625,7 @@ Exit6:  rts
 	lda $05
 	eor #$04
 	sta $05
-*       jmp UnknownD76A
+*   jmp UnknownD76A
 
 *	dey
 	bne Exit7
@@ -3631,7 +3636,7 @@ Exit6:  rts
 	lda $04
 	lsr
 	bcs Exit7
-*       lda $04
+*   lda $04
 	and #$1F
 	cmp #$02
 	bcs UnknownD76A
@@ -3645,21 +3650,22 @@ Exit6:  rts
 	sta $05
 	
 UnknownD76A:
-  txa
+	txa
 	pha
 	ldy #$00
 	lda ($04),y
-	jsr UnknownD651
+	jsr SetCarryIfCollisionTile
 	bcc +
 	cmp #$A0
 	bcs +
 	jsr UnknownE9C2
-*       pla
+*   pla
 	tax
-Exit7:  rts
+Exit7:  
+	rts
 
 UnknownD77F:
-  clc
+	clc
 	adc $0A
 	sta $04
 	lda $0B
@@ -3667,7 +3673,7 @@ UnknownD77F:
 	jmp UnknownD798
 
 UnknownD78B:
-  sta $00
+	sta $00
 	lda $0A
 	sec
 	sbc $00
@@ -3676,12 +3682,12 @@ UnknownD78B:
 	sbc #$00
 	
 UnknownD798:
-  and #$07
+	and #$07
 	ora #$60
 	sta $05
 *   rts
 
-GetObjCoords:
+GetObjCoords23B45:
 	ldx PageIndex
 	lda ObjectY,x
 	sta $02
@@ -3694,7 +3700,7 @@ GetObjCoords:
 UpdateElevator:
 	ldx #$20
 	stx PageIndex
-	lda ObjAction,x
+	lda ObjAction,x ;equivalent to ElevatorStatus
 	jsr ChooseRoutine
 
 ; Pointer table to elevator handlers
@@ -4115,7 +4121,7 @@ Table1B:
 UnknownDADA:
   lda $54
 	bmi Exit0
-	lda DoorStatus
+	lda SamusDoorStatus
 	bne Exit0
 	lda KraidStatueStatus
 	and $687C
@@ -4195,7 +4201,7 @@ CheckOneItem:
 	sta $034E
 	lda PowerUpNameTable,x
 	sta $034C
-	jsr GetObjCoords
+	jsr GetObjCoords23B45
 	ldx ItemIndex
 	ldy #$00
 	lda ($04),y
@@ -5247,16 +5253,16 @@ BitScan:
 ;Scrolls the screen if Samus is inside a door.
 
 ScrollDoor:
-	ldx DoorStatus			;
+	ldx SamusDoorStatus			;
 	beq -				;Exit if Samus isn't in a door.
 	dex				;
 	bne +				;Not in right door. branch to check left door.
-	jsr ScrollRight			;($E6D2)DoorStatus=1, scroll 1 pixel right.
+	jsr ScrollRight			;($E6D2)SamusDoorStatus=1, scroll 1 pixel right.
 	jmp ++				;Jump to check if door scroll is finished.
 
 *	dex				;Check if in left door.
 	bne ++				;
-	jsr ScrollLeft			;($E6A7)DoorStatus=2, scroll 1 pixel left.
+	jsr ScrollLeft			;($E6A7)SamusDoorStatus=2, scroll 1 pixel left.
 *	ldx ScrollX			;Has x scroll offset reached 0?-->
 	bne Exit15			;If not, branch to exit.
 
@@ -5266,11 +5272,11 @@ ScrollDoor:
 
 *	dex				;
 	bne +				;Check if need to scroll down to center door.
-	jsr ScrollDown			;($E519)DoorStatus=3, scroll 1 pixel down.
+	jsr ScrollDown			;($E519)SamusDoorStatus=3, scroll 1 pixel down.
 	jmp ++				;Jump to check y scrolling value.
 *	dex				;
 	bne Exit15			;Check if need to scroll up to center door.
-	jsr ScrollUp			;($E4F1)DoorStatus=4, scroll 1 pixel up.
+	jsr ScrollUp			;($E4F1)SamusDoorStatus=4, scroll 1 pixel up.
 
 VerticalRoomCentered:
 *	ldx ScrollY			;Has room been centered on screen?-->
@@ -5299,7 +5305,7 @@ DoOneDoorScroll:
 
 *	jsr ToggleScroll		;($E252)Toggle scrolling and mirroring.
 *	sta MirrorCntrl			;Store new mirror control data.
-	stx DoorStatus			;DoorStatus=5. Done with door scrolling.
+	stx SamusDoorStatus			;SamusDoorStatus=5. Done with door scrolling.
 
 Exit15:
 	rts				;Exit for several routines above.
@@ -6188,17 +6194,17 @@ UnknownE7DE:  bne +++
 ; object<-->background crash detection
 
 UnknownE7E6:  		
-	jsr MakeWRAMPtr 	; set up ptr in $0004
+	jsr MakeWRAMPtr 				; set up ptr in $0004
 	ldy #$00
-	lda ($04),y     	; get tile value
-	cmp #$4E
-	beq UnknownE81E
-	jsr Tourian95C0
-	jsr UnknownD651
-	bcc Exit16      	; CF = 0 if tile # < $80 (solid tile)... CRASH!!!
-	cmp #$A0			; is tile >= A0h? (walkable tile)
-	bcs IsWalkableTile
-	jmp IsBlastTile  	; tile is $80-$9F (blastable tiles)
+	lda ($04),y     				; get tile value
+	cmp #$4E						; door tile?
+	beq ProcessObjectDoorCrash		; 	door tile- deal with that.
+	jsr MotherBrainCollision		; else, jump to check if Mother brain was collided with
+	jsr SetCarryIfCollisionTile		; check if we hit a normal collision instead
+	bcc Exit16      				; 	no collision? leave
+	cmp #$A0						; check against walkable tiles
+	bcs IsWalkableTile				; 	walkable tile? process that
+	jmp IsBlastTile  				; tile is $80-$9F (blastable tiles) - should return since bullets aren't updating...
 
 IsWalkableTile:
 	ldy IsSamus
@@ -6221,54 +6227,54 @@ IsWalkableTile:
 	Exit16:
 	rts
 
-UnknownE81E:  
+ProcessObjectDoorCrash:  
 	ldx UpdatingProjectile		; load projectile update
 	beq ClcExit					; if not updating projectile, exit and clear carry
-	ldx #$06					; load 6 to x
-*   lda $05						; load 
-	eor $5D,x
-	and #$04
-	bne +++
-	lda $04
-	eor $5C,x
-	and #$1F
-	bne +++
-	txa
-	jsr Amul8       ; * 8
-	ora #$80
-	tay
-	lda ObjAction,y
-	beq +++
-	lda $0307,y
-	lsr
-	bcs ++
-	ldx PageIndex
-	lda ObjAction,x
-	eor #$0B
-	beq +
-	lda ObjAction,x
-	eor #$04
-	bne PlaySnd4
-	lda AnimResetIndex,x
-	eor #$91
-	bne PlaySnd4
-*   lda $0683
-	ora #$02
-	sta $0683
-*	lda #$04
-	sta $030A,y
-	bne ClcExit
-*	dex
-	dex
-	bpl ----
-	lda $04
-	jsr Adiv8       ; / 8
-	and #$01
-	tax
-	inc $0366,x
+	ldx #$06					; load 6 to x - we're about to loop 4 times (06, 04, 02, 00)
+*   lda $05						; load hi byte of projectile position (0110 0nyy)
+	eor DoorWRAMPos + 1,x		; flip bits with DoorPositon hi byte
+	and #$04					; and with 0000 0100 to isolate n, the name table (the eor will be 0 if they were the same nametable, 1 if not)
+	bne +++						; 	not the same name table- go to the next door
+	lda $04						; same name table - load lo byte of projectile position (yyyx xxxx)
+	eor DoorWRAMPos,x			; flip bits with Door position lo byte
+	and #$1F					; isolate X position bits (the eor will return 0 if it's the same X position)
+	bne +++						; 	not the same X position- go to the next door
+	txa							; same X position and name table - put the X index into A
+	jsr Amul8       			; A will be even numbers between 6 and 0 - 0000 0aa0 -> 00aa 0000
+	ora #$80					; 10aa 0000
+	tay							; we converted our index to the correct offset in the object table for doors
+	lda ObjAction,y				; load the door state
+	beq +++						; 	door inactive? go to the next door
+	lda DoorType,y				; load up byte 7 of the door data- 00 for red door, 01 for blue door
+	lsr							; get the lowest bit into carry
+	bcs ++						; 	carry was set? blue door- just open
+	ldx PageIndex				; carry not set red door. load current object index (our bullet)
+	lda ObjAction,x				; load the current bullet update type 
+	eor #$0B					; flip the lower 1011
+	beq +						; 	missle update type? play missle door hit
+	lda ObjAction,x				; load the current bullet action again - if it wasn;t a missle, it might be something else that can damage the door
+	eor #$04					; will return 0 iff the byte is 04 - bullet explosion
+	bne PlaySnd4				; 	anything else, metal sound
+	lda AnimResetIndex,x		; else, we'll load the reset anim for the exploding bullet
+	eor #an_MissileExplode		; eor with missle explode
+	bne PlaySnd4				;	not a bullet explosion? metal sound
+*   lda TriangleSFXFlag			; load the triangle SFX flag
+	ora #$02					; set 0000 0010
+	sta TriangleSFXFlag			; store that back into the triangle SFX flag for hitting the door 
+*	lda #$04					; load 0000 0100
+	sta $030A,y					; TODO store into some kinda door data - probably an opening thing
+	bne ClcExit					; jump to clear carry and leave- no need to keep looking for the correct door
+*	dex							; 
+	dex							; dec X to get to the next door index
+	bpl ----					; 	still positive? loop
+	lda $04						; we never found the door we hit - load the low byte of the bullet position (yyyx xxxx)
+	jsr Adiv8       			; yyyx xxxx -> 000y yyxx
+	and #$01					; 000y yyxx -> 0000 000x	
+	tax							; move A to X
+	inc $0366,x					; increment the byte at either 0366 or 0367 - based on which quater of the screen the bullet was in
 ClcExit:
-	clc
-	rts
+	clc							; clear carry
+	rts							; leave
 
 PlaySnd4:
 	jmp SFX_Metal
@@ -6424,30 +6430,31 @@ UnknownE95F:
 ; Out: $04 = WRAM pointer
 
 MakeWRAMPtr:
-	lda #$18
-	sta $05
-	lda $02	 ; ObjectY
-	and #$F8	; keep upper 5 bits
-	asl
-	rol $05
-	asl
-	rol $05
-	sta $04
-	lda $03	 ; ObjectX
-	lsr
-	lsr
-	lsr	   ; A = ObjectX / 8
-	ora $04
-	sta $04
-	lda $0B	 ; ObjectYHi
-	asl
-	asl	   ; A = ObjectYHi * 4
-	and #$04
-	ora $05
-	sta $05
-	rts
+	lda #$18	; load 0001 1000
+	sta $05		; store into 5
+	lda $02	 	; ObjectY pos
+	and #$F8	;   yyyy y000 keep upper 5 bits - truncates to tile index 
+	asl			; y yyyy 0000 
+	rol $05		;   0011 000y
+	asl			; y yyy0 0000
+	rol $05		;   0110 00yy
+	sta $04		; store into 4- should now be the lower 8 bits of the tile position at the top
+	lda $03		; ObjectX pos
+	lsr			; 
+	lsr			; 
+	lsr	   		; A now is the tile index across X
+	ora $04		; or with 4
+	sta $04		; tile location is now stored between 05 and 04 (0110 00yy yyyx xxxx)
+	lda $0B	 	; ObjectYHi
+	asl			; 
+	asl	   		; A = ObjectYHi * 4
+	and #$04	; just in case, clear out other possible bits so we keep 0000 0n00
+	ora $05		; or with 5 
+	sta $05		; store in 5 (0110 0nyy yyyy xxxx)
+	rts			; return 
 
-UnknownE98E:  lda $02
+UnknownE98E:  
+	lda $02
 	clc
 	adc $06
 	sta $02
@@ -6459,7 +6466,7 @@ UnknownE98E:  lda $02
 	and #$02
 	bne +
 	inc $0B
-*       lda $03
+*   lda $03
 	clc
 	adc $07
 	sta $03
@@ -6468,9 +6475,10 @@ UnknownE98E:  lda $02
 	and #$02
 	beq +
 	inc $0B
-*       rts
+*   rts
 
-UnknownE9B7:  lda PPUCNT0ZP
+UnknownE9B7:  
+	lda PPUCNT0ZP
 	eor #$03
 	sta PPUCNT0ZP
 	rts
@@ -6479,19 +6487,19 @@ IsBlastTile:
 	ldy UpdatingProjectile
 	beq Exit18
 UnknownE9C2:
-	tay			; store tile index into y
+	tay						; store tile index into y
 	jsr $95BD
-	cpy #$98	; if the tile is >= 98
-	bcs +++++	; clear carry flag and return - not a blast tile
-; attempt to find a vacant tile slot
+	cpy #$98				; if the tile is >= 98
+	bcs +++++				; clear carry flag and return - not a blast tile
+							; attempt to find a vacant tile slot
 	ldx #$C0
-*       lda TileRoutine,x
-	beq +	   ; 0 = free slot
+*   lda TileRoutine,x
+	beq +	   				; 0 = free slot
 	jsr Xminus16
 	bne -
 	lda TileRoutine,x
-	bne ++++	 ; no more slots, can't blast tile
-*       inc TileRoutine,x
+	bne ++++	 			; no more slots, can't blast tile
+*   inc TileRoutine,x
 	lda $04
 	and #$DE
 	sta TileWRAMLo,x
@@ -6504,7 +6512,7 @@ UnknownE9C2:
 	bne +
 	lda #$04
 	bne ++
-*       tya
+*   tya
 	clc
 	adc #$10
 	and #$3C
@@ -6512,41 +6520,43 @@ UnknownE9C2:
 *	lsr
 	sta TileType,x
 *	clc
-Exit18: rts
+
+Exit18: 
+	rts
 
 ;------------------------------------------[ Select room RAM ]---------------------------------------
 
 SelectRoomRAM:
 	jsr GetNameTable		;($EB85)Find name table to draw room on.
-	asl				;
-	asl				;
-	ora #$60			;A=#$64 for name table 3, A=#$60 for name table 0.
+	asl						;
+	asl						;
+	ora #$60				;A=#$64 for name table 3, A=#$60 for name table 0.
 	sta CartRAMPtr+1		;
-	lda #$00			;
+	lda #$00				;
 	sta CartRAMPtr			;Save two byte pointer to start of proper room RAM.
-	rts				;
+	rts						;
 
 ;------------------------------------[ write   table data ]----------------------------------
 
 AttribTableWrite:
 *	lda RoomNumber			;
-	and #$0F			;Determine what row of PPU attribute table data, if any,-->
+	and #$0F				;Determine what row of PPU attribute table data, if any,-->
 	inc RoomNumber			;to load from RoomRAM into PPU.
 	jsr ChooseRoutine		;
 
 ;The following table is used by the code above to determine when to write to the PPU attribute table.
 
-	.word ExitSub			;($C45C)Rts.
-	.word WritePPUAttribTbl		;($E5E2)Write first row of PPU attrib data.
-	.word ExitSub			;($C45C)Rts.
-	.word WritePPUAttribTbl		;($E5E2)Write second row of PPU attrib data.
-	.word RoomFinished		;($EA26)Finished writing attribute table data.
+	.word ExitSub			; Rts.
+	.word WritePPUAttribTbl	; Write first row of PPU attrib data.
+	.word ExitSub			; Rts.
+	.word WritePPUAttribTbl	; Write second row of PPU attrib data.
+	.word RoomFinished		; Finished writing attribute table data.
 
 ;-----------------------------------[ Finished writing room data ]-----------------------------------
 
 RoomFinished:
-  lda #$FF			;No more tasks to perform on current room.-->
-	sta RoomNumber			;Set RoomNumber to #$FF.
+	lda #$FF		;No more tasks to perform on current room.-->
+	sta RoomNumber	;Set RoomNumber to #$FF.
 *	rts				;
 
 ;------------------------------------------[ Setup room ]--------------------------------------------
@@ -8812,7 +8822,7 @@ UnknownF91D:
 	jsr MakeEnemyLocationStruct98B	; make a location struct 
 	tya								; put the current projectile index into A
 	tax								; then, X
-	jsr UnknownFD8F
+	jsr CalcPotentialPosition
 	jmp CopyEnemyLocationStruct98B	; copy enemy location data we cached off into the projectile
 
 ; Table used by above subroutine
@@ -8949,7 +8959,7 @@ EnemyBGCrashDetection:  lda InArea
 	lda EnStatus,x
 	lsr
 	bcc ++
-*       jsr UnknownFA7D
+*   jsr GetEnTileCoords23B45
 	ldy #$00
 	lda ($04),y
 	cmp #$A0
@@ -8961,7 +8971,7 @@ EnemyBGCrashDetection:  lda InArea
 	sta $04
 UnknownFA41:  
 	jsr MakeEnemyLocationStruct98B
-	jsr UnknownFD8F
+	jsr CalcPotentialPosition
 	bcc KillObject			;($FA18)Free enemy data slot.
 CopyEnemyLocationStruct98B: 
 	lda $08
@@ -8990,7 +9000,7 @@ UnknownFA6B:
 *   jsr KillObject			;($FA18)Free enemy data slot.
 *   jmp UnknownF97C
 
-UnknownFA7D:  
+GetEnTileCoords23B45:  
 	ldx PageIndex
 	lda EnYRoomPos,x
 	sta $02
@@ -9194,7 +9204,7 @@ UnknownFBEC:  		;this has something to do with enemies that explode
 	sta $09
 	lda $A3,x
 	sta $0B
-	jsr UnknownFD8F
+	jsr CalcPotentialPosition
 	bcc +++
 	lda $08
 	sta $A1,x
@@ -9321,7 +9331,7 @@ UnknownFCC1:  jsr UnknownFD5F
 	ldy #$FD
 *       sty $04
 	inc $B5,x
-	jsr UnknownFD8F
+	jsr CalcPotentialPosition
 	bcs +
 	lda $B4,x
 	ora #$02
@@ -9376,8 +9386,8 @@ UnknownFD25:  txa
 	jsr TwosCompliment		;($C3D4)
 	cpy #$80
 	bcc ++
-*       sta $04
-*      jsr UnknownFD8F
+*   sta $04
+*   jsr CalcPotentialPosition
 	jmp UnknownFD6C
 
 ; Table used by above subroutine
@@ -9418,58 +9428,58 @@ UnknownFD84:
 	sta $B0,x
 *   rts
 
-UnknownFD8F:
+CalcPotentialPosition:
 	lda ScrollDir			; load scroll direction
 	and #$02				; and with the horizontal bit
 	sta $02					; store in $02
-	lda $04					; load whatever we stored in $04
+	lda $04					; load cached vert speed of object
 	clc						; clear carry
-	bmi +++					; if we stored a negative value, jump ahead
-	beq UnknownFDBF			; 	else, branch below 
-	adc $08					; add the value in $08 
-	bcs +
-	cmp #$F0
-	bcc ++
-*   adc #$0F
-	ldy $02
-	bne ClcExit2
-	inc $0B
-*   sta $08
-	jmp UnknownFDBF
+	bmi +++					; 	vert speed negative- jump below to negative process
+	beq CalcPotentialXPos			; 	speed zero?, branch below 
+	adc $08					; speed positive, moving object down screen
+	bcs +					; 	carry flag set when we pass lowest position
+	cmp #$F0				; else, compare with F0 (240)
+	bcc ++					; 	less than? jump ahead
+*   adc #$0F				; else, we're in the last little bit of the screen- add 16 to get us back to the top of the screen early (why would this work for vertical scrolling?
+	ldy $02					; load the scroll direction to y
+	bne ClcExit2			; 	if we're scrolling horizontal, this wrap around stuff means nothing- clear carry and exit
+	inc $0B					; else, increment the nametable ?
+*   sta $08					; store newly created y position
+	jmp CalcPotentialXPos	; go to horizontal speed checks
 
-*   adc $08
-	bcs +
-	sbc #$0F
-	ldy $02
-	bne ClcExit2
-	inc $0B
-*   sta $08
+*   adc $08					; speed negative, moving up screen
+	bcs +					;  carry flag set when we pass the highest position
+	sbc #$0F				; subtract 0F (no carry)
+	ldy $02					; check horizontal movement
+	bne ClcExit2			; horizontal movement? clear carry and leave
+	inc $0B					; increment nametable ?
+*   sta $08					; store Y position in 
 
-UnknownFDBF:  
-	lda $05		; load the data $in 05
-	clc			; clear carry
-	bmi ++		; 
-	beq SecExit
-	adc $09
-	bcc +
-	ldy $02
-	beq ClcExit2
-	inc $0B
-*   jmp ++
+CalcPotentialXPos:  
+	lda $05					; load cacehd horizontal speed of object 
+	clc						; clear carry
+	bmi ++					; 	if horizontal speed negative, jump ahead
+	beq SecExit				; 	0 speed, set carry flag and leave
+	adc $09					; add object x position
+	bcc +					; 	carry flag is set when we wrap the position around
+	ldy $02					; 		load the scroll direction
+	beq ClcExit2			; 		if it's 0, we're vertical scrolling, and don't care about wrap arounds- clear the carry and leave
+	inc $0B					; increment the nametable	?
+*   jmp ++					; jump ahead to store data in the position struct X position
 
-*   adc $09
-	bcs +
-	ldy $02
-	beq ClcExit2
-	inc $0B
-*   sta $09
+*   adc $09					; "subtract" from x position
+	bcs +					; carry flag set on wrap- just junp ahead and set sttruct
+	ldy $02					; 	else, load scroll direction
+	beq ClcExit2			; 	vert scrolling? clear and leave
+	inc $0B					; inc nametable ?
+*   sta $09					; store new position struct's X position
 SecExit:
-	sec
-	rts
+	sec						; set carry flag
+	rts						; leave
 
 ClcExit2:
-	clc
-*   rts
+	clc						; clear carry 
+*   rts						; leave
 
 
 UpdateEndTimer:

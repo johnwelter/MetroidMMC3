@@ -63,7 +63,7 @@ L8021:	JMP LaunchEnProjectile
 
 AreaChooseRoutine:
 		JMP ChooseRoutine		;($C27C)
-L8027:	JMP UnknownFD8F
+L8027:	JMP CalcPotentialPosition
 L802A:	JMP UnknownEB6E
 L802D:	JMP $8244
 L8030:	JMP $8318
@@ -1424,7 +1424,7 @@ L8B03:	.byte $0C, $04, $10, $FD, $00, $57, $18, $FD, $40, $18, $57, $FD, $C0, $1
 ;This function is called once when Samus first enters a door.
 
 SamusEnterDoor:
-L8B13:	LDA DoorStatus			;The code determines if Samus has entered a door if the-->
+L8B13:	LDA SamusDoorStatus			;The code determines if Samus has entered a door if the-->
 L8B15:	BNE ++++			;door status is 0, but door data information has been-->
 L8B17:	LDY SamusDoorData		;written. If both conditions are met, Samus has just-->
 L8B19:	BEQ ++++			;entered a door.
@@ -1479,8 +1479,8 @@ L8B70:	JSR VerticalRoomCentered	;($E21B)Room is centered. Toggle scroll.
 L8B73:	TXA				;X=#$01 or #$02(depending on which door Samus is in).
 
 SamusInDoor:
-L8B74:	ORA #$80			;Set MSB of DoorStatus to indicate Samus has just-->
-L8B76:	STA DoorStatus			;entered a door.
+L8B74:	ORA #$80			;Set MSB of SamusDoorStatus to indicate Samus has just-->
+L8B76:	STA SamusDoorStatus			;entered a door.
 L8B78:	RTS				;
 
 ;----------------------------------------------------------------------------------------------------
@@ -1550,7 +1550,7 @@ L8BF8:	STA $0305,X
 L8BFB:	SEC 
 L8BFC:	SBC #$03
 L8BFE:	JMP $8C7E
-L8C01:	LDA DoorStatus
+L8C01:	LDA SamusDoorStatus
 L8C03:	BEQ $8C1D
 L8C05:	LDA $030C
 L8C08:	EOR $030C,X
@@ -1605,9 +1605,9 @@ L8C76:	LDA #$30
 L8C78:	STA $0305,X
 L8C7B:	SEC 
 L8C7C:	SBC #$02
-L8C7E:	JSR UnknownD2FD
+L8C7E:	JSR PlayProjectileAnim
 L8C81:	JMP SFX_Door
-L8C84:	LDA DoorStatus
+L8C84:	LDA SamusDoorStatus
 L8C86:	CMP #$05
 L8C88:	BCS $8CC3
 L8C8A:	JSR $8CFB
@@ -1637,7 +1637,7 @@ L8CBB:	JSR TourianMusic
 L8CBE:	BNE $8CC3
 L8CC0:	JSR MotherBrainMusic
 L8CC3:	JMP $8C71
-L8CC6:	LDA DoorStatus
+L8CC6:	LDA SamusDoorStatus
 L8CC8:	CMP #$05
 L8CCA:	BNE $8CED
 L8CCC:	TXA 
@@ -1649,14 +1649,14 @@ L8CD5:	LDA #$2C
 L8CD7:	STA $0305,X
 L8CDA:	SEC 
 L8CDB:	SBC #$03
-L8CDD:	JSR UnknownD2FD
+L8CDD:	JSR PlayProjectileAnim
 L8CE0:	JSR SFX_Door
 L8CE3:	JSR SelectSamusPal
 L8CE6:	LDX PageIndex
 L8CE8:	LDA #$02
 L8CEA:	STA $0300,X
 L8CED:	JMP $8BB1
-L8CF0:	LDA DoorStatus
+L8CF0:	LDA SamusDoorStatus
 L8CF2:	BNE $8CED
 L8CF4:	JMP $8C61
 L8CF7:	LDA #$FF

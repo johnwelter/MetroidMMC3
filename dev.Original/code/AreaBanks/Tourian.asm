@@ -1416,22 +1416,22 @@ LA13F:	PLA
 LA140:	CLC 
 LA141:	RTS
 
-;;called when shooting tiles in tourian
-LA142:	TAY 		
-LA143:	LDA $71
-LA145:	BEQ $A15C
-LA147:	LDX $4B
-LA149:	LDA $0300,X
-LA14C:	CMP #$0B
-LA14E:	BNE $A15C
-LA150:	CPY #$5E
-LA152:	BCC $A15C
-LA154:	CPY #$72
-LA156:	BCS $A15C
-LA158:	LDA #$01
-LA15A:	STA $9E
-LA15C:	TYA 
-LA15D:	RTS
+;;called when shooting bullets. A is the tile we're checking, will be less than A0
+LA142:	TAY 		; move tile ID into Y	
+LA143:	LDA $71		; load the value in 71
+LA145:	BEQ $A15C	; 	if it's 0, leave early
+LA147:	LDX $4B		; else, load value in 4B into X
+LA149:	LDA $0300,X	; load the object data there
+LA14C:	CMP #$0B	; compare to 0B
+LA14E:	BNE $A15C	; 	not equal? leave
+LA150:	CPY #$5E	; compare Tile to 5E
+LA152:	BCC $A15C	; 	less than? leave
+LA154:	CPY #$72	; compare to 72
+LA156:	BCS $A15C	; 	greater or equal to? leave
+LA158:	LDA #$01	; tile was between 5E and 72 - load 1 into A
+LA15A:	STA $9E		; store into 9E
+LA15C:	TYA 		; put tile back into Y
+LA15D:	RTS			; leave
 
 LA15E:	LDY $010B
 LA161:	INY 

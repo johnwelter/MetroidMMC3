@@ -33,7 +33,7 @@
 .alias AreaPaletteToggleValue $95DA
 .alias TourianRoutine95AB $95AB
 
-.alias Tourian95C0 					$95C0
+.alias MotherBrainCollision 		$95C0
 .alias AreaMusicFlag 				$95CD
 .alias AreaDamageLo 				$95CE
 .alias AreaDamageHi 				$95CF
