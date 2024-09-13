@@ -442,8 +442,8 @@
 								;|+--------skip state update
 								;+---------check distance to player 1 = Y check, 0 = X check
 								
-.alias EnCounter		$0406	;Counts such things as explosion time.
-;						$0407
+.alias EnCounter		$0406	; Counts such things as explosion time.
+;						$0407	; second counter for other things
 ;						$0408
 .alias EnDelay			$0409	;Delay counter between enemy actions.
 .alias EnRotation		$040A	; ^,>,v,<
@@ -797,13 +797,13 @@
 .alias EnResetAnimIndex		$6AF9	;Index to beginning of animation sequence.
 .alias EnAnimIndex			$6AFA	;Index to current animation.
 .alias EnNameTable			$6AFB	;#$00=Enemy on name table 0, #$01=Enemy on name table 3.
-;							$6AFC
-;							$6AFD
-;							$6AFE
-;							$6AFF
+;							$6AFC	; something to do with vert accel counter
+;							$6AFD	; something to do with hori accel counter
+;							$6AFE	; vertical acceleration (1px per 256-X frames)
+;							$6AFF	; horizontal acceleration
 ;							$6B00
-;							$6B01
-.alias EnDataIndex			$6B02	;Contains index into enemy data tables.
+;							$6B01	; vertical home dispacement from some home value?
+.alias EnDataIndex			$6B02	; Contains index into enemy data tables.
 ;							$6B03
 
 ;-------------------------------------[ Intro sprite defines ]---------------------------------------
@@ -1045,26 +1045,32 @@
 .alias sa_Begin				255
 
 ;Animations
-.alias an_SamusRun			$00
-.alias an_SamusFront		$04
-.alias an_SamusStand		$07
-.alias an_SamusJump			$0C
-.alias an_SamusSalto		$0E
-.alias an_SamusRunJump		$13
-.alias an_SamusRoll			$16
-.alias an_Bullet			$1B
-.alias an_SamusFireJump		$20
-.alias an_SamusFireRun		$22
-.alias an_SamusPntUp		$27
-.alias an_Explode			$32
-.alias an_SamusJumpPntUp	$35
-.alias an_SamusRunPntUp		$37
-.alias an_WaveBeam			$7D
-.alias an_BombTick			$7F
-.alias an_BombExplode		$82
-.alias an_MissileLeft		$8B
-.alias an_MissileRight		$8D
-.alias an_MissileExplode	$91
+.alias an_SamusRun			 $00
+.alias an_SamusFront		 $04
+.alias an_SamusStand		 $07
+.alias an_SamusFireStand	 $09
+.alias an_SamusJump			 $0C
+.alias an_SamusSalto		 $0E
+.alias an_SamusRunJump		 $13
+.alias an_SamusRoll			 $16
+.alias an_Bullet			 $1B
+.alias an_SamusFireJump		 $20
+.alias an_SamusFireRun		 $22
+.alias an_SamusFirePntUp	 $26
+.alias an_SamusPntUp		 $27
+.alias an_Explode			 $32
+.alias an_SamusFireJumpPntUp $34
+.alias an_SamusJumpPntUp	 $35
+.alias an_SamusRunPntUp		 $37
+.alias an_SamusFireRunPntUp1 $3B
+.alias an_SamusFireRunPntUp2 $3D
+.alias an_SamusFireRunPntUp3 $3F
+.alias an_WaveBeam			 $7D
+.alias an_BombTick			 $7F
+.alias an_BombExplode		 $82
+.alias an_MissileLeft		 $8B
+.alias an_MissileRight		 $8D
+.alias an_MissileExplode	 $91
 
 ;Weapon action handlers.
 .alias wa_RegularBeam		1

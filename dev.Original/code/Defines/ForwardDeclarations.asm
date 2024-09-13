@@ -18,7 +18,8 @@
 .alias AreaRoutine						$95C3
 .alias EnemyHitPointTbl					$962B
 .alias EnemyInitDelayTbl				$96BB
-.alias AreaEnemyMovementTable $97A7
+.alias AreaEnemyMovementTable			$96DB
+.alias AreaProjectileMovementTable 		$97A7
 
 .alias nmiscreenwrite 					$9A07
 .alias soundengine 						$B3B4

@@ -281,7 +281,7 @@ L9609:	.word $0000
 ;enemy data tables
 ; 0 -
 ; 1 -
-; 2 - glider
+; 2 - glider (sin wave guys)
 ; 3 - freezie back and forth guys
 ; 4 - driller guy
 ; 5 - crawler
@@ -342,16 +342,20 @@ L96AB:	.byte $00, $00, $06, $00, $83, $00, $88, $00, $00, $00, $00, $00, $00, $0
 EnemyInitDelayTbl:
 L96BB:	.byte $08, $08, $01, $01, $01, $01, $10, $08, $10, $00, $00, $01, $01, $00, $00, $00
 
+;dispalcement from D1 in D197 to figure out table for certain data
 L96CB:	.byte $00, $03, $06, $08, $0A, $10, $0C, $0E, $14, $17, $19, $10, $12, $00, $00, $00
 
+;enemy movement tables
 L96DB:	.word $97EF, $97F2, $97F5, $97F5, $97F5, $97F5, $97F5, $97F5
 L96EB:	.word $97F5, $97F5, $97F5, $9840, $988B, $988E, $9891, $98A5
 L96FB:	.word $98B9, $98B9, $98B9, $98B9, $98B9, $98B9, $98B9, $98B9
 L970B:	.word $98B9, $98C0, $98C7, $98CE, $98D5, $98D8, $98DB, $98F2
-L971B:	.word $9909, $9920, $9937, $994E
+L97cB:	.word $9909, $9920, $9937, $994E
 
-L9723:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $7F, $40, $30, $C0, $D0, $00, $00, $7F
-L9733:	.byte $80, $00, $54, $70, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+L9723:	.byte $00, $00, $00, $00, $00, $00, $00, $00
+L972B:	.byte $7F, $40, $30, $C0, $D0, $00, $00, $7F
+L9733:	.byte $80, $00, $54, $70, $00, $00, $00, $00, $00, $00, $00, $00
+l973F:	.byte $00, $00, $00, $00
 L9743:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 L9753:	.byte $F6, $FC, $FE, $04, $02, $00, $00, $00, $0C, $FC, $FC, $00, $00, $00, $00, $00
 L9763:	.byte $00, $00, $00, $00, $00, $02, $02, $02, $02, $00, $00, $00, $02, $00, $02, $02
@@ -363,7 +367,8 @@ L9773:	.byte $00, $00, $00, $00, $00, $00, $00, $00
 ;|||| ||||
 ;|||| ++---- ? used in F676 to populate a byte on an enemy at 6B03, checked mostly in area common
 ;|||+------- if the enemy is a metroid for damage and SFX purposes
-;|+--------- wether to flip 407(?) as well as 406(EnCounter) when flipping velocities for enemies that check relation to samus
+;|+--------- use Acceleration flag
+;+---------- check direction for enemy when checking distance to samus, vertical (1) or horizontal (0)
 L977B:	.byte $64, $6C, $21, $01, $04, $00, $4C, $40, $04, $00, $00, $40, $40, $00, $00, $00 
 
 ; this looks like it might be a double width table, but i'm skeptical of the missing bytes - maybe it only can get so big?
@@ -371,7 +376,7 @@ L978B:	.byte $00, $00, $64, $67, $69, $69, $00, $00, $00, $00, $00, $00, $00, $0
 L979B:	.byte $0C, $F4, $00, $00, $00, $00, $00, $00 
 L97A3: 	.byte $F4, $00, $00, $00
 
-;enemy movement tables
+;projectile movement tables
 L97A7:	.word $9965, $9974, $9983, $9992, $9D36, $9D3B, $9D40, $9D45
 L97B7:	.word $9D4A, $9D4F, $9D54, $9D59, $9D5E, $9D63, $9D6A, $9D6A
 L97C7:	.word $9D6A, $9D6A, $9D6A, $9D6A, $9D6A
@@ -379,32 +384,41 @@ L97C7:	.word $9D6A, $9D6A, $9D6A, $9D6A, $9D6A
 L97D1:	.byte $01, $01, $02, $01, $03, $04, $00, $05, $00, $06, $00, $07, $00, $08, $00, $09
 L97E1:	.byte $00, $00, $00, $0B, $01, $0C, $0D, $00, $0E, $03, $0F, $10, $11, $0F
 
+; movement for scuttlers - loop with conditions
 L97EF:	.byte $20, $22, $FE
-
 L97F2:	.byte $20, $2A, $FE
 
+;movement tables for sin wave gliders - after a single period, reset 6B01
 L97F5:	.byte $02, $F2, $04, $E2, $04, $D2, $05, $B2, $03, $92, $04, $02, $05, $12, $03, $32
 L9805:	.byte $05, $52, $04, $62, $02, $72, $02, $72, $04, $62, $04, $52, $05, $32, $03, $12
-L9815:	.byte $04, $02, $05, $92, $03, $B2, $05, $D2, $04, $E2, $02, $F2, $FD, $03, $D2, $06
-L9825:	.byte $B2, $08, $92, $05, $02, $07, $12, $05, $32, $04, $52, $03, $52, $06, $32, $08
-L9835:	.byte $12, $05, $02, $07, $92, $05, $B2, $04, $D2, $FD, $FF
+L9815:	.byte $04, $02, $05, $92, $03, $B2, $05, $D2, $04, $E2, $02, $F2, $FD				; reset home displacement
+L9822: 	.byte $03, $D2, $06, $B2, $08, $92, $05, $02, $07, $12, $05, $32, $04, $52, $03, $52 
+L9832:	.byte $06, $32, $08, $12, $05, $02, $07, $92, $05, $B2, $04, $D2, $FD, $FF			; reset home displaccement, loop table
 
+;same as above, but with negative horizontal velocity
 L9840:	.byte $02, $FA, $04, $EA, $04, $DA, $05, $BA, $03, $9A, $04, $0A, $05, $1A, $03, $3A
 L9850:	.byte $05, $5A, $04, $6A, $02, $7A, $02, $7A, $04, $6A, $04, $5A, $05, $3A, $03, $1A
 L9860:	.byte $04, $0A, $05, $9A, $03, $BA, $05, $DA, $04, $EA, $02, $FA, $FD, $03, $DA, $06
 L9870:	.byte $BA, $08, $9A, $05, $0A, $07, $1A, $05, $3A, $04, $5A, $03, $5A, $06, $3A, $08
 L9880:	.byte $1A, $05, $0A, $07, $9A, $05, $BA, $04, $DA, $FD, $FF
 
+;;movement tables for back and forth guys - 1 px per frame left or right
 L988B:	.byte $01, $01, $FF
-
 L988E:	.byte $01, $09, $FF
 
-L9891:	.byte $04, $22, $01, $42, $01, $22, $01, $42, $01, $62, $01, $42, $04, $62, $FC, $01
-L98A1:	.byte $00, $64, $00, $FB
+;; next two tables are for driller
+L9891:	.byte $04, $22, $01, $42, $01, $22, $01, $42, $01, $62, $01, $42 ; downward acceleration
+L989D:	.byte $04, $62, $FC												 ; terminal velocity loop
+L98A0:	.byte $01, $00													 ; one frame to set explode delay
+L98A2:	.byte $64, $00, $FB												 ; update nothing for 64 frames, then basically kill velocity updates
 
-L98A5:	.byte $04, $2A, $01, $4A, $01, $2A, $01, $4A, $01, $6A, $01, $4A, $04, $6A, $FC, $01
-L98B5:	.byte $00, $64, $00, $FB
+L98A5:	.byte $04, $2A, $01, $4A, $01, $2A, $01, $4A, $01, $6A, $01, $4A ; downward acceleration
+L98B1:	.byte $04, $6A, $FC												 ; terminal velocity loop
+L98B4:	.byte $00, $01													 ; one frame to set explode delay
+L98B6:	.byte $64, $00, $FB												 ; update nothing for 64 frames, then basically kill velocity updartes 
 
+;;grind fodder movement table- swooper also uses this? probably for keeping track of samus' height- TODO
+;;zeb rises up 1 pixel for 20 frames, waits for 10 frames,  then rises one pixel until we see samus, then goes 1 pixel left or right
 L98B9:	.byte $14, $11, $0A, $00, $14, $19, $FE
 
 L98C0:	.byte $14, $19, $0A, $00, $14, $11, $FE
@@ -482,15 +496,16 @@ L99DD:	BEQ $99E2					; if so, jump behind to the 0 routine
 L99DF:	JSR $801E					; else, take a detour
 L99E2:	JMP PrepEnemyAnimUpdate		; THEN jump back
 
+;;sin wave glider
 Enemy2Update:
-L99E5:	LDA #$21					; load 21
+L99E5:	LDA #$21					; load 21 anim index
 L99E7:	STA $85						; store in 85
-L99E9:	LDA #$1E					; load 1E
+L99E9:	LDA #$1E					; load 1E anim index
 L99EB:	STA $86						; store in 86
 L99ED:	LDA EnStatus,X				; load enemy status
 L99F0:	CMP #$03					; check if we're dying
 L99F2:	BEQ $99F7					; if so, jump back to enemy 0 routine
-L99F4:	JSR $801B					; else, quick detour
+L99F4:	JSR $801B					; else, quick detour - we'll set our desired animation based on the distance from some "home" position
 L99F7:	JMP PrepEnemyAnimUpdate		; THEN jump back
 
 Enemy4Update:
@@ -499,33 +514,40 @@ L99FC:	CMP #$01					; compare with waiting
 L99FE:	BEQ $9A44					; if wating, jump ahead to updating anim 1
 L9A00:	CMP #$03					; compare to dying
 L9A02:	BEQ $9A49					; if dying, go check the anim attributes
-L9A04:	LDA EnCounter,X				; else, get the enemy counter
-L9A07:	CMP #$0F					; compare with F 
+L9A04:	LDA EnCounter,X				; else, get the enemy counter - IE, which index into the movement table we're using
+L9A07:	CMP #$0F					; compare with F - we're looping the last falling speed
 L9A09:	BCC $9A3F					; less than? jump ahead to updateing anim 0
 L9A0B:	CMP #$11					; compare with 11
-L9A0D:	BCS $9A16					; greater ot equal? jump ahead
-L9A0F:	LDA #$3A					; 	else load 3A
-L9A11:	STA $6B01,X					; 	store in 6B01
-L9A14:	BNE $9A3F					; 	not equal, jump ahead to updating anim 0
-L9A16:	DEC $6B01,X					;		else, dec 6B01
-L9A19:	BNE $9A3F					;		not 0? jump ahead to anim 0 update
-L9A1B:	LDA #$00					;			else, load 0
-L9A1D:	STA EnStatus,X				;			clear enemy 
+L9A0D:	BCS $9A16					; 	greater ot equal? jump ahead
+
+;we're on the one frame step at 0F
+L9A0F:	LDA #$3A					; load 3A
+L9A11:	STA $6B01,X					; store in 6B01
+L9A14:	BNE $9A3F					; jump ahead to updating anim 0
+
+;we're step 11- 6B01 is the timer before explosion
+L9A16:	DEC $6B01,X					; else, dec 6B01
+L9A19:	BNE $9A3F					;	not 0? jump ahead to anim 0 update
+
+;;load up the expliostion 
+L9A1B:	LDA #$00					; else, load 0
+L9A1D:	STA EnStatus,X				; clear enemy 
 L9A20:	LDY #$0C					;			
 L9A22:	LDA #$0A					;			
-L9A24:	STA EnBurst0Addr,Y			;			store 0A into AC
-L9A27:	LDA EnYRoomPos,X			;			load enemy y pos
-L9A2A:	STA EnBurstYPosAddr,Y		;			store in AD
-L9A2D:	LDA EnXRoomPos,X			;			load enemy x pos
-L9A30:	STA EnBurstXPosAddr,Y		;			store in AE
-L9A33:	LDA EnNameTable,X			;			get enemy name table
-L9A36:	STA EnBurstNTAddr,Y			;			store in AF
+L9A24:	STA EnBurst0Addr,Y			; store 0A into AC
+L9A27:	LDA EnYRoomPos,X			; load enemy y pos
+L9A2A:	STA EnBurstYPosAddr,Y		; store in AD
+L9A2D:	LDA EnXRoomPos,X			; load enemy x pos
+L9A30:	STA EnBurstXPosAddr,Y		; store in AE
+L9A33:	LDA EnNameTable,X			; get enemy name table
+L9A36:	STA EnBurstNTAddr,Y			; store in AF
 L9A39:	DEY 						;			
 L9A3A:	DEY 
 L9A3B:	DEY 
-L9A3C:	DEY 						;			Sub 4 from Y
-L9A3D:	BPL $9A22					;			repeat while positive (4 times)
-L9A3F:	LDA #$02					;
+L9A3C:	DEY 						; Sub 4 from Y
+L9A3D:	BPL $9A22					; repeat while positive (4 times)
+
+L9A3F:	LDA #$02					; 
 L9A41:	JMP CallUpdateEnemyAnim0
 L9A44:	LDA #$08
 L9A46:	JMP CallUpdateEnemyAnim1
