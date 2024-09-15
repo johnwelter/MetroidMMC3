@@ -207,11 +207,11 @@
 
 .alias MetroidOnSamus			$92	;#$01=Metroid on Samus, #$00=Metroid not on Samus.
 
-.alias MaxMissilePickup			$93	;Maximum missiles power-ups that can be picked up. Randomly-->
+.alias RoomMaxMissileSpawns			$93	;Maximum missiles power-ups that can be picked up. Randomly-->
 									;recalculated whenever Samus goes through a door.
 .alias MaxEnergyPickup			$94	;Maximum energy power-ups that can be picked up. Randomly-->
 									;recalculated whenever Samus goes through a door.
-.alias CurrentMissilePickups	$95	;Number of missile power-ups currently collected by Samus-->
+.alias RoomCurrMissileSpawns	$95	;Number of missile power-ups currently collected by Samus-->
 									;Reset to 0 when Samus goes through a door.
 .alias CurrentEnergyPickups		$96	;Number of energy power-ups currently collected by Samus-->
 									;Reset to 0 when Samus goes through a door.
@@ -262,6 +262,7 @@
 .alias MirrorCntrl				$FA	;If bit 3 is set, PPU set to horizontal mirroring-->
 									;else if bit 3 is clear, PPU is set to vertical-->
 									;mirroring. No other bits seem to matter.
+									;... execpt maybe the MSB when doing elevators
 
 .alias ScrollY					$FC	;Y value loaded into scroll register. 
 .alias ScrollX					$FD	;X value loaded into scroll register.
@@ -271,7 +272,7 @@
 .alias HealthLo					$0106   ;Lower health digit in upper 4 bits.
 .alias HealthHi					$0107   ;Upper health digit in lower 4 bits-->
                                         ;# of full tanks in upper 4 bits.
-.alias MiniBossKillDelay		$0108	;Initiate power up music and delay after Kraid/Ridley killed.
+.alias FanfareMusicDelay		$0108	;Initiate power up music and delay after Kraid/Ridley killed.
 .alias PowerUpDelay				$0109	;Initiate power up music and delay after item pickup.
 
 .alias EndTimerLo				$010A	;Lower byte of end game escape timer.
@@ -1065,12 +1066,24 @@
 .alias an_SamusFireRunPntUp1 $3B
 .alias an_SamusFireRunPntUp2 $3D
 .alias an_SamusFireRunPntUp3 $3F
+
+.alias an_SamusElevDisappear $41
+.alias an_SamElevDisLoop	 $4E	;loop point for prev anim
+.alias an_ElevDisappear		 $50
+.alias an_ElevDisLoop		 $5D	;loop point for prev anim
+.alias an_SamusElevAppear	 $5F
+.alias an_SamElevAppLoop	 $6B	;loop point for prev anim
+.alias an_ElevAppear		 $6E
+.alias an_ElevAppLoop		 $7A	;loop point for prev anim
+
 .alias an_WaveBeam			 $7D
 .alias an_BombTick			 $7F
 .alias an_BombExplode		 $82
 .alias an_MissileLeft		 $8B
 .alias an_MissileRight		 $8D
 .alias an_MissileExplode	 $91
+
+.alias af_Elevator			 $23 
 
 ;Weapon action handlers.
 .alias wa_RegularBeam		1

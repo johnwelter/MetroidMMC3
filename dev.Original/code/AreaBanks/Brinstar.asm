@@ -322,7 +322,7 @@ L967B:	.byte $00, $00, $00, $80, $00, $00, $00, $00, $00, $00, $00, $00, $80, $0
 ;AreaCommon uses something with 00x0 0000
 ;0000 0000
 ;|||| ||||
-;|||| |||+- ?
+;|||| |||+- can drop stronger energy
 ;|||| ||+-- check direction to samus when moving
 ;|||| ++--- enemy hit SFX index
 ;||+------- ?
@@ -367,6 +367,7 @@ L9773:	.byte $00, $00, $00, $00, $00, $00, $00, $00
 ;|||| ||||
 ;|||| ++---- ? used in F676 to populate a byte on an enemy at 6B03, checked mostly in area common
 ;|||+------- if the enemy is a metroid for damage and SFX purposes
+;||+-------- ?
 ;|+--------- use Acceleration flag
 ;+---------- check direction for enemy when checking distance to samus, vertical (1) or horizontal (0)
 L977B:	.byte $64, $6C, $21, $01, $04, $00, $4C, $40, $04, $00, $00, $40, $40, $00, $00, $00 

@@ -1530,7 +1530,7 @@ SamusInit:
 	lsr ScrollDir			;If not in Brinstar, change scroll direction from left-->
 	ldy #$2F				;to down. and set PPU for horizontal mirroring.
 *       sty MirrorCntrl		;
-	sty MaxMissilePickup
+	sty RoomMaxMissileSpawns
 	sty MaxEnergyPickup
 	lda AreaStartYPos		;Samus' initial vertical position
 	sta ObjectY				;
@@ -1569,12 +1569,12 @@ GameEngine:
 	sta MissileCount		;
 
 *	jsr UpdateWorld			;($CB29)Update Samus, enemies and room tiles.
-	lda MiniBossKillDelay	;
-	ora PowerUpDelay		;Check if mini boss was just killed or powerup aquired.-->
-	beq +					;If not, branch.
+	lda FanfareMusicDelay	; 
+	ora PowerUpDelay		; Check if mini boss was just killed or powerup aquired.-->
+	beq +					; If not, branch.
 
 	lda #$00				;
-	sta MiniBossKillDelay	;Reset delay indicators.
+	sta FanfareMusicDelay	;Reset delay indicators.
 	sta PowerUpDelay		;
 	lda #$18				;Set timer for 240 frames(4 seconds).
 	ldx #$03				;GameEngine routine to run after delay expires
@@ -3192,7 +3192,7 @@ DrawElevatorSamus:
 	lsr							; pop out lsb into carry
 	bcc ++						; if carry is clear (even frame), leave
 *   jsr SetmirrorCntrlBit		; on odd frame- Mirror Samus, if necessary.
-	lda #$01					; load 1
+	lda #$01					; load 1 as our frame delay for the anim draw call
 	jmp AnimDrawObject			; draw samus
 *	rts
 
@@ -3481,7 +3481,7 @@ BulletCrashDetection:
 	jsr SetCarryIfCollisionTile			; else check for generic collision
 	bcc ++								; 	if tile index is < 80 (and less than 70 outside brinstar), return
 	clc									; clear the carry flag if it wasn't 
-	jmp IsBlastTile						; jump to blast tile (will return immediately if we got here not updating a projectile)
+	jmp BulletIsBlastTile						; jump to blast tile (will return immediately if we got here not updating a projectile)
 
 MoveObjectByVelocity:
 	ldx PageIndex						; get bullet index
@@ -3542,36 +3542,72 @@ UpdateBomb:
 	jsr SFX_BombExplode
 *	jmp DrawBomb
 
-ExplodeBomb:
-	inc $030F,x		 ;was a fuse, now we inc up the other way
-	jsr UnknownD6A7	
-	ldx PageIndex
-	lda $0303,x
-	sec
-	sbc #$F7
-	bne +
-	sta ObjAction,x     ; kill bomb
+;; checks a direction each frame to explode 
+;; 030F = 1 : check tile at bomb location
+;; 030F = 2 : check tile above bomb location
+;; 030F = 3 : check tile below bomb location
+;; 030F = 4 : check tile to left of bomb location
+;; 030F = 5 : check tile to right of bomb location
+;; 030F = anything else - exit early
+ExplodeBomb:			
+	inc $030F,x		 			;was a fuse, now we inc up the other way as a tile direction step
+	jsr LookForExplodableTiles	
+	ldx PageIndex				; load bomb index
+	lda $0303,x					; load 
+	sec							; 
+	sbc #$F7					; 
+	bne +				
+	sta ObjAction,x     		; kill bomb
 *   jmp DrawBomb
 
-UnknownD6A7:
-	jsr GetObjCoords23B45	; get bomb coordinate into 2/3, with tile position in 4/5
-	lda $04					; cache off tile position lo byte in A
-	sta $0A
-	lda $05					; cache off tile position high byte in B
-	sta $0B					
-	ldx PageIndex			; load bomb index 
-	ldy $030F,x				; load reverse fuse to Y
-	dey						; decrement 
-	beq ++					; 0? 
-	dey
-	bne +++
-	lda #$40
-	jsr UnknownD78B
+;;when we're blowing the bomb up, look for the META tiles around it to see what should explode
+;;we keep tra
+LookForExplodableTiles:
+	jsr GetObjCoords23B45				; get bomb coordinate into 2/3, with tile position in 4/5
+	lda $04								; cache off tile position lo byte in A
+	sta $0A								;
+	lda $05								; cache off tile position high byte in B
+	sta $0B								;	
+	ldx PageIndex						; load bomb index 
+	ldy $030F,x							; load direction to process
+	dey									; decrement 
+	beq ++								; 	0? jump ahead to check tile detection at bomb location
+	dey									; dec it again
+	bne +++								; 	not zero? jump to other directions
+	lda #$40							; hit zero on the second dec - process tile above us
+	jsr RegressUpScreenTiles45byA		; 0110 0nyy yyyx xxxx - look two tiles up into same location on above meta tile
+	txa									; put bomb index into A
+	bne +								; 	not 0? jump ahead 
+	lda $04								; 0 - load updated tile position lo 
+	and #$20							; isolate odd (bottom of meta tile) or even (top of meta tile)
+	beq Exit6							; 	even row? leave- only check for tile bottoms
+*   lda $05								; load high byte of tile position
+	and #$03							; isolate highest Y pos bits ( which quarter of the screen vertically? )
+	cmp #$03							; check against bottom quater
+	bne +								; 	not in the bottom quarter of the screen - just go to explosion check
+	lda $04								; load the lo tile position byte again
+	cmp #$C0							; check against the clip off area (we wrapped from above, probably)
+	bcc +								; less than that, we're on a screen meta tile
+	lda ScrollDir						; load scroll direction
+	and #$02							; isolate horizontal scrolling bit
+	bne Exit6							; 	horizontal scrolling? leave
+	lda #$80							; look an extra meta tile up instead
+	jsr RegressUpScreenTiles45byA		; 
+*	jsr ExplosionTileDetection			; 
+
+Exit6:  
+	rts
+	
+LookforExplodableTilesBelow:
+*	dey									; dec y again
+	bne +++								; 	not 0 - jump ahead to other direction
+	lda #$40							; y hit zero on third dec - check tile below bomb
+	jsr ProgressDownScreenTiles45byA
 	txa
 	bne +
 	lda $04
 	and #$20
-	beq Exit6
+	bne Exit6
 *   lda $05
 	and #$03
 	cmp #$03
@@ -3583,40 +3619,14 @@ UnknownD6A7:
 	and #$02
 	bne Exit6
 	lda #$80
-	jsr UnknownD78B
-*	jsr UnknownD76A
+	jsr ProgressDownScreenTiles45byA
+*   jmp ExplosionTileDetection
 
-Exit6:  
-	rts
-	
-	
-*	dey
-	bne +++
-	lda #$40
-	jsr UnknownD77F
-	txa
-	bne +
-	lda $04
-	and #$20
-	bne Exit6
-*       lda $05
-	and #$03
-	cmp #$03
-	bne +
-	lda $04
-	cmp #$C0
-	bcc +
-	lda ScrollDir
-	and #$02
-	bne Exit6
-	lda #$80
-	jsr UnknownD77F
-*   jmp UnknownD76A
-
-*	dey
-	bne +++
-	lda #$02
-	jsr UnknownD78B
+LookForExplodableTilesLeft:
+*	dey								; dec y again
+	bne +++							; 	not 0- jump to see if we check tile to right
+	lda #$02						; hit 0 on 4th dec - check tile to the left
+	jsr RegressUpScreenTiles45byA	; 
 	txa
 	bne +
 	lda $04
@@ -3630,16 +3640,17 @@ Exit6:
 	and #$02
 	beq Exit7
 	lda #$1E
-	jsr UnknownD77F
+	jsr ProgressDownScreenTiles45byA
 	lda $05
 	eor #$04
 	sta $05
-*   jmp UnknownD76A
+*   jmp ExplosionTileDetection
 
-*	dey
-	bne Exit7
+LookForExplodableTilesRight:
+*	dey									; dec y
+	bne Exit7							; somehow not 0, leave
 	lda #$02
-	jsr UnknownD77F
+	jsr ProgressDownScreenTiles45byA
 	txa
 	bne +
 	lda $04
@@ -3648,52 +3659,52 @@ Exit6:
 *   lda $04
 	and #$1F
 	cmp #$02
-	bcs UnknownD76A
+	bcs ExplosionTileDetection
 	lda ScrollDir
 	and #$02
 	beq Exit7
 	lda #$1E
-	jsr UnknownD78B
+	jsr RegressUpScreenTiles45byA
 	lda $05
 	eor #$04
 	sta $05
 	
-UnknownD76A:
-	txa
-	pha
-	ldy #$00
-	lda ($04),y
-	jsr SetCarryIfCollisionTile
-	bcc +
-	cmp #$A0
-	bcs +
-	jsr UnknownE9C2
-*   pla
-	tax
+ExplosionTileDetection:
+	txa							; move bome index into A
+	pha							; put A on stack
+	ldy #$00					; load 0 into Y
+	lda ($04),y					; get tile at location
+	jsr SetCarryIfCollisionTile	; check if collision tile at location
+	bcc +						; 	carry clear? put the bomb index back to A and return
+	cmp #$A0					; was a collision tile- check against A0
+	bcs +						; 	>=? put bomb index back into A and return 
+	jsr IsBlastTile				; less than A0, check for blast tile
+*   pla							; return bomb index to A
+	tax							; and then to X
 Exit7:  
-	rts
+	rts							; return 
 
-UnknownD77F:
-	clc
-	adc $0A
-	sta $04
-	lda $0B
-	adc #$00
-	jmp UnknownD798
+ProgressDownScreenTiles45byA:
+	clc						; clear carry 
+	adc $0A					; add the tile position lo byte 
+	sta $04					; store back to 4
+	lda $0B					; carry over to the high byte
+	adc #$00				; and add
+	jmp CleanUpTileHiByte	; jump down to store to B
 
-UnknownD78B:
-	sta $00
-	lda $0A
-	sec
-	sbc $00
-	sta $04
-	lda $0B
-	sbc #$00
+RegressUpScreenTiles45byA:
+	sta $00		; cache A into 0
+	lda $0A		; load cached tile position lo byte
+	sec			; set carry
+	sbc $00		; subtract the value from 0
+	sta $04		; store in original tile position lo byte cache
+	lda $0B		; load cached tile position hi byte
+	sbc #$00	; carry the subtraction 
 	
-UnknownD798:
-	and #$07
-	ora #$60
-	sta $05
+CleanUpTileHiByte:
+	and #$07	; clear any garbage data on the high byte from the subtraction
+	ora #$60	; turn on the 6 again
+	sta $05		; store back
 *   rts
 
 GetObjCoords23B45:
@@ -3714,70 +3725,72 @@ UpdateElevator:
 
 ; Pointer table to elevator handlers
 
-	.word ExitSub       	;($C45C) rts
+	.word ExitSub       			;($C45C) rts
 	.word ElevatorIdle
-	.word UnknownD80E
+	.word ElevatorCorrectScrollX
 	.word ElevatorMove
 	.word ElevatorScroll
-	.word UnknownD8A3
+	.word ElevatorPrepBetweenAreas
 	.word ElevatorAreaSwitch		; elevator reached new area
-	.word UnknownD8A3
+	.word ElevatorPrepBetweenAreas
 	.word ElevatorMove
 	.word ElevatorStop
 
-	ElevatorIdle:
+ElevatorIdle:
 	lda SamusOnElevator
 	beq ShowElevator
 	lda #$04
-	bit $032F       ; elevator direction in bit 7 (1 = up)
+	bit $032F       		; elevator direction in bit 7 (1 = up)
 	bpl +
-	asl		; btn_UP
+	asl						; btn_UP
 *   and Joy1Status
 	beq ShowElevator
-    ; start elevator!
-	jsr StopVertMovement		;($D147)
-	sty AnimDelay
-	sty SamusGravity
-	tya
-	sta ObjVertSpeed,x
-	inc ObjAction,x
-	lda #sa_Elevator
-	sta ObjAction
-	lda #an_SamusFront
-	jsr SetSamusAnim
-	lda #128
-	sta ObjectX     ; center
-	lda #112
-	sta ObjectY     ; center
-	ShowElevator:
-	lda FrameCount
-	lsr
-	bcc --	  ; only display elevator at odd frames
-	jmp DrawFrame       ; display elevator
+							; start elevator!
+	jsr StopVertMovement	; ($D147)
+	sty AnimDelay			;
+	sty SamusGravity		;
+	tya						;
+	sta ObjVertSpeed,x		;
+	inc ObjAction,x			;
+	lda #sa_Elevator		;
+	sta ObjAction			;
+	lda #an_SamusFront		;
+	jsr SetSamusAnim		;
+	lda #128				;
+	sta ObjectX     		; center
+	lda #112				;
+	sta ObjectY     		; center
+	ShowElevator:			;
+	lda FrameCount			;
+	lsr						;
+	bcc --	  				; only display elevator at odd frames
+	jmp DrawFrame       	; display elevator
 
-UnknownD80E:
-  lda ScrollX
-	bne +
-	lda MirrorCntrl
-	ora #$08
-	sta MirrorCntrl
-	lda ScrollDir
-	and #$01
-	sta ScrollDir
-	inc ObjAction,x
-	jmp ShowElevator
+;TODO - some kinda elevator update - does something with the scroll 
+ElevatorCorrectScrollX:
+	lda ScrollX				; load X scroll 
+	bne +					; 	not 0 yet? jump ahead
+	lda MirrorCntrl			; scroll was 0 - load Mirror Control
+	ora #$08				; set the MSB of mirror control
+	sta MirrorCntrl			; store new mirror control
+	lda ScrollDir			; load scroll direction
+	and #$01				; remove horizontal scroll
+	sta ScrollDir			; store new scroll direction
+	inc ObjAction,x			; inc to moving 
+	jmp ShowElevator		; draw elevator
 
-*   lda #$80
-	sta ObjectX
-	lda ObjectX,x
-	sec
-	sbc ScrollX
-	bmi +
-	jsr ScrollLeft
-	jmp ShowElevator
+;; the scroll wasn't 0, so attempt to fix that before moving the elevator - in case there's an elevator mid room
+*   lda #$80				; load #$80 - position 128
+	sta ObjectX				; store that in samus X position
+	lda ObjectX,x			; load the elevator X position
+	sec						; set carry
+	sbc ScrollX				; subtract the X scroll
+	bmi +					; 	negative? scroll right
+	jsr ScrollLeft			; positive- scroll screen left
+	jmp ShowElevator		; draw elevator
 
-*   jsr ScrollRight
-	jmp ShowElevator
+*   jsr ScrollRight			; negative difference- scroll screen right instead
+	jmp ShowElevator		; draw elevator
 
 ElevatorMove:
 	lda $030F,x
@@ -3805,20 +3818,24 @@ ElevatorMove:
 	inc ObjAction,x
 *   jmp ShowElevator
 
+;;includes some vestigial code for handling a special fade out animation
 ElevatorScroll:
 	lda ScrollY
 	bne ElevScrollRoom  ; scroll until ScrollY = 0
-	lda #$4E
+	
+;;fade out anim before FDS disk loading
+	lda #an_SamElevDisLoop
 	sta AnimResetIndex
-	lda #$41
+	lda #an_SamusElevDisappear
 	sta AnimIndex
-	lda #$5D
+	lda #an_ElevDisLoop
 	sta AnimResetIndex,x
-	lda #$50
+	lda #an_ElevDisappear
 	sta AnimIndex,x
 	inc ObjAction,x
 	lda #$40
 	sta Timer1
+	
 	jmp ShowElevator
 
 ElevScrollRoom:
@@ -3830,19 +3847,23 @@ ElevScrollRoom:
 *   jsr ScrollDown
 	jmp ShowElevator
 
-UnknownD8A3:
+ElevatorPrepBetweenAreas:
+
+;;  bring these two lines back if you want to see the pre-disk load FDS anim
+;;	lda Timer1
+;;	bne +
 	inc ObjAction,x		; inc elevator action
 	lda ObjAction,x		; load elevator action
-	cmp #$08			; ElevatorMove
-	bne +				; not move? jump to draw object
-	lda #$23			; else
-	sta $0303,x			; store 23 in elevator 3rd byte
-	lda #an_SamusFront	; 
+	cmp #$08			; second ElevatorMove state after area switch
+	bne +				; 	not move? jump to just draw
+	lda #af_Elevator		; else, move is up next  - load 23, the anim frame for the elevator
+	sta AnimFrame,x			; store 23 in elevator 3rd byte sets
+	lda #an_SamusFront	; load samus front facign anim
 	jsr SetSamusAnim	; set samus to front facing anim
-	jmp ShowElevator	; 
+	jmp ShowElevator	; attempt elevator draw
 
-*   lda #$01
-	jmp AnimDrawObject
+*   lda #$01			; load 1 for anim frame delay
+	jmp AnimDrawObject	; draw elevator
 
 ElevatorAreaSwitch:
 	lda $030F,x			; load elevator something or other
@@ -3885,15 +3906,17 @@ ElevatorAreaSwitch:
 	jsr ScreenOn					; turn on screen 
 	jsr CopyPtrs					; copy area pointers to RAM
 	jsr DestroyEnemies				; clear out enemies
+	
+;;fade in anim after FDS disk loading
 	ldx #$20						; load elevator offset into X
 	stx PageIndex					; store into page index
-	lda #$6B						; 
-	sta AnimResetIndex				;
-	lda #$5F						;
+	lda #an_SamElevAppLoop			; 
+	sta AnimResetIndex				;	
+	lda #an_SamusElevAppear			;
 	sta AnimIndex					;
-	lda #$7A						; reset elevator animation
+	lda #an_ElevAppLoop				; 
 	sta AnimResetIndex,x			;
-	lda #$6E						;
+	lda #an_ElevAppear				;
 	sta AnimIndex,x					;
 	inc ObjAction,x					; inc object action for elevator
 	lda #$40						; load 0x40 frames into Timer
@@ -3933,60 +3956,64 @@ ElevatorStop:
 	bmi +
 	jsr ToggleScroll
 	sta MirrorCntrl
-*       jmp ShowElevator
+*   jmp ShowElevator
 *	jmp ElevScrollRoom
 
 SamusOnElevatorOrEnemy:
 	lda #$00									;
-	sta SamusOnElevator							;Assume Samus is not on an elevator or on a frozen enemy.
+	sta SamusOnElevator							; Assume Samus is not on an elevator or on a frozen enemy.
 	sta OnFrozenEnemy							;
 	tay											; put 0 into Y - samus object index
 	ldx #$50									; start ith enemy 1 and go down the 6 possible enemies
-	jsr CreateObjectLocationStruct68PPUdiffA	; create position struct for samus
+	jsr CreateObjYLocationStruct68PPUdiffA	; create position struct for samus
 *   lda EnStatus,x								; load enemy status
 	cmp #$04									; check enemy is frozen		
 	bne +										; 	not frozen? jump ahead	
 	jsr CreateEnemyLocationStruct79PPUdiffB		; enemy frozen, create enemy position struct
-	jsr AddAndCacheEnObjRadYX45
-	jsr UnknownF1FA
-	bcs +
-	jsr UnknownD9BA
-	bne +
-UnknownD99A:	
-	inc OnFrozenEnemy		;Samus is standing on a frozen enemy.
-	bne ++
-*   jsr Xminus16
-	bpl --
-*	lda ElevatorStatus
-	beq +
-	ldy #$00
-	ldx #$20
-	jsr UnknownDC82
-	bcs +
-	jsr UnknownD9BA
-	bne +
-	inc SamusOnElevator		;Samus is standing on elevator.
+	jsr AddAndCacheEnObjRadYX45					; add enemy and player radius
+	jsr CheckHitboxOverlap						; figure out of the hitboxes are overlapping
+	bcs +										; 	failed, since carry was set- check next enemy instead 
+	jsr CheckVerticalPenetration				; check if we're too deep inside the hitbox
+	bne +										; 	penetrating, hit generated - try next enemy
+SetSamusOnFrozenEnemy:	
+	inc OnFrozenEnemy					; Samus is standing on a frozen enemy.
+	bne ++								;	branch always to check elevator as well - can be on both!
+*   jsr Xminus16						; loop back to check next ememy
+	bpl --								;
+	
+CheckSamusOnElevator:
+*	lda ElevatorStatus					; check on elevator
+	beq +								; inactive, leave 
+	ldy #$00							; else, load 0 to y
+	ldx #$20							; load elevator object index offset 
+	jsr Check68AYObjXHBOverlap			; create position struct for elevator, add collision rads with player, and jump to F1FA
+	bcs +								; 	carry set, check failed- not on elevator
+	jsr CheckVerticalPenetration		; check if we're inside the elevator sprite
+	bne +								; 	penetrating, hit generated - leave
+	inc SamusOnElevator					; Samus is standing on elevator.
 *   rts
 
-UnknownD9BA:
-	lda $10
-	and #$02
-	bne +
-	ldy $11
-	iny
-	cpy $04
-	beq Exit8
-*   lda SamusHit
-	and #$38
-	ora $10
-	ora #$40
-	sta SamusHit
-Exit8:  rts
+CheckVerticalPenetration:	; TODO: figure out the nitty gritty
+	lda $10					; not sure what this was, but we fudge with it in F1FA
+	and #$02				; isolate .... ..x.
+	bne +					; 	if it's a scroll direction - jump ahead if horizontal
+	ldy $11					; vert scroll - load $11, also fudged in F1FA
+	iny						; not sure what this is either
+	cpy $04					; compare to combined Y rad
+	beq Exit8				; 	same as the combined radius? leave with success - else, penetrating, need to generate hit
+*   lda SamusHit			; load samus hit
+	and #$38				; isloate ..xx x...
+	ora $10					; or with value from $10
+	ora #$40				; make sure .1.. .... is set, ensuring this fails 
+	sta SamusHit			; store in SamusHit
+	
+Exit8:  
+	rts
 
 ; UpdateStatues
 ; =============
 
-	UpdateStatues:
+UpdateStatues:
 	lda #$60
 	sta PageIndex
 	ldy $0360
@@ -4041,7 +4068,7 @@ TableDA3B:
 	.byte $66
 
 UnknownDA3D:
-  lda $0304,x
+	lda $0304,x
 	bmi +
 	lda #$01
 	sta $0304,x
@@ -4074,7 +4101,7 @@ UnknownDA3D:
 *	rts
 
 UnknownDA7C:
-  lda $030F,x
+	lda $030F,x
 	sta $036D
 	txa
 	and #$01
@@ -4128,7 +4155,7 @@ Table1B:
 	.byte $60
 
 UnknownDADA:
-  lda $54
+	lda $54
 	bmi Exit0
 	lda SamusDoorStatus
 	bne Exit0
@@ -4138,7 +4165,7 @@ UnknownDADA:
 	sta $54
 	ldx #$70
 	ldy #$08
-*       lda #$03
+*   lda #$03
 	sta $0500,x
 	tya
 	asl
@@ -4157,7 +4184,9 @@ UnknownDADA:
 	jsr Xminus16
 	dey
 	bne -
-Exit0:  rts
+	
+Exit0:  
+	rts
 
 ; CheckMissileToggle
 ; ==================
@@ -4249,7 +4278,7 @@ CheckOneItem:
 *	pha
 	ldx #$00
 	ldy #$40
-	jsr UnknownDC7F
+	jsr CheckObjYObjXHBOverlap
 	pla
 	bcs Exit9
 	tay
@@ -4390,14 +4419,14 @@ CreateItemID:
 ;-----------------------------------------------------------------------------------------------------
 
 
-UnknownDC7F: 
-	jsr CreateObjectLocationStruct68PPUdiffA
-UnknownDC82:  
-	jsr CreatePlayerLocationStruct79PPUdiffB
-UnknownDC85:	
+CheckObjYObjXHBOverlap: 
+	jsr CreateObjYLocationStruct68PPUdiffA
+Check68AYObjXHBOverlap:  
+	jsr CreateObjectLocationStruct79PPUdiffB
+Check68AY79BXHBOverlap:	
 	jsr AddandCacheObjObjRadYX45
-UnknownDC88:	
-	jmp UnknownF1FA
+CallCheckHitboxOverlap:	
+	jmp CheckHitboxOverlap
 
 ;The following table is used to rotate the sprites of both Samus and enemies when they explode.
 
@@ -4438,7 +4467,7 @@ UpdateObjAnim:
 	pla
 	bpl +
 	dec $06
-*       clc
+*   clc
 	rts
 
 ;--------------------------------[ Get sprite control byte ]-----------------------------------------
@@ -4449,15 +4478,15 @@ UpdateObjAnim:
 ;in the PlacePtrTbl used to place the sprite on the screen.
 
 GetSpriteCntrlData:
-  ldy #$00			;
+	ldy #$00			;
 	sty $0F				;Clear index into placement data.
 	lda ($00),y			;Load control byte from frame pointer data.
 	sta $04				;Store value in $04 for processing below.
-	tax				;Keep a copy of the value in x as well.
+	tax					;Keep a copy of the value in x as well.
 	jsr Adiv16			;($C2BF)Move upper 4 bits to lower 4 bits.
 	and #$03			;
 	sta $05				;The following lines take the upper 4 bits in the-->
-	txa				;control byte and transfer bits 4 and 5 into $05 bits 0-->
+	txa					;control byte and transfer bits 4 and 5 into $05 bits 0-->
 	and #$C0			;and 1(sprite color bits).  Bits 6 and 7 are-->
 	ora #$20			;transferred into $05 bits 6 and 7(sprite flip bits).-->
 	ora $05				;bit 5 is then set(sprite always drawn behind background).
@@ -4480,90 +4509,91 @@ GetSpriteCntrlData:
 
 ;-----------------------------------------------------------------------------------------------------
 
-UnknownDCF5:
-  jsr ClearObjectCntrl		;($DF2D)Clear object control byte.
-	pla
-	pla
-	ldx PageIndex
-UnknownDCFC:
-  lda InArea
-	cmp #$13
-	bne +
-	lda EnDataIndex,x
-	cmp #$04
+ClearEnExplosionAndDropItem:
+	jsr ClearObjectCntrl		; remove object properties
+	pla							; remove last call back from stack
+	pla	
+	ldx PageIndex				; load enemy index
+KillEnemyAndDropItem:
+	lda InArea					; load current area
+	cmp #$13					; compare to Tourian
+	bne +						; 	not tourian? skip ahead
+	lda EnDataIndex,x			; in tourian - load the enemy data index
+	cmp #$04					; TODO: if the tourian enemy was either index 2 or 4, kill object with no item drop
 	beq +++++
 	cmp #$02
 	beq +++++
-*       lda $040C,x
-	asl
-	bmi UnknownDD75
-	jsr LoadFromEn968B
-	sta $00
-	jsr $80B0
-	and #$20
-	sta EnDataIndex,x
-	lda #$05
-	sta EnStatus,x
-	lda #$60
-	sta $040D,x
-	lda RandomNumber1
-	cmp #$10
-	bcc UnknownDD5B
-*	and #$07
-	tay
-	lda ItemDropTbl,y
-	sta EnAnimFrame,x
-	cmp #$80
-	bne ++
-	ldy MaxMissilePickup
-	cpy CurrentMissilePickups
-	beq UnknownDD5B
-	lda MaxMissiles
-	beq UnknownDD5B
-	inc CurrentMissilePickups
-*       rts
+*   lda $040C,x					; TODO: load enemy mystery byte
+	asl							; shift left, putting bit 6 into MSB
+	bmi DefeatMiniBoss			; 	bit 6 was set, defeat the miniboss
+	jsr LoadFromEn968B			; normal enemy - load 968B data
+	sta $00						; cache off in $0
+	jsr $80B0					; load 977B data, MSB moved to carry
+	and #$20					; isolate metroid bit
+	sta EnDataIndex,x			; store off in enemy data index (used to powerup the powerups)
+	lda #$05					; load 5
+	sta EnStatus,x				; store into enemy status (powerup)
+	lda #$60					; load 60
+	sta $040D,x					; store in powerup lifetime timer
+	lda RandomNumber1			; roll to spawn
+	cmp #$10					; check against $10
+	bcc KillEnemy				; less than, kill enemy
+*	and #$07					; %7 of random number
+	tay							; move to y
+	lda ItemDropTbl,y			; load item from drop table
+	sta EnAnimFrame,x			; store into enemy anim frame directly
+	cmp #$80					; compare to missle
+	bne ++						; 	not a missle, was an energy pickup, or no pickup - check if we can spawn it
+	ldy RoomMaxMissileSpawns	; was missle- check if we can spawn it
+	cpy RoomCurrMissileSpawns	; 
+	beq KillEnemy				; 	reached max missle pickups, kill enemy
+	lda MaxMissiles				; alternatively, if we don't have a missle containter to our name
+	beq KillEnemy				; 	kill enemy if no missle containers
+	inc RoomCurrMissileSpawns	; inc missle pickup spawns
+*   rts							; return withut killing enemy
 
-*       ldy MaxEnergyPickup
+*   ldy MaxEnergyPickup			; check if we can spawn an energy pickup
 	cpy CurrentEnergyPickups
-	beq UnknownDD5B
-	inc CurrentEnergyPickups
-	cmp #$89
-	bne --
-	lsr $00
-	bcs --
+	beq KillEnemy				; no more available pickups for room- kill enemy
+	inc CurrentEnergyPickups	; increment pickups
+	cmp #$89					; compare to strong enemy energy drop
+	bne --						; not equal, return without killing enemy
+	lsr $00						; load up cached enemy data, get LSB - check if we can spawn the strong powerup
+	bcs --						; 	carry set, strong powerup spawned- else, kill enemy
+	
+KillEnemy:
+	ldx PageIndex				; 	
+	lda InArea					; load area
+	cmp #$13					; check against tourian
+	beq ++						; 	tourian? jum pahead
+*	jmp KillObject				; not tourian, kill object outright
 
-UnknownDD5B:
-  ldx PageIndex
-	lda InArea
-	cmp #$13
-	beq ++
-*	jmp KillObject			;($FA18)Free enemy data slot.
+;;in tourian, no pickup limit- reset max and current pickups and re-roll item
+*   lda RandomNumber1			; pick a random number
+	ldy #$00					; load 0 into y
+	sty CurrentEnergyPickups	; clear energy pickup counter for room
+	sty RoomCurrMissileSpawns	; clear missile pickup counter for room
+	iny							; set max pickups for the room 
+	sty RoomMaxMissileSpawns	; to 1
+	sty MaxEnergyPickup			; 
+	bne -----					; branch always
 
-*       lda RandomNumber1
-	ldy #$00
-	sty CurrentEnergyPickups
-	sty CurrentMissilePickups
-	iny
-	sty MaxMissilePickup
-	sty MaxEnergyPickup
-	bne -----
+DefeatMiniBoss:
+	jsr PowerUpMusic			; play power up music
+	lda InArea					; load area - 0 brin, 1 nor, 2 kraid, 3 tor, 4 rid
+	and #$0F					; TODO:
+	sta FanfareMusicDelay		; why are we storing a variable time intp the music delay?
+	lsr							; move out lowest bit/div by 2 - 0 brin, 0 nor, 1 kraid, 1 tor, 2 rid
+	tay							; 
+	sta MaxMissiles,y			; maxmiss + 1 = kraid statue status, maxmiss+2 = ridley statue status
+	lda #75						; 
+	jsr AddToMaxMissiles		; add 75 to max missiles
+	bne KillEnemy
 
-UnknownDD75:
-  jsr PowerUpMusic
-	lda InArea
-	and #$0F
-	sta MiniBossKillDelay
-	lsr
-	tay
-	sta MaxMissiles,y
-	lda #75
-	jsr AddToMaxMissiles
-	bne UnknownDD5B
-
-ClrObjCntrlIfFrameIsF7:
+UpdateObjectCntrl:
 	ldx PageIndex				; load enemy index
 	lda EnAnimFrame,x			; load enemy frame
-	cmp #$F7					; compare to F7
+	cmp #$F7					; compare to F7 (invalid frame)
 	bne +++						; not equal? jump way ahead
 	jmp ClearObjectCntrl		;($DF2D)Clear object control byte.
 
@@ -4573,63 +4603,63 @@ ClrObjCntrlIfFrameIsF7:
 ; (255 if it overflows)
 
 AddToMaxMissiles:
-	pha				;Temp storage of # of missiles to add.
-	clc
-	adc MissileCount
-	bcc +
-	lda #$FF
-*   sta MissileCount
-	pla
-	clc
-	adc MaxMissiles
-	bcc +
-	lda #$FF
-*   sta MaxMissiles
-	rts
+	pha					; Temp storage of # of missiles to add.
+	clc					; clear carry 
+	adc MissileCount	; add to current missle count
+	bcc +				; 	no roll over? skip ahead
+	lda #$FF			; 	roll over, clamp to 255 
+*   sta MissileCount	; store missle count 
+	pla					; get missle count to add back to A
+	clc					; clear carry
+	adc MaxMissiles		; add to max missile count
+	bcc +				; 	no roll over? skip ahead
+	lda #$FF			; 	rollover, clamp to 255
+*   sta MaxMissiles		; set max missile count
+	rts					; return
 
-;we got here from the clear control on f7 thing, when not f7 - so what's up?
-*	lda EnYRoomPos,x
-	sta $0A	 ; Y coord
+;anim frame was not invalid, so we need to do some stuff
+*	lda EnYRoomPos,x		 	;cache off enemy position in 
+	sta $0A	 				 	; A = Y coord
 	lda EnXRoomPos,x
-	sta $0B	 ; X coord
+	sta $0B	 				 	; B = X coord
 	lda EnNameTable,x
-	sta $06	 ; hi coord
-	lda EnAnimFrame,x
-	asl
-	tay
-	lda ($41),y
-	bcc +
-	lda ($43),y
-*   sta $00
-	iny
-	lda ($41),y
-	bcc +
-	lda ($43),y
-*   sta $01
+	sta $06	 				 	; 6 = NT coord
+	lda EnAnimFrame,x		 	; load enemy current anim frame
+	asl						 	; double it - will shift a bit into carry to tell us if we need to use the second table- also for two byte table reads, we're getting a pointer
+	tay							; move to Y 
+	lda (EnmyFrameTbl1Ptr),y	; by default, load anim frame lo byte from table 1
+	bcc +						; 	carry clear, go get hi byte
+	lda (EnmyFrameTbl2Ptr),y	; carry set- using the second table
+*   sta $00						; store anim frame lo byte to 0
+	iny							; inc y for next byte
+	lda (EnmyFrameTbl1Ptr),y	; by default, load anim frame hi byte from table 1 
+	bcc +						; 	carry clear, skip ahead
+	lda (EnmyFrameTbl2Ptr),y	; carry set- using second table
+*   sta $01						; store anim frame high byte into 1
 	jsr GetSpriteCntrlData		;($DCC3)Get place pointer index and sprite control data.
-	tay
-	lda ($45),y
-	sta $02
-	iny
-	lda ($45),y
-	sta $03
-	ldy #$00
-	cpx #$02
-	bne +
-	ldx PageIndex
-	inc EnCounter,x
-	lda EnCounter,x
-	pha
-	and #$03
-	tax
-	lda $05
+	tay							; we already stored the place pointer index into X, but we can move it to Y for indirect indexing
+	lda (EnmyPlaceTblPtr),y		; get enemy placement lo
+	sta $02						; store in $2
+	iny							; inc y for high byte
+	lda (EnmyPlaceTblPtr),y		; get enemy placement hi
+	sta $03						; store in $3
+	ldy #$00					; set y to 0
+	cpx #$02					; compare x (the placement table index still, unincremented) to 2 - this is the enemy explosion placement
+	bne +						; 	not equal, jump ahead
+	ldx PageIndex				; enemy explosion placement- load enemy index
+	inc EnCounter,x				; inc the enemy counter
+	lda EnCounter,x				; then load it
+	pha							; then cache it on the stack
+	and #$03					; %4, to get 0, 1, 2, or 3
+	tax							; move into X 
+	lda $05						; load 
 	and #$3F
 	ora ExplodeRotationTbl,x
 	sta $05
 	pla
 	cmp #$19
 	bne +
-	jmp UnknownDCF5
+	jmp ClearEnExplosionAndDropItem
 
 *   ldx PageIndex
 	iny
@@ -4810,9 +4840,9 @@ GetNextFrameByte:
 	stx SpritePagePos		;Keep track of current position in sprite RAM.
 
 ClearObjectCntrl:
-  lda #$00			;
-	sta ObjectCntrl			;Clear object control byte.
-	rts				;
+	lda #$00			;
+	sta ObjectCntrl		;Clear object control byte.
+	rts					;
 
 SkipPlacementData:
 *	inc $0F				;Skip next y and x placement data bytes.
@@ -5618,7 +5648,7 @@ HorzAccelerate:
 	lda #$00
 	sbc ObjHorzSpeed
 	tay
-	jsr UnknownE449
+	jsr Negate0Resolve1
 
 *   cpx $02
 	tya
@@ -5637,13 +5667,13 @@ HorzAccelerate:
 	sta $00				;$00 stores temp copy of current horizontal speed.
 	rts				;
 
-UnknownE449:  
-	lda #$00		; load 0 -- Y = horizontal velocity (negative for enemies)
-	sec				; set carry flag
-	sbc $00			; subtract what's stored at $0 - in an enemy's case, this will be 0 I think
-	sta $00			; store result back, negating $0 - carry clear if $0 is != 0
+Negate0Resolve1:  
 	lda #$00		; load 0
-	sbc $01			; subtract what's stored in $1, will be 1 extra lower  - enemy case, 0E.
+	sec				; set carry flag
+	sbc $00			; negate $00
+	sta $00			; 
+	lda #$00		; load 0
+	sbc $01			; 
 	sta $01			; store result back, negating $1 (with possible extra -1 if $0 != 0)
 	rts				; return
 
@@ -6215,7 +6245,7 @@ UnknownE7E6:
 	bcc Exit16      				; 	no collision? leave
 	cmp #$A0						; check against walkable tiles
 	bcs IsWalkableTile				; 	walkable tile? process that
-	jmp IsBlastTile  				; tile is $80-$9F (blastable tiles) - should return since bullets aren't updating...
+	jmp BulletIsBlastTile  				; tile is $80-$9F (blastable tiles) - should return since bullets aren't updating...
 
 IsWalkableTile:
 	ldy IsSamus					; load up if this object is samus
@@ -6461,7 +6491,7 @@ MakeWRAMPtr:
 	asl	   		; A = ObjectYHi * 4
 	and #$04	; just in case, clear out other possible bits so we keep 0000 0n00
 	ora $05		; or with 5 
-	sta $05		; store in 5 (0110 0nyy yyyy xxxx)
+	sta $05		; store in 5 (0110 0nyy yyyx xxxx)
 	rts			; return 
 
 UnknownE98E:  
@@ -6494,10 +6524,10 @@ UnknownE9B7:
 	sta PPUCNT0ZP
 	rts
 
-IsBlastTile:
+BulletIsBlastTile:
 	ldy UpdatingProjectile
 	beq Exit18
-UnknownE9C2:
+IsBlastTile:
 	tay						; store tile index into y
 	jsr $95BD
 	cpy #$98				; if the tile is >= 98
@@ -6705,7 +6735,7 @@ EnemyLoop:
 	.word LoadElevator		;($EC04)Elevator.
 	.word ExitSub			;($C45C)Rts.
 	.word LoadStatues		;($EC2F)Kraid & Ridley statues.
-	.word ZebHole			;($EC57)Regenerating enemies(such as Zeb).
+	.word LoadPipeSpawner	;($EC57)Regenerating enemies(such as Zeb).
 
 EndOfRoom:
 	ldx #$F0			;Prepare for PPU attribute table write.
@@ -6715,7 +6745,7 @@ EndOfRoom:
 	and #$02			;Check if scrolling left or right.
 	bne +				;
 	jmp UnknownE57C
-*       jmp UnknownE70C
+*   jmp UnknownE70C
 
 LoadEnemy:
 	jsr GetEnemyData		;($EB0C)Get enemy data from room data.
@@ -6729,40 +6759,41 @@ GetEnemyData:
 	bne ++				;Exit if object slot taken.
 	iny				;
 	lda ($00),y			;Get enemy type.
-	jsr GetEnemyType		;($EB28)Load data about enemy.
+	jsr SetEnTypeAndAttributes		;($EB28)Load data about enemy.
 	ldy #$02			;
 	lda ($00),y			;Get enemy initial position(%yyyyxxxx).
 	jsr UnknownEB4D
 	pha
-*       pla
-*       lda #$03			;Number of bytes to add to ptr to find next room item.
+*   pla
+*   lda #$03			;Number of bytes to add to ptr to find next room item.
 	rts				;
 
-GetEnemyType:	
-	pha						;Store enemy type.
-	and #$C0				;If MSB is set, the "tough" version of the enemy  
-	sta EnSpecialAttribs,x	;is to be loaded(more hit points, except rippers).
+SetEnTypeAndAttributes:	
+	pha						; Store A - top two bits are special attributes, bottom 6 are enemy index
+	and #$C0				; If MSB is set, the "tough" version of the enemy  
+	sta EnSpecialAttribs,x	; is to be loaded(more hit points, except rippers).
 	asl						;
-	bpl ++					;If bit 6 is set, the enemy is either Kraid or Ridley.
-	lda InArea				;Load current area Samus is in(to check if Kraid or-->
-	and #$06				;Ridley is alive or dead).
-	lsr						;Use InArea to find status of Kraid/Ridley statue.
+	bpl ++					;	If bit 6 isn't set, normal enemy - jump ahead
+	lda InArea				; 	bit 6 set- mini boss. Load current area Samus is in(to check if Kraid or-->
+	and #$06				; 	Ridley is alive or dead).
+	lsr						; 	Use InArea to find status of Kraid/Ridley statue.
 	tay						;
-	lda MaxMissiles,y		;Load status of Kraid/Ridley statue.
-	beq +					;Branch if Kraid or Ridley needs to be loaded.
-	; pla						;
-	pla						;Mini boss is dead so pull enemy info and last address off-->
-	jmp --					;stack so next enemy/door item can be loaded.
+	lda MaxMissiles,y		; 	Load status of Kraid/Ridley statue.
+	beq +					; 	Branch if Kraid or Ridley needs to be loaded.
+	; pla					;
+	pla						; 	Mini boss is dead so pull enemy info and last address off-->
+	jmp --					; 	stack so next enemy/door item can be loaded.
 
-*   lda #$01					;Samus is in Kraid or Ridley's room and the-->
-	sta KraidRidleyPresent		;mini boss is alive and needs to be loaded.
+*   lda #$01				; 	Samus is in Kraid or Ridley's room and the-->
+	sta KraidRidleyPresent	; 	mini boss is alive and needs to be loaded.
 
-*	pla						;Restore enemy type data.
-	and #$3F				;Keep 6 lower bits to use as index for enemy data tables.
-	sta EnDataIndex,x		;Store index byte.
+*	pla						; Restore enemy type data.
+	and #$3F				; Keep 6 lower bits to use as index for enemy data tables.
+	sta EnDataIndex,x		; Store index byte.
 	rts						;
 
-UnknownEB4D:  tay				;Save enemy position data in Y.
+UnknownEB4D:  
+	tay				;Save enemy position data in Y.
 	and #$F0					;Extract Enemy y position.
 	ora #$08			;Add 8 pixels to y position so enemy is always on screen. 
 	sta EnYRoomPos,x		;Store enemy y position.
@@ -6781,14 +6812,14 @@ UnknownEB6E:
 	ldy EnDataIndex,x		; Load y with index to enemy data.
 	asl $0405,x				; pop out the direction check 
 	jsr UnknownFB7B			; shove in the new direction check from 977B
-	jmp EnemyInitHealth
+	jmp EnemyInitHealth		
 
 IsSlotTaken:
-	lda EnStatus,x
-	beq +
-	lda $0405,x
-	and #$02
-*       rts
+	lda EnStatus,x			; 
+	beq +					; 	slot is 0, free slot - leave
+	lda $0405,x				; slot taken - load enemy status flags
+	and #$02				; isolate on screen flag - if offscreen, slot is free
+*   rts
 
 ;------------------------------------------[ Get name table ]----------------------------------------
 
@@ -6900,9 +6931,11 @@ UnknownEB92:  iny
 DoorXs:
 	.byte $F0	 ; X coord of RIGHT door
 	.byte $10	 ; X coord of LEFT door
-UnknownEBFE:  .byte $02
+UnknownEBFE:  
+	.byte $02
 	.byte $01
-UnknownEC00:  .byte $80
+UnknownEC00:  
+	.byte $80
 	.byte $B0
 	.byte $A0
 	.byte $90
@@ -6930,13 +6963,13 @@ UnknownEC09:
 	lda #$23
 	sta $0323       		; elevator frame
 	inc ElevatorStatus		;1
-*       lda #$02
+*   lda #$02
 	rts
 
 ; LoadStatues
 ; ===========
 
-	LoadStatues:
+LoadStatues:
 	jsr GetNameTable		;
 	sta $036C
 	lda #$40
@@ -6954,7 +6987,7 @@ UnknownEC09:
 	sta $0360
 *	jmp EnemyLoop   		; do next room object
 
-ZebHole:
+LoadPipeSpawner:
 	ldx #$20
 *   txa
 	sec
@@ -7636,7 +7669,7 @@ CrashDetection:
 	ldy #$00
 	jsr IsSamusDead
 	beq ++
-	jsr UnknownDC7F
+	jsr CheckObjYObjXHBOverlap
 	jsr UnknownF277
 *       jsr Xminus16
 	bmi --
@@ -7680,7 +7713,7 @@ UnknownF09F:
 	jmp UnknownF09F
 
 *   ldx #$00
-	jsr CreatePlayerLocationStruct79PPUdiffB
+	jsr CreateObjectLocationStruct79PPUdiffB
 	ldy #$60
 *   lda EnStatus,y
 	beq +
@@ -7692,7 +7725,7 @@ UnknownF09F:
 	beq +
 	jsr AddAndCacheObjEnRadYX45
 	jsr CreateEnemyLocationStruct68PPUdiffA
-	jsr UnknownF1FA
+	jsr CheckHitboxOverlap
 	jsr UnknownF2ED
 *   jsr Yplus16
 	cmp #$C0
@@ -7700,14 +7733,14 @@ UnknownF09F:
 	ldy #$00
 	jsr IsSamusDead
 	beq ++++
-	jsr CreateObjectLocationStruct68PPUdiffA
+	jsr CreateObjYLocationStruct68PPUdiffA
 	ldx #$F0
 *   lda ObjAction,x
 	cmp #$07
 	beq +
 	cmp #$0A
 	bne ++
-*   jsr UnknownDC82
+*   jsr Check68AYObjXHBOverlap
 	jsr UnknownF311
 *	jsr Xminus16
 	cmp #$C0
@@ -7716,13 +7749,13 @@ UnknownF09F:
 
 UnknownF140:  
 	jsr AddAndCacheEnObjRadYX45
-	jsr CreateObjectLocationStruct68PPUdiffA
-	jmp UnknownF1FA
+	jsr CreateObjYLocationStruct68PPUdiffA
+	jmp CheckHitboxOverlap
 
 UnknownF149:  
-	jsr CreateObjectLocationStruct68PPUdiffA
+	jsr CreateObjYLocationStruct68PPUdiffA
 	jsr Add48AndCacheObjRadYX45
-	jmp UnknownF1FA
+	jmp CheckHitboxOverlap
 
 CreateEnemyLocationStruct79PPUdiffB:  
 	lda EnYRoomPos,x
@@ -7740,7 +7773,7 @@ CreateEnemyLocationStruct68PPUdiffA:
 	lda EnNameTable,y     ; hi coord
 	jmp StoreNametableMismatchA
 
-CreatePlayerLocationStruct79PPUdiffB:  
+CreateObjectLocationStruct79PPUdiffB:  
 	lda ObjectY,x
 	sta $07
 	lda ObjectX,x
@@ -7752,7 +7785,7 @@ StoreNametableMismatchB:
 	sta $0B
 	rts
 
-CreateObjectLocationStruct68PPUdiffA:  
+CreateObjYLocationStruct68PPUdiffA:  
 	lda ObjectY,y
 	sta $06
 	lda ObjectX,y
@@ -7837,74 +7870,75 @@ Xminus16:
 	tax
 	rts
 
-UnknownF1FA:  
-	lda #$02				; load 2
-	sta $10					; cache off in $10
-	and ScrollDir			; AND with the scroll direction (horizontal scrolling when !0)
-	sta $03					; cache off in $03
-	lda $07					; load $07 (could be cached enemy Y pos
-	sec						; set carry 
-	sbc $06     			; subtract $06 (could be cached object pos)
-	sta $00					; store difference in 0
-	lda $03					; load cached horizontal flag
-	bne ++					; 	not zero, horizontal scrolling- jump ahead
-	lda $0B					; vertical scrolling - load enemy name table diff
-	eor $0A					; flip bits with object name table diff
-	beq ++					; 	was 0 (both tables were different than the drwaing table)
-	jsr UnknownF262			; was not 0 - characters on opposite drawing tables, detour to 
-	lda $00					; load Y position diff
-	sec						; set carry
-	sbc #$10				; subtract an extra 16 to deal with the attribute table space
-	sta $00					; restore into 0
-	bcs +					; 	carry flag set- no flip over, jump ahead
-	dec $01					; 	not set, carry was used for flip over- dec $01 (TODO figure out what this is)
-*   jmp UnknownF22B			; jump ahead, we finished different table stuff or were horizontally scrolling
+CheckHitboxOverlap:  
+	lda #$02							; load 2
+	sta $10								; cache off in $10
+	and ScrollDir						; AND with the scroll direction (horizontal scrolling when !0)
+	sta $03								; cache off in $03
+	lda $07								; load $07, cached object A Y pos
+	sec									; set carry 
+	sbc $06     						; subtract $06, cached object B y pos - should create "vector" direction from B to A
+	sta $00								; store difference in 0
+	lda $03								; load cached horizontal flag
+	bne ++								; 	not zero, horizontal scrolling- jump ahead
+	lda $0B								; vertical scrolling - load enemy name table diff
+	eor $0A								; flip bits with object name table diff
+	beq ++								; 	was 0 (both tables were different than the drwaing table), jump ahead
+	jsr ResolveHBOverlapOverNT			; was not 0 - characters on opposite drawing tables, detour to 
+	lda $00								; load Y position diff
+	sec									; set carry
+	sbc #$10							; subtract an extra 16 to deal with the attribute table space
+	sta $00								; restore into 0
+	bcs +								; 	carry flag set- no flip over, jump ahead
+	dec $01								; 	not set, carry was used for flip over- dec $01 
+*   jmp CheckHitboxOverlapHorizontal	; jump ahead, we finished different table stuff 
 
-*   lda #$00				; same table or horizontal scrolling - load 0
-	sbc #$00				; subtract with carry- will be 0 if we didn't flip over, FF if we did
-	jsr UnknownF266			; set 01 and negate it
+*   lda #$00							; same table or horizontal scrolling - load 0
+	sbc #$00							; subtract with carry- will be 0 if we didn't flip over, FF if we did
+	jsr UnknownF266						; send result to $1- if negative (object A was above B), negate $0 and set $1 to 0
 	
-UnknownF22B:  
-	sec						; set the carry flag
-	lda $01					; load $1
-	bne ++					; 	not zero, return
-	lda $00					; zero- load the Y position difference
-	sta $11					; move over to $11
-	cmp $04					; compare to the added object/enemy collision Y radius
-	bcs ++
-	asl $10
-	lda $09
-	sec
-	sbc $08
-	sta $00
-	lda $03
-	beq +
-	lda $0B
-	eor $0A
-	beq +
-	jsr UnknownF262
+CheckHitboxOverlapHorizontal:  
+	sec							; set the carry flag, aka "false" for this function
+	lda $01						; load $1
+	bne ++						; 	not zero, return with carry set, check failed
+	lda $00						; zero- load the ABS Y position difference
+	sta $11						; move over to $11
+	cmp $04						; compare to the added object/enemy collision Y radius
+	bcs ++						; 	if the difference is equal or greater than, we're not overlapping, fail check
+	asl $10						; boxes ARE overlapping, at least in Y - need to check X. - double $10
+	lda $09						; load $09 - object A X pos
+	sec							; set carry
+	sbc $08						; subtract $08 - object B x pos
+	sta $00						; store difference into $0
+	lda $03						; load cached hori scroll flag
+	beq +						; 	0 = vert scrolling, jump ahead
+	lda $0B						; horizontal scrolling - load name table differences
+	eor $0A						; 
+	beq +						; 	will be 0 if they are on the same name table as eachother, jump ahead
+	jsr ResolveHBOverlapOverNT	; not the same name table- need to figure out who's on top of who
 	jmp UnknownF256
 
 *   sbc #$00
 	jsr UnknownF266
 UnknownF256:  
-	sec
-	lda $01
-	bne +
-	lda $00
-	sta $0F
-	cmp $05
-*   rts
+	sec				; set carry 
+	lda $01			; load 1
+	bne +			; not zero, failed- return
+	lda $00			; 0, success- load the ABS difference
+	sta $0F			; store out to F
+	cmp $05			; comp to the added hitboxes' X radius
+*   rts				; retiurn with carry set if the difference was greater or equal to
 
-UnknownF262:  
+ResolveHBOverlapOverNT:  
 	lda $0B			; load enemy name table difference
-	sbc $0A			; subtract object name table difference - I think we should have 1, 0, FF, or FE?
+	sbc $0A			; subtract object name table difference with previous carry from position difference- I think we should have 1, 0, FF, or FE?
+					; in case of FE, we should get fails for overlap checks- the difference in table direction is wrong
 UnknownF266:  
-	sta $01			; store A into $01 
-	bpl +			; if 01 was still positive, jump ahead
-	jsr UnknownE449	; negate $1 - I think this will either give us 00 or 01 
-	inc $10			; int $10 (we cached the horizontal scroll flag (0010) here- inc it to (0011)
-*   rts				; return
+	sta $01				; store A into $01 
+	bpl +				; if 01 was still positive, jump ahead
+	jsr Negate0Resolve1	; negate $0 and $1, with $1 going one extra down if $0 is not 0
+	inc $10				; int $10 (we cached the horizontal scroll flag (0010) here- inc it to (0011)
+*   rts					; return
 
 UnknownF270:  
 	ora $030A,x
@@ -8055,7 +8089,7 @@ DoOneEnemy:
 	sta EnCachedStatus				;store out enemy status at start of update
 	cmp #$07						;compare EnStatus to the max status of 7
 	bcs +							;if our status is greater/equal, and therefore invalid, kill the enemy
-	jsr ChooseRoutine				;else, jump to this enemy's current routine
+	jsr ChooseRoutine				;else, jump to this enemy's current routine, then jump back up to enemy update loop
 
 ; Pointer table to code
 
@@ -8174,7 +8208,7 @@ UnknownF423:
 	sta ObjectCntrl					; store to object controls
 *   lda EnStatus,x					; load up the enemy status
 	beq ResetEnemyHitStatus			; if it's a clear slot, clear rhis hit status and leave
-	jsr ClrObjCntrlIfFrameIsF7		; else, 
+	jsr UpdateObjectCntrl			; else, double check the enemy has a valid frame first, and reset properties if not
 ResetEnemyHitStatus:  
 	ldx PageIndex					; load enemy index
 	lda #$00						;
@@ -8225,34 +8259,34 @@ EnemyPowerupState:
 	ldy EnAnimFrame,x		;	check the enemy anim frame
 	cpy #$80				;	if it's equal to $80, it was a missle
 	beq PickupMissile		;		jump to picking up a missle
-	tya						;	else, it was health - put the anim frame into A
+	tya						;	else, it was health - put the anim frame into A (81 - health, 89 = nothing)
 	pha						;	then push it to the stack
-	lda EnDataIndex,x		; 	load enemy data index
+	lda EnDataIndex,x		; 	load enemy data index- should be 2 if it was a metroid
 	pha						;	push that to the stack too
 	ldy #$00				;	
-	ldx #$03				;	;set up for a 30.0 health boost
-	pla						; 	put enemy data index back into A
-	bne ++					; 	if it's not index 0, jump ahead to health change
-	dex						;	if it IS 0, we need to check something else
+	ldx #$03				;	set up for a 30.0 health boost
+	pla						; 	get that metroid flag
+	bne ++					; 		metroid flag set, jump ahead to health change
+	dex						;	metroid flag clear- only a 20.0 health boost
 	pla						;	pop anim frame back into the accumulator
 	cmp #$81				;	comapre to $81
-	bne +					;	if equal, jump past this - we have a bigger enemy drop
+	bne +					;		not 81, bigger enemy
 	ldx #$01				;	Increase HealthHi by 1.
 	ldy #$50				;	Increase HealthLo by 5.
-*   pha	
-*	pla				
-	sty HealthLoChange
+*   pha						; 	push frame back onto stack since we still had it out, so we can pop it out again without removing critical routine poitners
+*	pla						; remove frame from stack
+	sty HealthLoChange		; set up health change
 	stx HealthHiChange
 	jsr AddHealth			;($CEF9)Add health to Samus.
 	jmp SFX_EnergyPickup
 
 PickupMissile:
-	lda #$02
-	ldy EnDataIndex,x
-	beq +
-	lda #$1E
-*   clc
-	adc MissileCount
+	lda #$02				; load 2
+	ldy EnDataIndex,x		; load enemy data index- should be 2 with metroid
+	beq +					; 	not a metroid, jump ahead- only adding 2 missles
+	lda #$1E				; 	is a metroid, load 1E insead (30 missles)
+*   clc						; clear carry
+	adc MissileCount		; add missles
 	bcs +		   			; can't have more than 255 missiles
 	cmp MaxMissiles			; can Samus hold this many missiles?
 	bcc ++		  		 	; branch if yes
@@ -8260,6 +8294,7 @@ PickupMissile:
 *	sta MissileCount
 	jmp SFX_MissilePickup
 
+EnemyUpdatePowerupLifetimeTimer:
 *	lda FrameCount
 	and #$03
 	bne +
@@ -8450,7 +8485,7 @@ ContinueEnemyDamge1:
 	cmp #$02						;compare to wave
 	bcs +							;if greater than OR equal to, jump down to the mystery load
 	lda #$00						;otherwise, load 0 and jump to 
-	jsr UnknownDCFC					;the enemy kill/item drop routine - for normal explosions
+	jsr KillEnemyAndDropItem		;the enemy kill/item drop routine - for normal explosions
 	ldx PageIndex					;I THINK THE REST OF THIS IS FINDING AND POPULATING AN EXPLOSION SLOT 
 *   jsr GetEnemyDirectionDataIndex	;get enemy direction animation index
 	lda EnDirAnimTb0B,y				;load that value at the index, and take it to the reset anim index
@@ -8500,13 +8535,13 @@ UpdateEnAnimDirection963B:
 	jsr GetEnemyDirectionDataIndex
 	lda EnDirAnimTb3B,y
 	cmp EnResetAnimIndex,x
-	beq +					;same animation, no need to set 
+	beq +							;same animation, no need to set 
 ResetAnimIndex:  
-	sta EnResetAnimIndex,x	;else, reset with new anim index
+	sta EnResetAnimIndex,x			;else, reset with new anim index
 SetEnAnimIndex:  
-	sta EnAnimIndex,x		;set anim index
+	sta EnAnimIndex,x				;set anim index
 ResetEnAnimDelay:  
-	lda #$00				;reset anim delay
+	lda #$00						;reset anim delay
 	sta EnAnimDelay,x
 *   rts
 
@@ -8620,6 +8655,7 @@ OnPlayerNametable:
 ;you may notice we use nametabes to compare distance, but not using the PPU control to check screen direction
 ;it's probably not needesd, since we're doing an ABS check anyways
 ;i believe this tracks the trigger direction for a distance check
+;TODO: figure out the xxx1 1xxx flags
 CheckDistanceToSamus:  
 	lda #$E7						; 1110 0111	create default mask
 	sta $06							; store in temp 6
@@ -8914,7 +8950,7 @@ UnknownF97C:
 	lda #$01
 UnknownF97E:  
 	jsr UpdateEnemyAnim
-	jmp ClrObjCntrlIfFrameIsF7
+	jmp UpdateObjectCntrl
 *   inc $0408,x
 UnknownF987:  
 	inc $0408,x
@@ -9071,7 +9107,7 @@ UnknownFAB4:  dec EnCounter,x
 	dec $0407,x
 	bmi +
 	bne ++
-*       jsr KillObject			;($FA18)Free enemy data slot.
+*   jsr KillObject			;($FA18)Free enemy data slot.
 *	lda EnCounter,x
 	cmp #$09
 	bne +
@@ -9083,7 +9119,7 @@ UnknownFAB4:  dec EnCounter,x
 	lda Table16+1,y
 	sta $05
 	jsr UnknownFA41
-*       lda #$80
+*   lda #$80
 	sta ObjectCntrl
 	lda #$03
 	jmp UnknownF97E
@@ -9120,14 +9156,14 @@ DoOneSpawner:
 	lda $0405,x								; 	else, load the en status flags
 	and #$02								; 	check and with visibility flag
 	bne Exit13								; 	visible? exit - nothing to do while it exists
-*   sta $0404,x								; not visible - store 0 into enemy hit status
+*   sta $0404,x								; not visible/inactive - store 0 into enemy hit status
 	lda #$FF								; load 0xFF 
 	cmp EnDataIndex,x						; check against the enemy data index - should be FF if the enemy is gone enough
-	bne +									; not equal, jump ahead
+	bne +									; not equal, enemy is NOT gone enough
 	dec EnDelay,x							; 	else, count down the enemy delay
 	bne Exit13								; 		if it's not 0 yet, leave
-	lda EnSpawnerStatus,y					; 	load the spawner status again
-	jsr GetEnemyType						; 	get the enemy type for this spawner
+	lda EnSpawnerStatus,y					; 	load the spawner status again - contains the actual enemy data we want
+	jsr SetEnTypeAndAttributes				; 	use spawner status as enemy type
 	ldy PageIndex							; load y again (?) 
 	lda EnSpawnerYRoomPos,y					; 
 	sta EnYRoomPos,x						;
@@ -9140,12 +9176,12 @@ DoOneSpawner:
 	lda #$0C								;
 	sta EnRadY,x							; set enemy hitbox
 	ldy #$00								;
-	jsr CreateObjectLocationStruct68PPUdiffA; "player" here is the spawner 		
+	jsr CreateObjYLocationStruct68PPUdiffA	; Y = player	
 	jsr CreateEnemyLocationStruct79PPUdiffB	; "enemy" here is the new spawned enemy
-	jsr AddAndCacheEnObjRadYX45				
-	jsr UnknownF1FA
-	bcc Exit13								; carry flag clear, leave
-	lda #$01								; carry falg was set, load 1
+	jsr AddAndCacheEnObjRadYX45				; add collision bounds together
+	jsr CheckHitboxOverlap					; check for hitbox overlap
+	bcc Exit13								; 	carry flag clear, samus is standing on enemy- can't spawn, return
+	lda #$01								; no overlap, load 1
 	sta EnDelay,x							; store into enemy delay
 	sta EnStatus,x							; and enemy status (waiting)
 	and ScrollDir							; get positive (0001) or negative(0000) scroll direction
@@ -9155,7 +9191,7 @@ DoOneSpawner:
 	jsr UnknownFB7B							; init distance check bit, move 0001 0000 flag into place 		
 	jmp EnemyInitHealth						; init enemy health
 
-*   sta EnDataIndex,x
+*   sta EnDataIndex,x						; store into enemy data index
 	lda #$01
 	sta EnDelay,x
 	jmp KillObject			;($FA18)Free enemy data slot.
@@ -9262,7 +9298,7 @@ UnknownFBEC:  		;this has something to do with enemies that explode
 	bne +
 	ldy #$00
 	ldx #$40
-	jsr UnknownDC7F
+	jsr CheckObjYObjXHBOverlap
 	bcs +
 	jsr IsScrewAttackActive		;($CD9C)Check if screw attack active.
 	ldy #$00
@@ -9331,14 +9367,15 @@ UnknownFC98:  lda $B0,x
 	.word UnknownFCB1
 	.word UnknownFCBA
 
-UnknownFCA5:  jsr UnknownFD84
+UnknownFCA5:  
+	jsr UnknownFD84
 	jsr UnknownFD08
 	jsr UnknownFD25
-	jmp ClrObjCntrlIfFrameIsF7
+	jmp UpdateObjectCntrl
 
 UnknownFCB1:  jsr UnknownFD84
 	jsr UnknownFCC1
-	jmp ClrObjCntrlIfFrameIsF7
+	jmp UpdateObjectCntrl
 
 UnknownFCBA:  lda #$00
 	sta $B0,x
@@ -9550,9 +9587,9 @@ UnknownFE05:  lda $0758,x
 
 ; Tile degenerate/regenerate
 
-	UpdateTiles:
+UpdateTiles:
 	ldx #$C0
-*       jsr DoOneTile
+*   jsr DoOneTile
 	ldx PageIndex
 	jsr Xminus16
 	bne -
@@ -9571,7 +9608,8 @@ UnknownFE05:  lda $0758,x
 	.word UnknownFE54
 	.word UnknownFE83
 
-UnknownFE3D:  inc TileRoutine,x
+UnknownFE3D:  
+	inc TileRoutine,x
 	lda #$00
 	jsr SetTileAnim
 	lda #$50
@@ -9581,10 +9619,12 @@ UnknownFE3D:  inc TileRoutine,x
 	lda TileWRAMHi,x     ; high WRAM addr
 	sta $01
 
-UnknownFE54:  lda #$02
+UnknownFE54:  
+	lda #$02
 	jmp UpdateTileAnim
 
-UnknownFE59:  lda FrameCount
+UnknownFE59:  
+	lda FrameCount
 	and #$03
 	bne +       ; only update tile timer every 4th frame
 	dec TileDelay,x
@@ -9597,14 +9637,15 @@ UnknownFE59:  lda FrameCount
 	sta $0505,x
 	lda #$00
 	sta TileAnimDelay,x
-*       rts
+*   rts
 
 ; Table used for indexing the animations in TileBlastAnim (see below)
 
 Table19:
 	.byte $18,$1C,$20,$00,$04,$08,$0C,$10,$24,$14
 
-UnknownFE83:  lda #$00
+UnknownFE83:  
+	lda #$00
 	sta TileRoutine,x       ; tile = respawned
 	lda TileWRAMLo,x
 	clc
@@ -9623,7 +9664,7 @@ UnknownFE83:  lda #$00
 	and #$01
 	sta $0B
 	ldy #$00
-	jsr CreateObjectLocationStruct68PPUdiffA
+	jsr CreateObjYLocationStruct68PPUdiffA
 	lda #$04
 	clc
 	adc ObjRadY
@@ -9632,7 +9673,7 @@ UnknownFE83:  lda #$00
 	clc
 	adc ObjRadX
 	sta $05
-	jsr UnknownF1FA
+	jsr CheckHitboxOverlap
 	bcs Exit23
 	jsr UnknownF311
 	lda #$50
@@ -9647,7 +9688,9 @@ UnknownFE83:  lda #$00
 	sta $02
 	lda $97B0,y
 	sta $03
-Exit23: rts
+	
+Exit23: 
+	rts
 
 DrawTileBlast:
 	lda PPUStrIndex
@@ -9670,8 +9713,8 @@ DrawTileBlast:
 	sta $05
 	iny
 	sty $10
-*       ldx $05
-*       ldy $10
+*   ldx $05
+*   ldy $10
 	lda ($02),y
 	inc $10
 	ldy $11
@@ -9693,14 +9736,15 @@ DrawTileBlast:
 	lda $01
 	ora #$0C
 	sta $01
-*       lda $01
+*   lda $01
 	and #$2F
 	sta $01
 	jsr EraseTile
 	clc
 	rts
 
-UnknownFF3C:  lda $00
+UnknownFF3C:  
+	lda $00
 	tay
 	and #$E0
 	sta $02

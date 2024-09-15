@@ -70,7 +70,7 @@ L8030:	JMP $8318
 L8033:	JMP EnemyBGCrashDetection
 L8036:	JMP $833F
 L8039:	JMP $8395
-L803C:	JMP ClrObjCntrlIfFrameIsF7
+L803C:	JMP UpdateObjectCntrl
 L803F:	JMP DrawTileBlast
 L8042:	JMP SubtractHealth		;($CE92)
 L8045:	JMP Base10Subtract		;($C3FB)
@@ -96,7 +96,7 @@ L8063:	CMP #$02				; compare to Moving state
 L8065:	BNE ++++++++			; not moving? leave
 L8067:	JSR $8244				; should return a desired velocity into 0
 L806A:	LDA $00					; load that velocity
-L806C:	BPL ++					; 	positive velocity? jump ahead
+L806C:	BPL ++					; 	non-neg velocity? jump ahead
 L806E:	JSR TwosCompliment		; negative velocity? ABS
 L8071:	STA $66					; store velocity into 66
 L8073:*	JSR $83F5				; 
@@ -104,7 +104,7 @@ L8076:	JSR $80B8				;
 L8079:	DEC $66					; decrement 66
 L807B:	BNE -					; while not 0, loop 
 L807D:*	BEQ ++					; 	no velocity? jump ahead
-L807F:	STA $66
+L807F:	STA $66					; positive velocity - store to 66
 L8081:*	JSR $844B
 L8084:	JSR $80FB
 L8087:	DEC $66
@@ -535,7 +535,7 @@ L83C5:	STA $04			; store that into $4
 L83C7:	LDA #$00		; load 0
 L83C9:	SBC $0403,X		; subtract velocity (will wither be one less than normal subtractin, or equal to negative vel when counter was 0)
 L83CC:	TAY 			; move negated velocity into Y
-L83CD:	JSR UnknownE449	; negate $0 and $1 in a simialr fashion (will have 0 and F2)
+L83CD:	JSR Negate0Resolve1	; negate $0 and $1 in a simialr fashion (will have 0 and F2)
 
 L83D0:	LDA $04			; load cached counter value
 L83D2:	CMP $02			; compare to 2 - carry set when greater ot equal 
@@ -1457,11 +1457,11 @@ L8B13:	LDA SamusDoorStatus			;The code determines if Samus has entered a door if
 L8B15:	BNE ++++			;door status is 0, but door data information has been-->
 L8B17:	LDY SamusDoorData		;written. If both conditions are met, Samus has just-->
 L8B19:	BEQ ++++			;entered a door.
-L8B1B:	STA CurrentMissilePickups	;
+L8B1B:	STA RoomCurrMissileSpawns	;
 L8B1D:	STA CurrentEnergyPickups	;Reset current missile and energy power-up counters.
 L8B1F:	LDA RandomNumber1		;
 L8B21:	AND #$0F			;Randomly recalculate max missile pickups(16 max, 0 min).
-L8B23:	STA MaxMissilePickup		;
+L8B23:	STA RoomMaxMissileSpawns		;
 L8B25:	ASL				;
 L8B26:	ORA #$40			;*2 for energy pickups and set bit 6(128 max, 64 min).
 L8B28:	STA MaxEnergyPickup		;

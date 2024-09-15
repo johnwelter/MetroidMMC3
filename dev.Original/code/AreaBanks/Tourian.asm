@@ -221,7 +221,8 @@ L95CC:	.byte $FF			;Not used.
 L95CD:	.byte $40			;Tourian music init flag.
 
 L95CE:	.byte $00			;Base damage caused by area enemies to lower health byte.
-L95CF:	.byte $03			;Base damage caused by area enemies to upper health byte.
+L95CF:	.byte $00			;Base damage caused by area enemies to upper health byte.
+;L95CF:	.byte $03			;Base damage caused by area enemies to upper health byte.
 
 ;Special room numbers(used to start item room music).
 L95D0:	.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF
