@@ -123,10 +123,10 @@
 
 .alias SamusDir				$4D     ;0 = Right, 1 = Left.
 .alias SamusDoorDir			$4E     ;Direction Samus passed through door.
-.alias MapPosY				$4F	;Current y position on world map.
-.alias MapPosX				$50	;Current x position on world map.
-.alias SamusScrX			$51	;Samus x position on screen.
-.alias SamusScrY			$52	;Samus y position on screen.
+.alias MapIdxY				$4F		;Current y position on world map.
+.alias MapIdxX				$50		;Current x position on world map.
+.alias SamusScrX			$51		;Samus x position on screen.
+.alias SamusScrY			$52		;Samus y position on screen.
 .alias WalkSoundDelay		$53
 .alias IsSamus				$55	;1=Samus object being accessed, 0=not Samus.
 .alias SamusDoorStatus			$56	;0=Not in door, 1=In right door, 2=In left door, 3=Scroll up-->
@@ -162,7 +162,7 @@
 
 .alias DoorOnNameTable3		$6C	;The following two addresses are used to keep track of the-->
 .alias DoorOnNameTable0		$6D	;doors loaded on the name tables. The information is used-->
-								;in the GetRoomNum routine to prevent the loading of a-->
+								;in the UpdateRoomNum routine to prevent the loading of a-->
 								;room behind a door when scrolling horizontally. This has-->
 								;the effect of stopping scrolling until Samus walks through-->
 								;the door. #$01=Left door on name table. #$02=right door-->
@@ -280,6 +280,9 @@
 
 .alias MissileToggle			$010E   ;0=fire bullets, 1=fire missiles.
 
+
+.alias EnMovementTblPtr			$81
+
 ;-----------------------------------------[ Sprite RAM ]---------------------------------------------
 
 .alias Sprite00RAM   	$0200	;$0200 thru $02FF
@@ -368,17 +371,18 @@
 .alias ObjectX				$030E	;Object x position in room(not actual screen position).
 .alias SamusJumpDsplcmnt	$030F	;Number of pixels vertically displaced from jump point.
 .alias ObjectTimer 			$030F
-.alias VertCntrNonLinear	$0310	;Verticle movement counter. Exponential change in speed.
-.alias HorzCntrNonLinear	$0311	;Horizontal movement counter. Exponential change in speed.
-.alias VertCntrLinear		$0312	;Verticle movement counter. Linear change in speed.
-.alias HorzCntrLinear		$0313	;Horizontal movement counter. Linear change in speed.
+.alias VertCountrNonLinear	$0310	;Verticle movement counter. Exponential change in speed.
+.alias HorzCountrNonLinear	$0311	;Horizontal movement counter. Exponential change in speed.
+.alias VertCountrLinear		$0312	;Verticle movement counter. Linear change in speed.
+.alias HorzCountrLinear		$0313	;Horizontal movement counter. Linear change in speed.
 .alias SamusGravity			$0314	;Value used in calculating vertical acceleration on Samus.
 .alias SamusHorzAccel		$0315	;Value used in calculating horizontal acceleration on Samus.
 .alias SamusHorzSpeedMax	$0316	;Used to calc maximum horizontal speed Samus can reach.
 
 ;Elevator RAM.
-.alias ElevatorStatus		$0320	;#$01=Elevator present, #$00=Elevator not present. there's also a 06 apparently, will need to find out what causes that
-
+.alias ElevatorDirectionNoOffset $030F ;elevator direction that can be accesed with X addressing
+.alias ElevatorStatus			 $0320	
+.alias ElevatorDirection		 $032F
 ;Power-up item RAM.
 
 
@@ -433,9 +437,9 @@
 .alias EnHitStatus		$0404
 .alias EnStatusFlags	$0405	;dutx xvsh 
 								;|||| ||||
-								;|||| |||+-enemy in relation to player horizontal (0 = left, 1 = right)
+								;|||| |||+-enemy movement direction horizontal (0 = right, 1 = left)
 								;|||| ||+--visibility
-								;|||| |+---enemy in relation to player vertical (0 = below, 1 = above)
+								;|||| |+---enemy movement direction Vertical (0 = up, 1 = down)
 								;|||| +----??
 								;|||| 
 								;|||+------??

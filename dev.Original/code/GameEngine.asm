@@ -1424,16 +1424,16 @@ MoreInit:
 	stx ScrollDir				; Set initial scroll direction as left.
 
 	lda AreaStartRoomX			; Get Samus start x pos on map.
-	sta MapPosX					;
+	sta MapIdxX					;
 	lda AreaStartRoomY			; Get Samus start y pos on map.
-	sta MapPosY					;
+	sta MapIdxY					;
 
 	lda AreaPaletteToggleValue  ; this will have two values, 01 or 06 - toggled with an EOR of 0000 0111 to go back and forth
 	sta PalToggle
 	lda #$FF
 	sta RoomNumber				; Room number = $FF(undefined room).
 	jsr CopyPtrs    			; copy area pointers from ROM to RAM 
-	jsr GetRoomNum				; Put room number at current map pos in $5A.
+	jsr UpdateRoomNum				; Put room number at current map pos in $5A.
 *   jsr SetupRoom				; 
 	ldy RoomNumber  			; load room number to y
 	iny							; inc room number
@@ -2121,7 +2121,7 @@ SamusRun:
 	sta AnimResetIndex
 *   bit Joy1Status
 	bmi +
-	jsr StopVertMovement					;($D147)
+	jsr StopSamusVertMovement					;($D147)
 *	lda #an_SamusRun
 	cmp AnimResetIndex
 	bne +
@@ -2465,7 +2465,7 @@ ClearHorzMvmntData:
   ldy #$00						;
 SetHorzMvmntData:
   sty ObjHorzSpeed				;Set Samus Horizontal speed and horizontal-->
-	sty HorzCntrLinear			;linear counter to #$00.
+	sty HorzCountrLinear			;linear counter to #$00.
 *	rts							;
 
 StopHorzMovement:
@@ -2570,7 +2570,7 @@ SamusJump:
 	bcc +	   					; branch if jumped less than 32 pixels upwards
 	bit Joy1Status
 	bmi +	   					; branch if JUMP button still pressed
-	jsr StopVertMovement		;($D147)Stop jump (start falling).
+	jsr StopSamusVertMovement		;($D147)Stop jump (start falling).
 *   jsr UpdateSamusJumpAnimAndDirection
 	jsr ReverseHoriAccelOnType04Collision
 	lda Joy1Status
@@ -2707,7 +2707,7 @@ SetSamusRoll:
 	jsr SetPositionDataFromStruct98B
 	jsr StopHorzMovement
 	dec AnimIndex
-	jsr StopVertMovement		;($D147)
+	jsr StopSamusVertMovement		;($D147)
 	lda #$04
 	jmp JumpToSetSamusDataFromRoll
 
@@ -2730,11 +2730,11 @@ SetSamusRoll:
 JumpToSetSamusDataFromRoll:
   jmp SetSamusData		;($CD6D)Set Samus control data and animation.
 
-StopVertMovement:
-  ldy #$00
-	sty ObjVertSpeed
-	sty VertCntrLinear
-	rts
+StopSamusVertMovement:		
+	ldy #$00				; load 0 to y
+	sty ObjVertSpeed		; store in vert speed for samus
+	sty VertCountrLinear	; reset linear vertical movement counter
+	rts						; return, with 0 in y
 
 ; CheckBombLaunch
 ; ===============
@@ -3113,7 +3113,7 @@ SamusDoor:
 	lda #$00
 	sta SamusDoorData
 	sta SamusDoorStatus
-	jsr StopVertMovement		;($D147)
+	jsr StopSamusVertMovement		;($D147)
 
 MoveOutDoor:
 	lda SamusDoorDir
@@ -3737,36 +3737,37 @@ UpdateElevator:
 	.word ElevatorStop
 
 ElevatorIdle:
-	lda SamusOnElevator
-	beq ShowElevator
-	lda #$04
-	bit $032F       		; elevator direction in bit 7 (1 = up)
-	bpl +
-	asl						; btn_UP
-*   and Joy1Status
-	beq ShowElevator
-							; start elevator!
-	jsr StopVertMovement	; ($D147)
-	sty AnimDelay			;
-	sty SamusGravity		;
-	tya						;
-	sta ObjVertSpeed,x		;
-	inc ObjAction,x			;
-	lda #sa_Elevator		;
-	sta ObjAction			;
-	lda #an_SamusFront		;
-	jsr SetSamusAnim		;
-	lda #128				;
-	sta ObjectX     		; center
-	lda #112				;
-	sta ObjectY     		; center
-	ShowElevator:			;
-	lda FrameCount			;
-	lsr						;
-	bcc --	  				; only display elevator at odd frames
-	jmp DrawFrame       	; display elevator
+	lda SamusOnElevator			; load flag to see if samus is on the elevator
+	beq ShowElevator			; 	not on it? jsut idly animate
+	lda #DownButton				; else, load down button mask
+	bit ElevatorDirection   	; elevator direction in bit 7 (1 = up)
+	bpl +						; 	not up, keep down mask	 
+	asl							; 	going up, get up button mask instead
+*   and Joy1Status				; isolate button on controller status
+	beq ShowElevator			; 	neither button set? just animate
+								; start elevator!
+	jsr StopSamusVertMovement	; clear samus vertical movement, 0 in Y
+	sty AnimDelay				; set samus anim delay to 0
+	sty SamusGravity			; set samus gravity to 0
+	tya							; move 0 into A
+	sta ObjVertSpeed,x			; clear vert speed of elevator
+	inc ObjAction,x				; increment elevator to scroll X correction state
+	lda #sa_Elevator			; 
+	sta ObjAction				; set samus action to elevator
+	lda #an_SamusFront			;
+	jsr SetSamusAnim			; set samus to front facing anim
+	lda #128					;
+	sta ObjectX     			; place samus at room hori center
+	lda #112					;
+	sta ObjectY     			; place samus at room vert center
 
-;TODO - some kinda elevator update - does something with the scroll 
+ShowElevator:					; dispaly elevator on odd frames
+	lda FrameCount				;
+	lsr							;
+	bcc --	  					; only display elevator at odd frames
+	jmp DrawFrame       		; display elevator
+
+ 
 ElevatorCorrectScrollX:
 	lda ScrollX				; load X scroll 
 	bne +					; 	not 0 yet? jump ahead
@@ -3793,30 +3794,33 @@ ElevatorCorrectScrollX:
 	jmp ShowElevator		; draw elevator
 
 ElevatorMove:
-	lda $030F,x
-	bpl ++	  ; branch if elevator going down
-    ; move elevator up one pixel
-	ldy ObjectY,x
-	bne +
-	jsr ToggleObjectHi
-	ldy #240
-*   dey
-	tya
-	sta ObjectY,x
-	jmp ++
+	lda ElevatorDirectionNoOffset,x		; use X for elevator offset- could probably change this to a direct check at 030F since there's only one elevator
+	bpl ++	  							; 	positive - branch if elevator going down
+		
+	; move elevator up one pixel
+	ldy ObjectY,x						; direction was negative- going up. load elevator Y pos
+	bne +								; 	if it's not 0, jump ahead
+	jsr ToggleObjectHi					; elevator position is 0, we hit the top of the screen- toggle our name table
+	ldy #240							; load bottom of room position
+*   dey									; move Ypos up one pixel
+	tya									; transfer new position to A
+	sta ObjectY,x						; store new object position
+	jmp ++								; jump to check for scroll
 
     ; move elevator down one pixel
-*	inc ObjectY,x
-	lda ObjectY,x
-	cmp #240
-	bne +
-	jsr ToggleObjectHi
-	lda #$00
-	sta ObjectY,x
-*	cmp #$83
-	bne +	   ; move until Y coord = $83
-	inc ObjAction,x
-*   jmp ShowElevator
+*	inc ObjectY,x						; increment elevator position, moving it down one
+	lda ObjectY,x						; load the position
+	cmp #240							; if we hit 240, the bottom Y position for a room, we need to switch rooms
+	bne +								; 	not at the bottom of the room yet- jump ahead
+	jsr ToggleObjectHi					; at the bottom of the room- switch nametable
+	lda #$00							; load 0
+	sta ObjectY,x						; store as new object room position
+
+;switch to screen scroll 
+*	cmp #131							; below screen center
+	bne +	   							; 	if we haven't hit there, just update anims
+	inc ObjAction,x						; 	we hit the location - start screen scroll state
+*   jmp ShowElevator					; animate elevator
 
 ;;includes some vestigial code for handling a special fade out animation
 ElevatorScroll:
@@ -3839,19 +3843,19 @@ ElevatorScroll:
 	jmp ShowElevator
 
 ElevScrollRoom:
-	lda $030F,x
-	bpl +	   			; branch if elevator going down
-	jsr ScrollUp
-	jmp ShowElevator
-
-*   jsr ScrollDown
-	jmp ShowElevator
+	lda ElevatorDirectionNoOffset ,x	; load elevator direction
+	bpl +	   							; 	positive- branch if elevator going down
+	jsr ScrollUp						; negative, screen going up, scroll it up
+	jmp ShowElevator					; animate elevator
+										
+*   jsr ScrollDown						; scroll screen down
+	jmp ShowElevator					; animate elevator
 
 ElevatorPrepBetweenAreas:
 
 ;;  bring these two lines back if you want to see the pre-disk load FDS anim
-;;	lda Timer1
-;;	bne +
+	;lda Timer1
+	;bne +
 	inc ObjAction,x		; inc elevator action
 	lda ObjAction,x		; load elevator action
 	cmp #$08			; second ElevatorMove state after area switch
@@ -4014,11 +4018,11 @@ Exit8:
 ; =============
 
 UpdateStatues:
-	lda #$60
-	sta PageIndex
-	ldy $0360
-	beq Exit8	   ; exit if no statue present
-	dey
+	lda #$60		; load 60
+	sta PageIndex	; store into page index- first projectile slot
+	ldy $0360		; 
+	beq Exit8	   	; exit if no statue present
+	dey				; 
 	bne +
 	jsr UnknownDAB0
 	ldy #$01
@@ -4032,7 +4036,7 @@ UpdateStatues:
 	bpl +
 	ldy #$02
 	jsr UnknownDAB0
-*   lda $687C
+*   lda RidleyStatueStatus
 	bpl +
 	ldy #$03
 	jsr UnknownDAB0
@@ -4160,7 +4164,7 @@ UnknownDADA:
 	lda SamusDoorStatus
 	bne Exit0
 	lda KraidStatueStatus
-	and $687C
+	and RidleyStatueStatus
 	bpl Exit0
 	sta $54
 	ldx #$70
@@ -4330,10 +4334,10 @@ Exit9:  rts
 	bne -----	   ; branch always
 
 UnknownDC1C:
-  lda MapPosX
+  lda MapIdxX
 UnknownDC1E:
   sta $07
-	lda MapPosY
+	lda MapIdxY
 	sta $06
 	lda ScrollDir
 	lsr
@@ -5444,7 +5448,7 @@ SamusMoveVertically:
 
 	sec				;Samus blocked upwards. Divide her speed by 2 and set the
 	ror ObjVertSpeed		;MSB to reverse her direction of travel.
-	ror VertCntrLinear		;
+	ror VertCountrLinear		;
 	jmp SamusMoveHorizontally	;($E31A)Attempt to move Samus left/right.
 
 *	dec ObjectCounter		;1 pixel movement is complete.
@@ -5468,11 +5472,11 @@ SamusMoveVertically:
 	bne +				;If not, branch.
 	lsr ObjVertSpeed		;Divide verticle speed by 2.
 	beq ++				;Speed not fast enough to bounce. branch to skip.
-	ror VertCntrLinear		;Move carry bit into MSB to reverse Linear counter.
+	ror VertCountrLinear		;Move carry bit into MSB to reverse Linear counter.
 	lda #$00			;
 	sec				;
-	sbc VertCntrLinear		;Subtract linear counter from 0 and save the results.-->
-	sta VertCntrLinear		;Carry will be cleared.
+	sbc VertCountrLinear		;Subtract linear counter from 0 and save the results.-->
+	sta VertCountrLinear		;Carry will be cleared.
 	lda #$00			;
 	sbc ObjVertSpeed		;Subtract vertical speed from 0. this will reverse the-->
 	sta ObjVertSpeed		;vertical direction of travel(bounce up).
@@ -5480,7 +5484,7 @@ SamusMoveVertically:
 
 ;Samus has hit the ground after moving downwards. 
 *	jsr SFX_SamusWalk		;($CB96)Play walk SFX.
-*	jsr StopVertMovement		;($D147)Clear vertical movement data.
+*	jsr StopSamusVertMovement		;($D147)Clear vertical movement data.
 	sty SamusGravity		;Clear Samus gravity value.
 	beq SamusMoveHorizontally	;($E31A)Attempt to move Samus left/right.
 
@@ -5577,10 +5581,10 @@ VertAccelerate:
 	sta SamusGravity		;
 
 *	ldx #$05			;Load X with maximum downward speed.
-	lda VertCntrLinear		;
+	lda VertCountrLinear		;
 	clc				;The higher the gravity, the faster this addition overflows-->
 	adc SamusGravity		;and the faster ObjVertSpeed is incremented.
-	sta VertCntrLinear		;
+	sta VertCountrLinear		;
 	lda ObjVertSpeed		;Every time above addition sets carry bit, ObjVertSpeed is-->
 	adc #$00			;incremented. This has the effect of speeding up a fall-->
 	sta ObjVertSpeed		;and slowing down a jump.
@@ -5588,7 +5592,7 @@ VertAccelerate:
 
 ;Check if maximum upward speed has been exceeded. If so, prepare to set maximum speed.
 	lda #$00			;
-	cmp VertCntrLinear		;Sets carry bit.
+	cmp VertCountrLinear		;Sets carry bit.
 	sbc ObjVertSpeed		;Subtract ObjVertSpeed to see if maximum speed has-->
 	cmp #$06			;been exceeded.
 	ldx #$FA			;Load X with maximum upward speed.
@@ -5599,15 +5603,15 @@ VertAccelerate:
 *	bcc +				;If not, branch.
 
 ;Max verticle speed reached or exceeded. Adjust Samus verticle speed to max.
-	jsr StopVertMovement		;($D147)Clear verticle movement data.
+	jsr StopSamusVertMovement		;($D147)Clear verticle movement data.
 	stx ObjVertSpeed		;Set Samus vertical speed to max.
 
 ;This portion of the function creates an exponential increase/decrease in verticle speed. This is the
 ;part of the function that does all the work to make Samus' jump seem natural.
-*	lda VertCntrNonLinear		;
+*	lda VertCountrNonLinear		;
 	clc				;This function adds itself plus the linear verticle counter-->
-	adc VertCntrLinear		;onto itself every frame.  This causes the non-linear-->
-	sta VertCntrNonLinear		;counter to increase exponentially.  This function will-->
+	adc VertCountrLinear		;onto itself every frame.  This causes the non-linear-->
+	sta VertCountrNonLinear		;counter to increase exponentially.  This function will-->
 	lda #$00			;cause Samus to reach maximum speed first in most-->
 	adc ObjVertSpeed		;situations before the linear counter.
 	sta $00				;$00 stores temp copy of current verticle speed.
@@ -5625,10 +5629,10 @@ HorzAccelerate:
 	sta $01
 	sta $03
 
-	lda HorzCntrLinear
+	lda HorzCountrLinear
 	clc
 	adc SamusHorzAccel
-	sta HorzCntrLinear
+	sta HorzCountrLinear
 	tax
 	lda #$00
 	bit SamusHorzAccel
@@ -5643,7 +5647,7 @@ HorzAccelerate:
 
 	lda #$00
 	sec
-	sbc HorzCntrLinear
+	sbc HorzCountrLinear
 	tax
 	lda #$00
 	sbc ObjHorzSpeed
@@ -5655,13 +5659,13 @@ HorzAccelerate:
 	sbc $03
 	bcc +
 	lda $00
-	sta HorzCntrLinear
+	sta HorzCountrLinear
 	lda $01
 	sta ObjHorzSpeed
-*   lda HorzCntrNonLinear
+*   lda HorzCountrNonLinear
 	clc
-	adc HorzCntrLinear
-	sta HorzCntrNonLinear
+	adc HorzCountrLinear
+	sta HorzCountrNonLinear
 	lda #$00
 	adc ObjHorzSpeed
 	sta $00				;$00 stores temp copy of current horizontal speed.
@@ -5758,28 +5762,29 @@ MoveSamusDown:
 
 ; Attempt to scroll UP
 
-	ScrollUp:
-	lda ScrollDir
-	beq +
-	cmp #$01
-	bne ++++
-	dec ScrollDir
-	lda ScrollY
-	beq +
-	dec MapPosY
-*       ldx ScrollY
-	bne +
-	dec MapPosY     ; decrement MapY
-	jsr GetRoomNum  ; put room # at current map pos in $5A
-	bcs ++   ; if function returns CF = 1, moving up is not possible
-	jsr UnknownE9B7       ; switch to the opposite Name Table
-	ldx #240	; new Y coord
-*	dex
-	jmp UnknownE53F
+ScrollUp:
+	lda ScrollDir	; load scroll direction 
+	beq +			; 	0? jump ahead
+	cmp #$01		; not zero, check to see if we're anything BUT 1
+	bne ++++		; 	not 1 either, invalid vertical scroll direction - set carry and leave
+	dec ScrollDir	; scroll direction was down - set scroll direction to up
+	lda ScrollY		; load current scroll 
+	beq +			; 	if it's 0, don't update map Y index
+	dec MapIdxY		; 	scroll was not 0, we need to change the map position up one room since we're changing direction and it's still on screen
 
-*	inc MapPosY
-*	sec
-	rts
+*   ldx ScrollY				; load Y scroll into X
+	bne +					; 	not 0, don't update map Y index
+	dec MapIdxY     		; 	was 0, decrement MapY - we need to draw the room above us next
+	jsr UpdateRoomNum		; 	update room number in $5A, if room above is valid
+	bcs ++   				; 	if function returns CF = 1, no more scroll- restore drawing map to the current room we're in, set carry, and leave
+	jsr InvertCurrentPPUNT 	; 	switch PPU to draw to the opposite Name Table
+	ldx #240				; 	wrapping around to next room from bottom- adjust to lowest Y pos
+*	dex						; 	move the new position up one
+	jmp UpdateScrollY		; update Y scroll
+
+*	inc MapIdxY				; restore map index to current room we're in
+*	sec						; set carry 
+	rts						; return
 
 ; Attempt to scroll DOWN
 
@@ -5791,42 +5796,45 @@ ScrollDown:
 	inc ScrollDir
 	lda ScrollY
 	beq +
-	inc MapPosY
-*       lda ScrollY
+	inc MapIdxY
+*   lda ScrollY
 	bne +
-	inc MapPosY     ; increment MapY
-	jsr GetRoomNum  ; put room # at current map pos in $5A
+	inc MapIdxY     ; increment MapY
+	jsr UpdateRoomNum  ; put room # at current map pos in $5A
 	bcs +++   ; if function returns CF = 1, moving down is not possible
-*       ldx ScrollY
+*   ldx ScrollY
 	cpx #239
 	bne +
-	jsr UnknownE9B7       ; switch to the opposite Name Table
+	jsr InvertCurrentPPUNT       ; switch to the opposite Name Table
 	ldx #$FF
-*       inx
-UnknownE53F:  stx ScrollY
-	jsr UnknownE54A       ; check if it's time to update Name Table
+*   inx
+
+UpdateScrollY:  
+	stx ScrollY
+	jsr UpdateRoomNametable      ; check if it's time to update Name Table
 	clc
 	rts
 
-*	dec MapPosY
+*	dec MapIdxY
 *	sec
 *       rts
 
-UnknownE54A:  jsr SetupRoom
-	ldx RoomNumber
-	inx
-	bne -
-	lda ScrollDir
-	and #$02
-	bne +
-	jmp UnknownE571
-*       jmp UnknownE701
+UpdateRoomNametable:  
+	jsr SetupRoom		; start loading the room, if valid, store final control code into room number 
+	ldx RoomNumber		; load the room load control code into X
+	inx					; increment room number
+	bne -				; 	if it's not 0, we haven't finished loading the room, return
+	lda ScrollDir		; room finished loading - load Scroll dir
+	and #$02			; isolate horizontal scroll flag
+	bne +				; 	not 0, scrolling horizontally- skip ahead
+	jmp UnknownE571		; TODO: something to do with updating the nametables vertically
+*   jmp UnknownE701		; TODO: something to do with updating the nametables horizontally
 
 ; Table
 
-Table11:
-	.byte $07
-	.byte $00
+ScrollTileCheckBoundaryTable:
+	.byte $07			; check bottom/right edge of next tile when going left or up
+	.byte $00			; check top/left edge of next tile when going right or down
 
 ;---------------------------------[ Get PPU and RoomRAM addresses ]----------------------------------
 
@@ -5850,17 +5858,19 @@ GetNameAddrs:
 
 ; check if it's time to update nametable (when scrolling is VERTICAL)
 
-UnknownE571:  ldx ScrollDir
-	lda ScrollY
-	and #$07	; compare value = 0 if ScrollDir = down, else 7
-	cmp Table11,x
-	bne --	   ; exit if not equal (no nametable update)
+UnknownE571:  
+	ldx ScrollDir						; load scroll dir to x (will be 0 when up, 1 when down)
+	lda ScrollY							; load current Y scroll to A
+	and #$07							; scroll pos %7- check pixel location within tile space
+	cmp ScrollTileCheckBoundaryTable,x	; check if we hit the edge of the next tile 
+	bne --	   							; 	exit if not equal (no nametable update)
 
-UnknownE57C:  ldx ScrollDir			;
+UnknownE57C:  
+	ldx ScrollDir			;
 	cpx TempScrollDir		;Still scrolling same direction when room was loaded?-->
-	bne --				;If not, branch to exit.
+	bne --					;If not, branch to exit.
 	lda ScrollY
-	and #$F8	; keep upper 5 bits
+	and #$F8				; keep upper 5 bits
 	sta $00
 	lda #$00
 	asl $00
@@ -5868,7 +5878,8 @@ UnknownE57C:  ldx ScrollDir			;
 	asl $00
 	rol
 
-UnknownE590:  sta $01	 ; $0001 = (ScrollY & 0xF8) << 2 = row offset
+UnknownE590:  
+	sta $01	 ; $0001 = (ScrollY & 0xF8) << 2 = row offset
 	jsr GetNameAddrs
 	ora $01
 	sta $03
@@ -6024,7 +6035,7 @@ MoveSamusRight:
 
 ; Attempt to scroll LEFT
 
-	ScrollLeft:
+ScrollLeft:
 	lda ScrollDir
 	cmp #$02
 	beq +
@@ -6033,19 +6044,19 @@ MoveSamusRight:
 	dec ScrollDir
 	lda ScrollX
 	beq +
-	dec MapPosX
+	dec MapIdxX
 *       lda ScrollX
 	bne +
-	dec MapPosX     ; decrement MapX
-	jsr GetRoomNum  ; put room # at current map pos in $5A
+	dec MapIdxX     ; decrement MapX
+	jsr UpdateRoomNum  ; put room # at current map pos in $5A
 	bcs ++  ; if function returns CF=1, scrolling left is not possible
-	jsr UnknownE9B7       ; switch to the opposite Name Table
+	jsr InvertCurrentPPUNT       ; switch to the opposite Name Table
 *       dec ScrollX
-	jsr UnknownE54A       ; check if it's time to update Name Table
+	jsr UpdateRoomNametable       ; check if it's time to update Name Table
 	clc
 	rts
 
-*	inc MapPosX
+*	inc MapIdxX
 *	sec
 	rts
 
@@ -6060,35 +6071,38 @@ ScrollRight:
 	inc ScrollDir
 	lda ScrollX
 	beq +
-	inc MapPosX
+	inc MapIdxX
 *       lda ScrollX
 	bne +
-	inc MapPosX
-	jsr GetRoomNum  ; put room # at current map pos in $5A
+	inc MapIdxX
+	jsr UpdateRoomNum  ; put room # at current map pos in $5A
 	bcs +++   ; if function returns CF=1, scrolling right is not possible
 *       inc ScrollX
 	bne +
-	jsr UnknownE9B7       ; switch to the opposite Name Table
-*	jsr UnknownE54A       ; check if it's time to update Name Table
+	jsr InvertCurrentPPUNT       ; switch to the opposite Name Table
+*	jsr UpdateRoomNametable       ; check if it's time to update Name Table
 	clc
 	rts
 
-*	dec MapPosX
+*	dec MapIdxX
 *	sec
-*       rts
+*   rts
 
 Table02:
-	.byte $07,$00
+	.byte $07
+	.byte $00
 
 ; check if it's time to update nametable (when scrolling is HORIZONTAL)
 
-UnknownE701:  ldx ScrollDir
+UnknownE701:  
+	ldx ScrollDir
 	lda ScrollX
 	and #$07	; keep lower 3 bits
 	cmp Table02-2,x ; compare value = 0 if ScrollDir = right, else 7
 	bne -	   ; exit if not equal (no nametable update)
 
-UnknownE70C:  ldx ScrollDir
+UnknownE70C:  
+	ldx ScrollDir
 	cpx TempScrollDir
 	bne -
 	lda ScrollX
@@ -6103,7 +6117,7 @@ UnknownE70C:  ldx ScrollDir
 ;Gets room number at current map position. Sets carry flag if room # at map position is FF.
 ;If valid room number, the room number is stored in $5A.
 
-GetRoomNum:
+UpdateRoomNum:
 	lda ScrollDir			;
 	lsr				;Branch if scrolling vertical.
 	beq +				;
@@ -6119,7 +6133,7 @@ GetRoomNum:
 					;effect of stopping the scrolling until Samus walks-->
 					;through the door(horizontal scrolling only).
 
-*	lda MapPosY			;Map pos y.
+*	lda MapIdxY			;Map pos y.
 	jsr Amul16			;($C2C5)Multiply by 16.
 	sta $00				;Store multiplied value in $00.
 	lda #$00			;
@@ -6128,7 +6142,7 @@ GetRoomNum:
 	rol				;Save carry, if any.
 	sta $01				;
 	lda $00				;
-	adc MapPosX			;Add map pos X to A.
+	adc MapIdxX			;Add map pos X to A.
 	sta $00				;Store result.
 	lda $01				;
 	adc #$70			;Add #$7000 to result.
@@ -6162,23 +6176,23 @@ CreateEnemyYRadLowerBound:
 	ldx PageIndex					; load enemy index
 	lda EnRadY,x					; load enemy radius in Y
 	clc								; clear carry
-	adc #$08						; add 8 to radius
-	jmp CreateEnemyCollisionCheck	;jump ahead
+	adc #$08						; add 8 to radius - in current example, will create a radius that reaches next tile below
+	jmp CreateEnemyCollisionCheck	; jump ahead
 
 
 CreateEnemyYRadUpperBound:
 	ldx PageIndex	;load enemy index
 	lda #$00		;load 0
 	sec				;set carry 
-	sbc EnRadY,x	;subtract Y radius
+	sbc EnRadY,x	;subtract Y radius - negates radius
 	
 	
 CreateEnemyCollisionCheck:  
-	sta $02							; store enemy radius into $02
+	sta $02							; store adjusted Y radius into $02
 	lda #$08						; load 8
 	sta $04							; store that into $04
 	jsr MakeEnemyLocationStruct98B	; make enemy location struct 
-	lda EnRadX,x					; load enemy radius in X
+	lda EnRadX,x					; load enemy Horizontal radius in X
 	jmp UnknownE7BD					; 
 
 MakeEnemyLocationStruct98B:  
@@ -6191,10 +6205,10 @@ MakeEnemyLocationStruct98B:
 	rts
 
 CheckMoveUp:
-	ldx PageIndex
-	lda ObjRadY,x
-	clc
-	adc #$08
+	ldx PageIndex						; load object index
+	lda ObjRadY,x						; load object hit box Y radius
+	clc									; clear carry
+	adc #$08							; add 8 (down
 	jmp +
 
 CheckMoveDown:
@@ -6202,24 +6216,24 @@ CheckMoveDown:
 	lda #$00
 	sec
 	sbc ObjRadY,x
-*   sta $02
-	jsr MakeObjectLocationStruct98B
-	lda ObjRadX,x
+*   sta $02								; store adjusted hitbox radius into 2
+	jsr MakeObjectLocationStruct98B		; make locaiton struct for object
+	lda ObjRadX,x						; load object X radius into A
 
 UnknownE7BD:  
 	bne +			; X radius is not 0, continue
-	sec				; 	else, set carry flag
-	rts				;	then return
+	sec				; 	else, set carry flag - invalid x radius, no collision
+	rts				;	return
 
-*   sta $03			; has x radius - store to 03 (Y is in 02, other value is in 04)
-	tay				; put A in Y ( A was also the x radius)
-	ldx #$00		; load 0 into x
-	lda $09			; load cached enemy room x pos - let's say 0011 1110 for instance
+*   sta $03			; has x radius - store to 03 (Y is in 02, #8 is in 04)
+	tay				; put x radius in Y 
+	ldx #$00		; load #0 into x
+	lda $09			; load cached enemy room x pos 
 	sec				; set carry 
-	sbc $03			; subtract enemy x radius - let's say 0000 0110 for instance - result would be 0011 1000
+	sbc $03			; subtract x radius
 	and #$07		; %8 the result
-	beq +			; 	not sure why we do this- but at times when the subtraction gave us a tile edge, jump ahead
-	inx				; else, inx 
+	beq +			; 	0, radius reaches tile edge - jump ahead
+	inx				; 	else, inx first
 *   jsr UnknownE8CE ; jump to routine
 	sta $04			; store the updated X value into 4
 	jsr UnknownE90F 
@@ -6336,19 +6350,19 @@ CheckMoveRight:
 	ldy ObjRadY,x
 	
 UnknownE89B:  
-	bne +
-	sec
-	rts
+	bne +				; jump ahead if the Y radius of the hitbox was not 0
+	sec					; 	else, no y radius- invliad collision check, return
+	rts					; 	return
 
-*   sty $02
-	ldx #$00
-	lda $08
-	sec
-	sbc $02
-	and #$07
-	beq +
-	inx
-*   jsr UnknownE8CE
+*   sty $02				; store the Y radius into $2
+	ldx #$00			; load #0 into x
+	lda $08				; load $8, the cached eneym Y pos
+	sec					; clear carry
+	sbc $02				; subtract the Y radius to pull it up
+	and #$07			; %8
+	beq +				; 	we're at a tile edge
+	inx					; 	inc x
+*   jsr UnknownE8CE		;
 	sta $04
 	jsr UnknownE90F
 	ldx #$08
@@ -6366,57 +6380,58 @@ MakeObjectLocationStruct98B:
 	rts
 
 UnknownE8CE:  
-	eor #$FF		; flip all the bits of A
-	clc				; clear carry
-	adc #$01		; add one
-	and #$07		; %8 again
-	sta $04			; store out into 4 (was a different hard coded value maybe)
-	tya				; put Y ( the X radius ) into X
+	eor #$FF		; 
+	clc				; 
+	adc #$01		; 
+	and #$07		; get the difference from our original intra-tile position and 8 (unless it's 0, then it is 0)
+	sta $04			; store out into 4
+	tya				; put the radius we stored off into Y into X
 	asl				; double it
 	sec				; set carry flag
-	sbc $04			; sub 4
-	bcs +			; 
-	adc #$08		; add 8 back 
-*   tay				; 
+	sbc $04			; subtract the value we got from the difference above
+	bcs +			; 	carry set if double radius was greater than the difference- normal stuff, jum pahead
+	adc #$08		; 	carry not set, difference was LARGER than the radius- add 8 back to get it positive
+*   tay				; put this weird adjusted radius back into Y
 	lsr
 	lsr
-	lsr				; div 8
-	sta $04			; store back into 4
-	tya				; restore the undivided A
-	and #$07		; %8 again
+	lsr				; div 8?
+	sta $04			; store back into 4??
+	tya				; restore the undivided A?
+	and #$07		; %8 again?
 	beq +			; 	0? skip x inc 
-	inx				; inc x on mod 0
+	inx				; 	not 0? inc x
 *   txa				; move x into A
 	clc				; clear carry
-	adc $04			; add 4 
+	adc $04			; add the weird adjusted radius into 4
 	rts				; return
 
 UnknownE8F1:
-  ldx PageIndex
+	ldx PageIndex
 	lda EnRadX,x
 	clc
 	adc #$08
 	jmp UnknownE904
 
 UnknownE8FC:
-  ldx PageIndex
-	lda #$00
-	sec
-	sbc EnRadX,x
-UnknownE904:  sta $03
-	jsr MakeEnemyLocationStruct98B
-	ldy EnRadY,x
-	jmp UnknownE89B
+	ldx PageIndex					; load enemy index
+	lda #$00						; load #0
+	sec								;
+	sbc EnRadX,x					; invert enemy X radius
+UnknownE904:  
+	sta $03							; store off into $03
+	jsr MakeEnemyLocationStruct98B	; make enemy location struct
+	ldy EnRadY,x					; load y radius into y
+	jmp UnknownE89B					
 
 UnknownE90F:  
-	lda $02
-	bpl ++
-	jsr UnknownE95F
-	bcs +
-	cpx #$F0
-	bcc +++
-*   txa
-	adc #$0F
+	lda $02				; load Y radius
+	bpl ++				; 	positive, jump ahead
+	jsr UnknownE95F		; negative, jump ahead and do a thing
+	bcs +				;	carry flag was set, subtraction was normal, jump ahead 
+	cpx #$F0			; x holds the position of the edge of the hitbox on an overflow - compare to F0 (very bottom of table)
+	bcc +++				; 	less than, jump way ahead
+*   txa					; greater than/equal to- put the location in A
+	adc #$0F			; add 0F to loop it back, or put it at the very tip of the attribute table
 	jmp UnknownE934
 
 *	jsr UnknownE95F
@@ -6429,6 +6444,7 @@ UnknownE90F:
 	bcs +
 	txa
 	sbc #$0F
+	
 UnknownE934:  
 	tax
 	lda ScrollDir
@@ -6456,13 +6472,13 @@ UnknownE934:
 *   rts
 
 UnknownE95F:  
-	lda $08
-	sec
-	sbc $02
-	tax
-	and #$07
-	sta $00
-	rts
+	lda $08		; load Y position
+	sec			; set carry
+	sbc $02		; subtract Y radius (up)
+	tax			; transfer to X
+	and #$07	; %8
+	sta $00		; store to $0	
+	rts			; return
 
 ; MakeWRAMPtr
 ; ===========
@@ -6518,11 +6534,11 @@ UnknownE98E:
 	inc $0B
 *   rts
 
-UnknownE9B7:  
-	lda PPUCNT0ZP
-	eor #$03
-	sta PPUCNT0ZP
-	rts
+InvertCurrentPPUNT:  
+	lda PPUCNT0ZP		; load PPU control
+	eor #$03			; flip NT bits
+	sta PPUCNT0ZP		; store back into PPU control
+	rts					; return
 
 BulletIsBlastTile:
 	ldy UpdatingProjectile
@@ -6686,17 +6702,17 @@ DrawObject:
 ;The following function draws a room in the room RAM which is eventually loaded into a name table.
 
 DrawRoom:
-	ldy #$00			;Zero index.
+	ldy #$00				;Zero index.
 	lda (RoomPtr),y			;Load byte of room data.-->
-	cmp #$FF			;Is it #$FF(end-of-room)?-->
+	cmp #$FF				;Is it #$FF(end-of-room)?-->
 	beq EndOfRoom			;If so, branch to exit.
-	cmp #$FE			;Place holder for empty room objects(not used).
-	beq +				;
-	cmp #$FD			;is A=#$FD(end-of-objects)?-->
+	cmp #$FE				;Place holder for empty room objects(not used).
+	beq +					;
+	cmp #$FD				;is A=#$FD(end-of-objects)?-->
 	bne DrawObject			;If not, branch to draw room object.-->
 	beq EndOfObjs			;Else branch to set up enemies/doors.
 *	sta RoomNumber			;Store #$FE if room object is empty.
-	lda #$01			;Prepare to increment RoomPtr.
+	lda #$01				;Prepare to increment RoomPtr.
 
 ;-------------------------------------[ Add A to room pointer ]--------------------------------------
 
@@ -6877,9 +6893,9 @@ UnknownEB92:  iny
 	pha
 	jsr Amul16      ; CF = door side (0=right, 1=left)
 	php
-	lda MapPosX
+	lda MapIdxX
 	clc
-	adc MapPosY
+	adc MapIdxY
 	plp
 	rol
 	and #$03
@@ -6897,7 +6913,7 @@ UnknownEB92:  iny
 	beq ++
 	lda #$0A
 	sta $09
-	ldy MapPosX
+	ldy MapIdxX
 	txa
 	jsr Amul16       ; * 16
 	bcc +
@@ -7178,7 +7194,7 @@ ScanOneItem:
 	sta $01				;
 	ldy #$00			;Index starts at #$00.
 	lda ($00),y			;Load map Ypos of item.-->
-	cmp MapPosY			;Does it equal Samus' Ypos on map?-->
+	cmp MapIdxY			;Does it equal Samus' Ypos on map?-->
 	beq +				;If yes, check Xpos too.
 
 	bcs Exit11			;Exit if item Y pos >  Samus Y Pos.
@@ -7200,7 +7216,7 @@ ScanOneItem:
 ScanItemX:
 	ldy #$00			;
 	lda ($00),y			;Load map Xpos of object.-->
-	cmp MapPosX			;Does it equal Samus' Xpos on map?-->
+	cmp MapIdxX			;Does it equal Samus' Xpos on map?-->
 	beq +				;If so, then load object.
 	bcs Exit11			;Exit if item pos X > Samus Pos X.
 
@@ -7274,10 +7290,10 @@ PowerUpHandler:
 	
 PrepareItemID:
 	sta $09				;Store item type.
-	lda MapPosX			;
+	lda MapIdxX			;
 
 UnknownEE41:	sta $07				;Store item X coordinate.
-	lda MapPosY			;
+	lda MapIdxY			;
 	sta $06				;Store item Y coordinate.
 	jmp CreateItemID		;($DC67)Get unique item ID.
 
@@ -8166,7 +8182,7 @@ EnemyWaitState:
 	jsr EnemyDirectionToSamus		; update enemy relation to samus, as well as velocity direction
 	jsr CheckDistanceToSamus		; update distance related triggers to samus
 	jsr UpdateEnAnimDirection963B	; update direction of wait animation
-	jsr UnknownF676					;
+	jsr PopulateEnemy6B03			; fill in 6B03 with data from 977B
 	lda EnDelay,x					; check the enemy delay timer 
 	beq +							; 	if the delay timer is 0, we aren't waiting for anything, jump ahead and update damage if it got any
 	jsr UnknownF7BA					; else, dec delay timer and do extra for when the timer runs out 
@@ -8174,37 +8190,36 @@ EnemyWaitState:
 
 ;;update enemy moving state
 EnemyMoveState:  	
-	lda $0405,x					;load enemy status flags
-	asl							;check if the skip update flag is set
-	bmi ++						;if set, skip move updates, go straight to damage
-	lda $0405,x					;else, load status flags again
-	and #$20					;check if we have a delay timer to start
-	beq +						;if not, jump ahead
-	ldy EnDataIndex,x			;else, load the enemy data index
-	lda EnemyInitDelayTbl,y		;get the enemy delay time
-	sta EnDelay,x				;set the enemy delay timer
-	dec EnStatus,x				;set us back to a delay/wait status
-	bne ++						;skip move updates for enemy damage
-*   jsr EnemyDirectionToSamus	;for enemies that home in on samus while moving, update it
-	jsr CheckDistanceToSamus	;not sure exactly what this does yet
-	jsr EnemyUnderRoom			;kill enemies that somehow get under the map in horizontal rooms
-*	jsr UpdateEnemyDamage		;if the enemy was shot, update their damage
+	lda $0405,x					; load enemy status flags
+	asl							; check if the skip update flag is set
+	bmi ++						; 	if set, skip move updates, go straight to damage
+	lda $0405,x					; else, load status flags again
+	and #$20					; check if we have a delay timer to start
+	beq +						;	if not, jump ahead
+	ldy EnDataIndex,x			;	else, load the enemy data index
+	lda EnemyInitDelayTbl,y		;	get the enemy delay time
+	sta EnDelay,x				;	set the enemy delay timer
+	dec EnStatus,x				;	set us back to a delay/wait status
+	bne ++						;		skip move updates for enemy damage
+*   jsr EnemyDirectionToSamus	; for enemies that home in on samus while moving, update it
+	jsr CheckDistanceToSamus	; not sure exactly what this does yet
+	jsr EnemyUnderRoom			; kill enemies that somehow get under the map in horizontal rooms
+*	jsr UpdateEnemyDamage		; if the enemy was shot, update their damage
 
-;;update enemy dying state
-EnemySpecificUpdate:	
-	jmp $95E5
+EnemySpecificUpdate:			
+	jmp AreaEnemySpecificUpdate ; update enemy using area routines
 
 UpdateEnemyAnim0:	
 	jsr UpdateEnemyAnim				; update the enemy anim frame, loop if need be
-	jsr $8058						;
+	jsr $8058						; 
 CheckObjectAttribs:
 	ldx PageIndex					; load enemy index
 	lda EnSpecialAttribs,x			; load special attributes (bit 7 = strong, bit 6 = boss)
 	bpl +							; jump ahead if not strong enemy
 	lda ObjectCntrl					; 	load object controls (mirroring/color)
 	bmi +							; 	if the high bit is set, jump ahead
-	lda #$A3						; 	else, load A3
-UnknownF423:  
+	lda #$A3						; 	else, load A3 and store to object control
+UnknownF423:  						
 	sta ObjectCntrl					; store to object controls
 *   lda EnStatus,x					; load up the enemy status
 	beq ResetEnemyHitStatus			; if it's a clear slot, clear rhis hit status and leave
@@ -8522,7 +8537,7 @@ GetPageIndex:
 	ldx PageIndex
 	rts
 
-UnknownF676:  
+PopulateEnemy6B03:  
 	jsr $80B0	;get the enemy data at 977B, MSB in carry everything else shifted left
 	asl			;
 	asl			;
@@ -8604,11 +8619,11 @@ CheckHorizontalToSamus:
 	ror						; 	get the flag to the MSB
 	eor $0403,x				; 	if the velocity direction does not match, we'll get a negative number
 	bpl +					; 	if we're still positive, jump ahead
-	jsr $81DA				; 	flip horizontal velocity to match relation to samus
+	jsr InvertHoriVel		; 	flip horizontal velocity to match relation to samus
 
 CheckVerticalToSamus:
-*	lda #$FB				;	set enemy vertical relation flag	
-	jsr ClearEnStatusFlags	;	clear vertical relation flag on enemy
+*	lda #$FB				;		
+	jsr ClearEnStatusFlags	;	clear vertical direction flag on enemy
 	lda ScrollDir			;	check the current scroll direction
 	cmp #$02				;	
 	bcs +					;	scroll direction is horizontal, jump ahead - Y values will always be the same
@@ -8620,7 +8635,7 @@ CheckVerticalToSamus:
 *	lda EnYRoomPos,x		; 	if in horizontal scroll/ same nametable as samus in vertical scroll
 	cmp ObjectY				; 	compare enemy and player vertical position
 	bne +					; 	if they aren't the same, jump over
-	inc $82					; 		else, inc 82
+	inc $82					; 		TODO: else, inc 82
 	inc $82					; 		twice!
 *	rol						; 	A = 1 if greater/equal, 0 if less than
 *	and #$01				;	get final horizontal relation flag (same table? use difference : use enemy nametable in relation to current PPU nametable )
@@ -8631,9 +8646,9 @@ CheckVerticalToSamus:
 	lsr						;
 	lsr						;	get the direction back out to carry flag (0 = below samus, 1 = above samus)
 	ror						;	roll it back to MSB
-	eor $0402,x				;	if the velocity direction does not match, we'll get a negative number
+	eor EnVertSpeed,x				;	if the velocity direction does not match, we'll get a negative number
 	bpl +					; 	if we're still positive, jump ahead
-	jmp $820F				; 	flip vertical velocity to match relation to samus
+	jmp InvertVertVel		; 	flip vertical velocity toward samus
 
 EnableEnStatusFlags:
 	ora $0405,x
@@ -8749,19 +8764,19 @@ UnknownF7BA:
 	lda $973F,y						; load a number from here
 	sta $6AFF,x						; load into horizontal accel
 	lda $9753,y						; load from another table
-	sta $0402,x						; store into  enemy vert speed
+	sta EnVertSpeed,x						; store into  enemy vert speed
 	lda $9767,y						; load from one more table 
 	sta $0403,x						; store into enemy horizontal speed
 	lda $0405,x						; load enemy status flags
 	bmi +							; 	negative, we do vertical checks to player
 	lsr								; positive, we do horizontal checks- get direction from lowest bit
 	bcc ++							; 	carry clear, skip
-	jsr $81D1						; 	flip initialized accel to match direction to player
+	jsr InvertHoriAccel				; 	flip initialized accel to match direction to player
 	jmp ++							; jump down
 
 *   and #$04						; isolate horizontal check flag
 	beq +							; 	zero, skip 
-	jsr $8206						; 	flip init accel to match direction to player
+	jsr InvertVertAccel						; 	flip init accel to match direction to player
 *	lda #$DF						; 1100 1111
 	jmp ClearEnStatusFlags			; clear delay timer flag and 0000 1000
 
@@ -8835,7 +8850,7 @@ LaunchEnProjectile:
 	lda Table15,x						; and use it as our index into the two-byte table below (2 or -2)
 	sta $0403,y							; store in horizontal speed
 	lda #$00							; load 0
-	sta $0402,y							; store in vertical speed
+	sta EnVertSpeed,y							; store in vertical speed
 	ldx PageIndex						; load the enemy index again, in case we break early in the next routine
 	jsr UnknownF8F8						; this sets up some extra data on some projectiles, just not sure what for 
 	lda $0405,x							; load status flags
@@ -8980,7 +8995,7 @@ UnknownF991:
 	lda ($0A),y					;load condensed movement data
 	jsr ExtractVerticalNibble	;extract verticle speed
 	ldx PageIndex				;get the enemy index
-	sta $0402,x					;store to enemy vertical speed
+	sta EnVertSpeed,x					;store to enemy vertical speed
 	lda ($0A),y					;reload condensed movement data
 	jsr ExtractHorizontalNibble ;extract horizontal speed
 	ldx PageIndex				;get enemy index
@@ -8995,7 +9010,7 @@ UnknownF991:
 	sta $0403,x					;store flipped speed into horizontal speed
 *   plp							;bring back the status
 	bne +						;if not 0, jump ahead
-	lda $0402,x					;else, load vertical speed
+	lda EnVertSpeed,x					;else, load vertical speed
 	beq +						;jump ahead if the speed is 0
 	bmi +						;or less than 0
 	ldy $040A,x					;load orientation (0->3)
@@ -9038,7 +9053,7 @@ EnemyBGCrashDetection:  lda InArea
 	ldx PageIndex
 *       lda $0403,x
 	sta $05
-	lda $0402,x
+	lda EnVertSpeed,x
 	sta $04
 UnknownFA41:  
 	jsr MakeEnemyLocationStruct98B
@@ -9205,11 +9220,11 @@ UnknownFB7B:
 Exit13: 
 	rts				;Exit from multiple routines.
 
-UnknownFB88:
+UpdateNearHomeAnim:
 	ldx PageIndex					; get current enemy index
 	jsr GetEnemyDirectionDataIndex	; get the enemy directional data index into Y
 	lda $6B01,x						; get 6B01, some kinda home displacement - vertical?
-	inc $6B03,x						; get 6B02 - some kinda home dispalcement, not sure the desire for this one
+	inc $6B03,x						; get 6B03 - some kinda thing with directions. 
 	dec $6B03,x						; see if we get to 0 with this so we don't have to sacrifice out A load
 	bne +							; not zero? jump ahead and use 6B03 as our pos/neg check
 	pha								;	else push 6B01 to the stack
@@ -9308,11 +9323,11 @@ UnknownFBEC:  		;this has something to do with enemies that explode
 	lda #$50
 	sta HealthLoChange
 	jsr SubtractHealth		;($CE92)
-*       pla
+*   pla
 	tax
-*      rts
+*   rts
 
-*     lda #$00
+*   lda #$00
 	sta $A0,x
 	rts
 

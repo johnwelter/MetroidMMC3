@@ -53,8 +53,8 @@ CallEnemyInitHealth:
 L8015:	JMP EnemyInitHealth
 CallQueueEnAnimation:
 L8018:	JMP QueueEnAnimation
-CallUnknownFB88:
-L801B:	JMP UnknownFB88
+CallUpdateNearHomeAnim:
+L801B:	JMP UpdateNearHomeAnim
 CallUpdateEnAnimationDirection:
 L801E:	JMP UpdateEnAnimationDirection
 CallLaunchEnProjectile:
@@ -66,7 +66,7 @@ AreaChooseRoutine:
 L8027:	JMP CalcPotentialPosition
 L802A:	JMP UnknownEB6E
 L802D:	JMP $8244
-L8030:	JMP $8318
+L8030:	JMP GetEnVerticalVelocity
 L8033:	JMP EnemyBGCrashDetection
 L8036:	JMP $833F
 L8039:	JMP $8395
@@ -87,44 +87,45 @@ L8052:	.word $84FD			; counter clockwise from down
 L8054:	.word $83F4			; clockwise from left
 L8056:	.word $83F4			; counter clockwise from left
 
-L8058:	LDX PageIndex			; load enemy index
-L805A:	LDA $0405,X				; load enemy status flags
-L805D:	ASL 					; get bit 6 (skip update flag) into MSB
-L805E:	BMI ++++++++			; 	if skipping update this frame, leave
-L8060:	LDA EnStatus,X			; load current enemy status 
-L8063:	CMP #$02				; compare to Moving state
-L8065:	BNE ++++++++			; not moving? leave
-L8067:	JSR $8244				; should return a desired velocity into 0
-L806A:	LDA $00					; load that velocity
-L806C:	BPL ++					; 	non-neg velocity? jump ahead
-L806E:	JSR TwosCompliment		; negative velocity? ABS
-L8071:	STA $66					; store velocity into 66
-L8073:*	JSR $83F5				; 
-L8076:	JSR $80B8				; 
-L8079:	DEC $66					; decrement 66
-L807B:	BNE -					; while not 0, loop 
-L807D:*	BEQ ++					; 	no velocity? jump ahead
-L807F:	STA $66					; positive velocity - store to 66
-L8081:*	JSR $844B
+;;update enemy movement and collision
+L8058:	LDX PageIndex				; load enemy index
+L805A:	LDA $0405,X					; load enemy status flags
+L805D:	ASL 						; get bit 6 (skip update flag) into MSB
+L805E:	BMI ++++++++				; 	if skipping update this frame, leave
+L8060:	LDA EnStatus,X				; load current enemy status 
+L8063:	CMP #$02					; compare to Moving state
+L8065:	BNE ++++++++				; not moving? leave
+L8067:	JSR GetEnVerticalVelocity	; enemy moving - should return a desired velocity into 0
+L806A:	LDA $00						; load that velocity
+L806C:	BPL ++						; 	non-neg velocity? jump ahead
+L806E:	JSR TwosCompliment			; 	negative velocity? ABS
+L8071:	STA $66						; 	store velocity into 66
+L8073:*	JSR $83F5					; 		TODO: do collision check for upward movement	
+L8076:	JSR $80B8					; 		TODO: do something
+L8079:	DEC $66						; 		decrement 66
+L807B:	BNE -						; 		while not 0, loop - collision check one pixel at a time
+L807D:*	BEQ ++						; 	no velocity, or finished the up movement? jump ahead
+L807F:	STA $66						; positive velocity - store to 66
+L8081:*	JSR $844B					; 		TODO: do collision check for downward movement
 L8084:	JSR $80FB
 L8087:	DEC $66
-L8089:	BNE -
-L808B:*	JSR $8318
-L808E:	LDA $00
-L8090:	BPL ++
-L8092:	JSR TwosCompliment		;($C3D4)
-L8095:	STA $66
-L8097:*	JSR $84A7
-L809A:	JSR $816E
-L809D:	DEC $66
-L809F:	BNE -
-L80A1:*	BEQ ++
-L80A3:	STA $66
-L80A5:*	JSR $84FE
+L8089:	BNE -						;		loop for each pixel down
+L808B:*	JSR GetEnHorizontalVelocity	; done with vertical mvoement, load horizontal velocity
+L808E:	LDA $00						; load horizontal velocity from $0	
+L8090:	BPL ++						; 	positive, jump ahead
+L8092:	JSR TwosCompliment			;	neg velocity, ABS
+L8095:	STA $66						; 	store into $66
+L8097:*	JSR $84A7					; 		TODO: do left collision checks
+L809A:	JSR $816E					; 		TODO: do other thing
+L809D:	DEC $66						; 		dec 66
+L809F:	BNE -						; 		while not 0, loop- collision check one pixel at a time
+L80A1:*	BEQ ++						; 	no velocity, or finished left movement? return
+L80A3:	STA $66						; positive velocity - store in 66
+L80A5:*	JSR $84FE					; 		TODO: do rightward collision check
 L80A8:	JSR $8134
-L80AB:	DEC $66
-L80AD:	BNE -
-L80AF:*	RTS
+L80AB:	DEC $66						 		
+L80AD:	BNE -						; 		loop for each pixel
+L80AF:*	RTS							; return
  
 
 L80B0:	LDY EnDataIndex,X	;load enemy index
@@ -132,69 +133,79 @@ L80B3:	LDA $977B,Y			;get the data in  977B
 L80B6:	ASL					;shift the data left, moving MSB to carry flag
 L80B7:	RTS					;return 
 
-L80B8:	LDX PageIndex
-L80BA:	BCS $80FA
-L80BC:	LDA $0405,X
-L80BF:	BPL $80C7
-L80C1:	JSR $81FC
-L80C4:	JMP $80F6
-L80C7:	JSR $80B0
-L80CA:	BPL $80EA
-L80CC:	LDA $6B03,X
-L80CF:	BEQ $80C1
-L80D1:	BPL $80D8
-L80D3:	JSR $81B1
-L80D6:	BEQ $80E2
-L80D8:	SEC 
-L80D9:	ROR $0402,X
-L80DC:	ROR EnCounter,X
-L80DF:	JMP $80F6
-L80E2:	STA $0402,X
-L80E5:	STA EnCounter,X
-L80E8:	BEQ $80F6
-L80EA:	LDA $977B,Y
-L80ED:	LSR 
-L80EE:	LSR 
-L80EF:	BCC $80F6
-L80F1:	LDA #$04
-L80F3:	JSR $856B
-L80F6:	LDA #$01
+;;process up collision, if there is any
+L80B8:	LDX PageIndex						; load enemy index
+L80BA:	BCS $80FA							; carry set, no collision? return
+L80BC:	LDA $0405,X							; load enemy status flags
+L80BF:	BPL $80C7							; 	positive - checking x relation to player, jump ahead
+L80C1:	JSR InvertVertMovement				;   checking y relation, see if we need to invert our current vertical direction
+L80C4:	JMP $80F6							; 	return and finish collision processing
+
+L80C7:	JSR $80B0							; load 977B data, with bit 6 in MSB 
+L80CA:	BPL $80EA							; 	positive - accel flag not set, jump aheads
+
+;;accel related processing
+L80CC:	LDA $6B03,X							; 	accrel flag set, TODO: load enemy data
+L80CF:	BEQ $80C1							; 		0, invert vertical movement, return and finish collision processing
+L80D1:	BPL $80D8							; 		else if just positive (0100, 0000), jump ahead
+L80D3:	JSR ResetDelayVerticalAcceleration	; 	MSB was set, reset vertical accel and turn on delay timer
+L80D6:	BEQ $80E2							; 	branch always, jump ahead
+
+L80D8:	SEC 								; 		6B03 was 0100 000 - set carry flag TODO: what is this for?
+L80D9:	ROR EnVertSpeed,X					; 		halve vert speed, pull 1 into MSB and LSB into carry
+L80DC:	ROR EnCounter,X						; 		halve accel counter, pull carry into MSB on odd velocities 
+L80DF:	JMP $80F6							; 		found collision, return and finish collision processing
+
+L80E2:	STA EnVertSpeed,X					;	set vert speed to 0
+L80E5:	STA EnCounter,X						; 	set accel counter to 0
+L80E8:	BEQ $80F6							; 	finish collision processing
+
+L80EA:	LDA $977B,Y				; using vel tables - load 977B directly
+L80ED:	LSR 					; 
+L80EE:	LSR 					; get 0000 0010 into carry
+L80EF:	BCC $80F6				; 	carry clear - jump to finish 
+L80F1:	LDA #$04				; invert direction on collision
+L80F3:	JSR InvertEnStatusFlags	; invert vertical direction - not sure if this is ever used?
+
+L80F6:	LDA #$01			
 L80F8:	STA $66
 L80FA:	RTS
  
+;;process down collision, if there was any
 L80FB:	LDX PageIndex
 L80FD:	BCS $8133
 L80FF:	LDA $0405,X
 L8102:	BPL $810A
-L8104:	JSR $81FC
+L8104:	JSR InvertVertMovement
 L8107:	JMP $812F
 L810A:	JSR $80B0
 L810D:	BPL $8123
-L810F:	LDA $6B03,X
-L8112:	BEQ $8104
-L8114:	BPL $8120
-L8116:	CLC 
-L8117:	ROR $0402,X
-L811A:	ROR EnCounter,X
-L811D:	JMP $812F
-L8120:	JSR $81B1
+L810F:	LDA $6B03,X					; 6B03 data
+L8112:	BEQ $8104					; 0, invert hori and finish processing
+L8114:	BPL $8120					; positive, (0100 0000), jump ahead
+L8116:	CLC 						; negative, clear carry 
+L8117:	ROR EnVertSpeed,X			; halv vert speed, 0 into MSB
+L811A:	ROR EnCounter,X				; halv accel counter, 1 into MSB if odd velocity
+L811D:	JMP $812F					; finish prcoessing collision
+L8120:	JSR $81B1					; positive - clear vert accel and set delay timer
 L8123:	LDA $977B,Y
 L8126:	LSR 
 L8127:	LSR 
 L8128:	BCC $812F
 L812A:	LDA #$04
-L812C:	JSR $856B
+L812C:	JSR InvertEnStatusFlags
 L812F:	LDA #$01
 L8131:	STA $66
 L8133:	RTS
  
+;; process rightward collision, if there was any
 L8134:	LDX PageIndex
 L8136:	BCS $816D
 L8138:	JSR $80B0
 L813B:	BPL $815E
 L813D:	LDA $0405,X
 L8140:	BMI $8148
-L8142:	JSR $81C7
+L8142:	JSR InvertHoriMovement
 L8145:	JMP $8169
 L8148:	LDA $6B03,X
 L814B:	BEQ $8142
@@ -209,18 +220,19 @@ L815E:	LDA $977B,Y
 L8161:	LSR 
 L8162:	BCC $8169
 L8164:	LDA #$01
-L8166:	JSR $856B
+L8166:	JSR InvertEnStatusFlags
 L8169:	LDA #$01
 L816B:	STA $66
 L816D:	RTS
 
+;;process left collision if there was any
 L816E:	LDX PageIndex
 L8170:	BCS $81B0
 L8172:	JSR $80B0
 L8175:	BPL $81A0
 L8177:	LDA $0405,X
 L817A:	BMI $8182
-L817C:	JSR $81C7
+L817C:	JSR InvertHoriMovement
 L817F:	JMP $81AC
 L8182:	LDA $6B03,X
 L8185:	BEQ $817C
@@ -239,7 +251,7 @@ L81A3:	LSR
 L81A4:	LSR 
 L81A5:	BCC $81AC
 L81A7:	LDA #$01
-L81A9:	JSR $856B
+L81A9:	JSR InvertEnStatusFlags
 L81AC:	LDA #$01
 L81AE:	STA $66
 L81B0:	RTS
@@ -260,116 +272,129 @@ L81C0:	JSR $81B8				; enable delay timer on enemy
 L81C3:	STA $6AFF,X				; store 0 into desired Accell
 L81C6:	RTS
 
-L81C7:	JSR $81F6
-L81CA:	BNE $81F5
-L81CC:	LDA #$01
-L81CE:	JSR $856B
+InvertHoriMovement:
+L81C7:	JSR IsMovementInvertable				; load flag from enemy table (0010 0000)		
+L81CA:	BNE $81F5				; 	not 0 - return 
+L81CC:	LDA #$01				; hori dir bit
+L81CE:	JSR InvertEnStatusFlags	; invert horizontal direction of enemy
 
+InvertHoriAccel:
 ;;reverse horizontal acceleration
 L81D1:	LDA $6AFF,X
 L81D4:	JSR TwosCompliment
 L81D7:	STA $6AFF,X
 
+InvertHoriVel:
 ;coming from a method in enemy movement stuff
-L81DA:	JSR $81F6			; load flag from enemy table (0010 0000)
+L81DA:	JSR IsMovementInvertable			; load flag from enemy table (0010 0000)
 L81DD:	BNE $81F5			; if not 0, return
 L81DF:	JSR $80B0			; else, load 977b enemy date
 L81E2:	SEC 				; set carry flag 
 L81E3:	BPL $81ED			;	no acceleration, jump ahead
 L81E5:	LDA #$00			; 	using acceleration, invert 407 first
 L81E7:	SBC $0407,X			;	 
-L81EA:	STA $0407,X 		; 	carry will be clear if the counter here was 0
+L81EA:	STA $0407,X 		; 	invert horizontal accel counter
 L81ED:	LDA #$00 			; 
-L81EF:	SBC $0403,X			; invert horizintal velocity, with extra -1 if the counter was 0
+L81EF:	SBC $0403,X			; invert horizintal velocity
 L81F2:	STA $0403,X 		; store back into velocity
 L81F5:	RTS					; return
 
-
+IsMovementInvertable:
 L81F6:	JSR LoadFromEn968B
 L81F9:	AND #$20
 L81FB:	RTS
 
-L81FC:	JSR $81F6
-L81FF:	BNE $81F5
-L8201:	LDA #$04
-L8203:	JSR $856B
+InvertVertMovement:
+L81FC:	JSR IsMovementInvertable	; get data from 968B, masked with 0010 0000 to isolate ? flag
+L81FF:	BNE $81F5					; 	not 0 - return (will only be true for metroids, I think)
+L8201:	LDA #$04					; vert dir bit
+L8203:	JSR InvertEnStatusFlags		; invert vert direction
 
-;;reverse vertical acceleration
+InvertVertAccel:					; always invertable
 L8206:	LDA $6AFE,X
 L8209:	JSR TwosCompliment
 L820C:	STA $6AFE,X
 
-L820F:	JSR $81F6
-L8212:	BNE $822A
-L8214:	JSR $80B0
-L8217:	SEC 
-L8218:	BPL $8222
-L821A:	LDA #$00
-L821C:	SBC EnCounter,X
-L821F:	STA EnCounter,X
-L8222:	LDA #$00
-L8224:	SBC $0402,X
-L8227:	STA $0402,X
-L822A:	RTS 
+InvertVertVel:
+L820F:	JSR IsMovementInvertable	; get data from 968B, masked with 0010 0000 to isloate ? flag
+L8212:	BNE $822A					;	not 0 - return 
+L8214:	JSR $80B0					; 0 - load 977B with accel flag in MSB
+L8217:	SEC 						; set carry
+L8218:	BPL $8222					; 	not accel based motion? just flip the velocity
+L821A:	LDA #$00					; accel based movement- load #0
+L821C:	SBC EnCounter,X				; subtract accel counter
+L821F:	STA EnCounter,X				; store back into enemy counter - shouldn't flip carry 
+L8222:	LDA #$00					; load #0
+L8224:	SBC EnVertSpeed,X					; invert velocity
+L8227:	STA EnVertSpeed,X					; store back
+L822A:	RTS 						; return
 
-L822B:	LDA $0405,X		; load enemy status flags
-L822E:	BPL $8232		; 	pos if checking X direction to player, neg if Y
-L8230:	LSR 			; checking Y direction, LSR three times to pop vert relation to player in carry (or is it the current enemy direction? might be the latter)
-L8231:	LSR 			; 
-L8232:	LSR 			; checking X, LSR once to get hori relation bit (or movement direction)
-L8233:	LDA $0408,X		; load enemy mystery byte
-L8236:	ROL 			; ROL to get the direction bit on 
-L8237:	ASL 			; ASL to double it - next table is double indexed
-L8238:	TAY 			; put A into Y
-L8239:	LDA $96DB,Y		; store off the table we want to access from this enemy movement table
-L823C:	STA $81
+GetEnMovementTable:
+L822B:	LDA $0405,X				; load enemy status flags
+L822E:	BPL $8232				; 	pos if checking X direction to player, neg if Y
+L8230:	LSR 					; checking Y direction, LSR three times to pop vert relation to player in carry (or is it the current enemy direction? might be the latter)
+L8231:	LSR 					; 
+L8232:	LSR 					; checking X, LSR once to get hori relation bit (or movement direction)
+L8233:	LDA $0408,X				; load enemy mystery byte
+L8236:	ROL 					; ROL to get the direction bit on 
+L8237:	ASL 					; ASL to double it - next table is double indexed
+L8238:	TAY 					; put A into Y
+L8239:	LDA $96DB,Y				; store off the table we want to access from this enemy movement table
+L823C:	STA EnMovementTblPtr	
 L823E:	LDA $96DC,Y
-L8241:	STA $82
-L8243:	RTS				;return 
+L8241:	STA EnMovementTblPtr+1
+L8243:	RTS						;return 
 
 ;this has something to do with determining the use and update of the enemy counter and
 ;it's related actions based on the data in 977B
-L8244:	JSR $80B0		; load 977B into A, with the MSB in the carry flag and the 6th bit in the MSB
-L8247:	BPL $824C		; 	6th bit clear - skip over JMP, use movement tables for vert velocity
-L8249:	JMP $833F		; 	6th bit set - jump out to vertical acceleration stuff
-L824C:	LDA $0405,X		; positive result, load enemy status flags
-L824F:	AND #$20		; AND with 0010 0000 to isolate timer active byte
-L8251:	EOR #$20		; NOT timer active
-L8253:	BEQ $82A2		; 	delay timer active, store status flags into $0 and leave
-L8255:	JSR $822B		; timer inactive, jump up and store an area data table into 81 and 82 - use endelay for a movement velocity timer
-L8258:	LDY EnCounter,X ; load the current enemy counter into Y
-L825B:	LDA ($81),Y		; load the data at the start of the table - time to check against control codes
-L825D:	CMP #$F0		; compare to F0
-L825F:	BCC $827F		; less than- skip control code checks (potential for more!)
-L8261:	CMP #$FA		; 
-L8263:	BEQ $827C		; Set/update horizontal velocity, something about a delay timer
-L8265:	CMP #$FB
-L8267:	BEQ $82B0		; this should return skipping back behind whatever called us- for whatever reason
-L8269:	CMP #$FC
-L826B:	BEQ $82B3		; loop last movement until ?
-L826D:	CMP #$FD
-L826F:	BEQ $82A5		; reset enemy home displacement to 0, go to next index and loop back to read next byte
-L8271:	CMP #$FE		
-L8273:	BEQ $82DE		; loop last movement until ?
-L8275:	LDA #$00		; any other F0 code - load #00
-L8277:	STA EnCounter,X	; place that in the enemy counter to loop back to the start of the table
-L827A:	BEQ $8258		; now loop back and process the byte
 
-L827C:	JMP $8312		
+GetEnVerticalVelocity:
+L8244:	JSR $80B0				; load 977B into A, with the MSB in the carry flag and the 6th bit in the MSB
+L8247:	BPL UseMovementTable	; 	6th bit clear - skip over JMP, use movement tables for vert velocity
+L8249:	JMP $833F				; 	6th bit set - jump out to vertical acceleration stuff
 
-L827F:	SEC 			; set carry - processing a normal byte from the table
-L8280:	SBC EnDelay,X	; subtract enemy delay from value
-L8283:	BNE $8290		; 	if we didn't hit 0, jump ahead (possible to overflow?)
-L8285:	STA EnDelay,X	; hit 0 - store 0 into enemy delay
-L8288:	INY 			; increment Y
-L8289:	INY 			; twice
-L828A:	TYA 			; and move Y into A
-L828B:	STA EnCounter,X	; then store that into EnCounter (basically, do every other one)
-L828E:	BNE $825B		; 	if our index didn't roll over to 0, process next byte. else, continue on
+UseMovementTable:
+L824C:	LDA $0405,X					; load enemy status flags
+L824F:	AND #$20					; AND with 0010 0000 to isolate timer active byte
+L8251:	EOR #$20					; NOT timer active
+L8253:	BEQ $82A2					; 	delay timer active, store status flags into $0 and leave
+L8255:	JSR GetEnMovementTable		; timer inactive, jump up and get Movement data table into 81 and 82 - use endelay for a movement velocity timer
 
-L8290:	INC EnDelay,X	; either we have a current delay running or we finished the table. increment the EnDelay
-L8293:	INY 			; inc Y to get the next byte- not enemy counter?
-L8294:	LDA ($81),Y		; load the value there and then... extract vertical velocity nibble 
+ProcessMovmentTableByte:
+L8258:	LDY EnCounter,X 			; load the current enemy counter into Y
+L825B:	LDA (EnMovementTblPtr),Y	; load the data at the start of the table - time to check against control codes
+L825D:	CMP #$F0					; compare to F0
+L825F:	BCC ProcessEnMvTblData		; less than- skip control code checks (potential for more!)
+L8261:	CMP #$FA					; 
+L8263:	BEQ $827C					; clear enemy vertical speed
+L8265:	CMP #$FB					;
+L8267:	BEQ $82B0					; this should return skipping back behind whatever called us- for whatever reason
+L8269:	CMP #$FC					;
+L826B:	BEQ $82B3					; loop last movement until collision, then continue
+L826D:	CMP #$FD					;
+L826F:	BEQ ResetEnemyHome			; reset enemy home displacement to 0, go to next index and loop back to read next byte
+L8271:	CMP #$FE					;
+L8273:	BEQ $82DE					; loop last movement until ?
+L8275:	LDA #$00					; any other F code - load #00
+L8277:	STA EnCounter,X				; place that in the enemy counter to loop back to the start of the table
+L827A:	BEQ $8258					; now loop back and process the byte
+
+L827C:	JMP ClearEnVerticalSpeed		
+
+ProcessEnMvTblData:
+L827F:	SEC 						; set carry - processing a normal byte from the table
+L8280:	SBC EnDelay,X				; subtract enemy delay from value
+L8283:	BNE $8290					; 	if we didn't hit 0, jump ahead (possible to overflow?)
+L8285:	STA EnDelay,X				; hit 0 - store 0 into enemy delay
+L8288:	INY 						; increment Y
+L8289:	INY 						; twice
+L828A:	TYA 						; and move Y into A
+L828B:	STA EnCounter,X				; then store that into EnCounter (basically, do every other one)
+L828E:	BNE $825B					; 	if our index didn't roll over to 0, process next byte. else, continue on
+
+L8290:	INC EnDelay,X				; either we have a current delay running or we finished the table. increment the EnDelay
+L8293:	INY 						; inc Y to get the next byte- not enemy counter?
+L8294:	LDA (EnMovementTblPtr),Y	; load the value there and then... extract vertical velocity nibble 
 
 ExtractVerticalNibble:
 ;hi nibble = vertical
@@ -384,6 +409,7 @@ L82A0:	ADC #$00			; add the carry we pulled back in
 L82A2:	STA $00				; store the value in RAM at address 00
 L82A4:	RTS					; return
 
+ResetEnemyHome:
 L82A5:	INC EnCounter,X		; increment enemy counter
 L82A8:	INY 				; increment Y, which was the current index into our table
 L82A9:	LDA #$00			; load 0
@@ -395,54 +421,66 @@ L82B0:	PLA 				; pop off the last PC address in the stack
 L82B1:	PLA 				; 
 L82B2:	RTS					; return to the address before THAT one
 
-L82B3:	LDA $6B03,X
-L82B6:	BPL $82BE
-L82B8:	JSR CreateEnemyYRadLowerBound
-L82BB:	JMP $82C3
-L82BE:	BEQ $82D2
+;;looping previous movement util certain collision
+L82B3:	LDA $6B03,X						;	looks like this has something to do with enemy movemnt direction
+L82B6:	BPL $82BE						; 	positive result, jump ahead
+
+L82B8:	JSR CreateEnemyYRadLowerBound	; negative - try collision in direction
+L82BB:	JMP $82C3						;	
+
+L82BE:	BEQ $82D2						; keep looping last table index if 6B03 was 0
 L82C0:	JSR CreateEnemyYRadUpperBound
-L82C3:	LDX PageIndex
-L82C5:	BCS $82D2
-L82C7:	LDY EnCounter,X
-L82CA:	INY 
-L82CB:	LDA #$00
-L82CD:	STA $6B03,X
-L82D0:	BEQ $82D7
-L82D2:	LDY EnCounter,X
 
+L82C3:	LDX PageIndex					; load enemy index
+L82C5:	BCS $82D2						; 	keep looping last table index if no collision
 
+L82C7:	LDY EnCounter,X					; finished the loop
+L82CA:	INY 							; go to next spot on velocity table
+L82CB:	LDA #$00						; load #0
+L82CD:	STA $6B03,X						; clear 6B03 until next wait
+L82D0:	BEQ $82D7						; branch always
+
+L82D2:	LDY EnCounter,X		; load current table counter
 L82D5:	DEY 				; dec Y back two
 L82D6:	DEY 				;
 L82D7:	TYA 				; put Y into A
 L82D8:	STA EnCounter,X		; and store that back into enemy counter
 L82DB:	JMP $825B			; loop back and re-read 
 
-L82DE:	DEY 
-L82DF:	DEY 
-L82E0:	TYA 
-L82E1:	STA EnCounter,X
-L82E4:	LDA $6B03,X
-L82E7:	BPL $82EF
-L82E9:	JSR CreateEnemyYRadLowerBound
-L82EC:	JMP $82F4
-L82EF:	BEQ $82FB
-L82F1:	JSR CreateEnemyYRadUpperBound
-L82F4:	LDX PageIndex
-L82F6:	BCC $82FB
-L82F8:	JMP $8258
-L82FB:	LDY EnDataIndex,X
-L82FE:	LDA $968B,Y
-L8301:	AND #$20
-L8303:	BEQ $8312
-L8305:	LDA $0405,X
-L8308:	EOR #$05
-L830A:	ORA $968B,Y
-L830D:	AND #$1F
-L830F:	STA $0405,X
+;;looping until god knows what
+L82DE:	DEY								;  	 
+L82DF:	DEY 							;
+L82E0:	TYA 							;	
+L82E1:	STA EnCounter,X					; go to previous index on velocity table
+L82E4:	LDA $6B03,X						; load 6B03
+L82E7:	BPL $82EF						;	positive, jump ahead
 
-;we jump here directly from some control codes, so I'll section it off 
+L82E9:	JSR CreateEnemyYRadLowerBound	; negative- do collision check 
+L82EC:	JMP $82F4					
+
+L82EF:	BEQ $82FB						;
+L82F1:	JSR CreateEnemyYRadUpperBound
+
+L82F4:	LDX PageIndex
+L82F6:	BCC $82FB						;	there was a collision, jump ahead
+L82F8:	JMP $8258						; no collision, loop previous byte immediately
+
+L82FB:	LDY EnDataIndex,X				; load enemy data index
+L82FE:	LDA $968B,Y						; load 968B data
+L8301:	AND #$20						; isolate 0010 0000
+L8303:	BEQ ClearEnVerticalSpeed		;	not set, clear vertical speeds
+L8305:	LDA $0405,X						; load enemy status flags 
+L8308:	EOR #$05						; flip the enemy directions
+L830A:	ORA $968B,Y						; TODO: then, or with data at 968b (what is the relation here?!)
+L830D:	AND #$1F						; keep only 0001 1111
+L830F:	STA $0405,X						; store back into enemy status flags (????)
+
+ClearEnVerticalSpeed:
 L8312:	JSR $81B1			; set delay timer active on enemy and set vert acceleration to 0
 L8315:	JMP $82A2			; clear $00
+
+
+GetEnHorizontalVelocity:
 L8318:	JSR $80B0			; load 977B data
 L831B:	BPL $8320			; 	positive - skip jump and use data table for horizontal velocity
 L831D:	JMP $8395			; 	negative - do horizontal acceleration stuff
@@ -475,9 +513,9 @@ L8344:	BMI $835E			; 	data was negative, jump down to making it positive
 L8346:	CLC 				; data was positive, clear carry
 L8347:	ADC EnCounter,X		; add counter at enemy
 L834A:	STA EnCounter,X		; store back into counter (some kind of accel- IE, how many seconds per pixel accel)
-L834D:	LDA $0402,X			; load enemy vert speed
+L834D:	LDA EnVertSpeed,X			; load enemy vert speed
 L8350:	ADC #$00			; add with carry 
-L8352:	STA $0402,X			; and store back
+L8352:	STA EnVertSpeed,X			; and store back
 L8355:	BPL $8376			; 	vert speed is still positive, jump way down
 L8357:	JSR TwosCompliment	; vert speed was negative now, flip back to positive (this should max out at 127, I believe)
 L835A:	LDY #$F2			; load -0E into Y
@@ -488,22 +526,22 @@ L8362:	STA $00				; store in 0
 L8364:	LDA EnCounter,X		; load en counter 
 L8367:	SBC $00				; subtract from the enemy counter
 L8369:	STA EnCounter,X		; and store into it
-L836C:	LDA $0402,X			; load the enemy vert speed
+L836C:	LDA EnVertSpeed,X			; load the enemy vert speed
 L836F:	SBC #$00			; subtractions usually go 1 under since we flipp the second one's bits, then add - then, the carry is added as the extra for two's compliment. 
-L8371:	STA $0402,X			; but if the last subtraction used the carry, then it's clear, and we want that extra -1 to decelerate
+L8371:	STA EnVertSpeed,X			; but if the last subtraction used the carry, then it's clear, and we want that extra -1 to decelerate
 L8374:	BMI $8357			; 	did the accell go negative? then jump back to flip it 
 L8376:	CMP #$0E			; compare our accelerated velocity to 0000 1110
 L8378:	BCC $8383			; 	less than, jump ahead- else...
 L837A:	LDA #$00			; greater than or equal to, load 0
 L837C:	STA EnCounter,X		; store back into en counter again
 L837F:	TYA 				; put Y into A
-L8380:	STA $0402,X			; put A into the vert speed - top clamps out at 0E speed 
+L8380:	STA EnVertSpeed,X			; put A into the vert speed - top clamps out at 0E speed 
 L8383:	LDA $6AFC,X			; load another en data 
 L8386:	CLC 				; clear carry
 L8387:	ADC EnCounter,X		; add en counter to it (the overflow number, I assume)
 L838A:	STA $6AFC,X			; store that back into 6AFC - might be some other kind of side counter
 L838D:	LDA #$00			; 
-L838F:	ADC $0402,X			; then, add with vert speed if there was a flip
+L838F:	ADC EnVertSpeed,X			; then, add with vert speed if there was a flip
 L8392:	STA $00				; store that into 0
 L8394:	RTS					; and return
 
@@ -556,21 +594,22 @@ L83EF:	ADC $0403,X		; add horizontal acceleration + possible overfflow
 L83F2:	STA $00			; store out into $0
 L83F4:	RTS				; return
 
-
-L83F5:	LDX PageIndex							; load enemy inedx
+;;collision checks for up mvoement
+L83F5:	LDX PageIndex							; load enemy index
 L83F7:	LDA EnYRoomPos,X						; get enemy y position
 L83FA:	SEC 									; set carry
-L83FB:	SBC EnRadY,X							; subtract radius Y
-L83FE:	AND #$07								; %8 the resulting position to get the pixel within the tile
+L83FB:	SBC EnRadY,X							; subtract radius Y to check locaiton of upper bound of hitbox
+L83FE:	AND #$07								; %8 the resulting position to check tile pixel location
 L8400:	SEC 									; set carry again
-L8401:	BNE $8406								; 	if our mod wasn't wasn't 0- not a possible boundary...?
-L8403:	JSR CreateEnemyYRadLowerBound			; 
-L8406:	LDY #$00
-L8408:	STY $00
-L840A:	LDX PageIndex
-L840C:	BCC $844A
-L840E:	INC $00
-L8410:	LDY EnYRoomPos,X
+L8401:	BNE $8406								; 	result wasn't 0 - skip ahead
+L8403:	JSR CreateEnemyYRadLowerBound			; 	result was 0, we're at the top of a tile
+
+L8406:	LDY #$00								; load 0 into Y
+L8408:	STY $00									; cache off into $0
+L840A:	LDX PageIndex							; load enemy index
+L840C:	BCC $844A								; 	check if our carry is clear- if so, return
+L840E:	INC $00									; inc $0
+L8410:	LDY EnYRoomPos,X						; 
 L8413:	BNE $8429
 L8415:	LDY #$F0
 L8417:	LDA $49
@@ -598,16 +637,18 @@ L8441:	LDA $0405,X
 L8444:	BMI $8449
 L8446:	INC $6B01,X
 L8449:	SEC 
+
 L844A:	RTS
 
-L844B:	LDX PageIndex
-L844D:	LDA EnYRoomPos,X
-L8450:	CLC 
-L8451:	ADC EnRadY,X
-L8454:	AND #$07
-L8456:	SEC 
-L8457:	BNE $845C
-L8459:	JSR CreateEnemyYRadUpperBound
+;;down collision checks
+L844B:	LDX PageIndex					; load enemy index
+L844D:	LDA EnYRoomPos,X				; load enemy room y position
+L8450:	CLC 							; clear carry
+L8451:	ADC EnRadY,X					; add enemy hitbox radius down
+L8454:	AND #$07						; %8 to get hit box edge location inside tile
+L8456:	SEC 							; set carry
+L8457:	BNE $845C						; 	not 0, jump ahead
+L8459:	JSR CreateEnemyYRadUpperBound	; 	was 0, we're at a tile upper edge
 L845C:	LDY #$00
 L845E:	STY $00
 L8460:	LDX PageIndex
@@ -740,9 +781,10 @@ L8566:	EOR $FF
 L8568:	AND #$01
 L856A:	RTS
 
-L856B:	EOR $0405,X
-L856E:	STA $0405,X
-L8571:	RTS 
+InvertEnStatusFlags:
+L856B:	EOR $0405,X		; flip given flags in enemy status flags
+L856E:	STA $0405,X		; store back with flipped bits
+L8571:	RTS 			; 
 
 ;---------------------------------[ Object animation data tables ]----------------------------------
 

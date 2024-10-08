@@ -1,5 +1,9 @@
 ;;AreaCommon declares
 .alias AreaRefresh 						$8000
+.alias InvertHoriAccel					$81D1
+.alias InvertHoriVel					$81DA
+.alias InvertVertAccel					$8206
+.alias InvertVertVel					$820F
 .alias ExtractVerticalNibble 			$8296
 .alias ExtractHorizontalNibble 			$832F
 .alias ObjectAnimIndexTbl				$8572
@@ -16,6 +20,7 @@
 .alias AreaPointers						$9598
 .alias SpecItmsTable					$9598
 .alias AreaRoutine						$95C3
+.alias AreaEnemySpecificUpdate			$95E5
 .alias EnemyHitPointTbl					$962B
 .alias EnemyInitDelayTbl				$96BB
 .alias AreaEnemyMovementTable			$96DB

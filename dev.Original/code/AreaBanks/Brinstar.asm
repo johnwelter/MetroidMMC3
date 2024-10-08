@@ -323,9 +323,11 @@ L967B:	.byte $00, $00, $00, $80, $00, $00, $00, $00, $00, $00, $00, $00, $80, $0
 ;0000 0000
 ;|||| ||||
 ;|||| |||+- can drop stronger energy
-;|||| ||+-- check direction to samus when moving
+;|||| ||+-- point direction toward samus when moving
 ;|||| ++--- enemy hit SFX index
-;||+------- ?
+;|||+
+;||+------- movement invertability flag
+;|+
 ;+--------- only check vertical direction to samus
 L968B:	.byte $01, $01, $01, $00, $86, $04, $89, $80, $81, $00, $00, $00, $82, $00, $00, $00 
 
@@ -365,7 +367,10 @@ L9773:	.byte $00, $00, $00, $00, $00, $00, $00, $00
 ;sure it's a quick carry flag check for the MSB
 ;0000 0000
 ;|||| ||||
-;|||| ++---- ? used in F676 to populate a byte on an enemy at 6B03, checked mostly in area common
+;|||| |||+-- 
+;|||| ||+--- TODO: something to do with inversion velocity on vertical collisions 
+;|||| ++---- TODO: populates 6B03, used for checking collisions when looping on a velocity table
+;|||| 
 ;|||+------- if the enemy is a metroid for damage and SFX purposes
 ;||+-------- ?
 ;|+--------- use Acceleration flag
@@ -385,7 +390,7 @@ L97C7:	.word $9D6A, $9D6A, $9D6A, $9D6A, $9D6A
 L97D1:	.byte $01, $01, $02, $01, $03, $04, $00, $05, $00, $06, $00, $07, $00, $08, $00, $09
 L97E1:	.byte $00, $00, $00, $0B, $01, $0C, $0D, $00, $0E, $03, $0F, $10, $11, $0F
 
-; movement for scuttlers - loop with conditions
+; movement for ? - loop with conditions
 L97EF:	.byte $20, $22, $FE
 L97F2:	.byte $20, $2A, $FE
 
@@ -458,16 +463,19 @@ L9983:	.byte $07, $C2, $06, $A2, $05, $92, $05, $12, $06, $22, $07, $42, $50, $7
 
 L9992:	.byte $05, $C2, $04, $A2, $03, $92, $03, $12, $04, $22, $05, $42, $50, $72, $FF
 
-FinishEnemyAreaUpdate:
+FinishEnemy0to3AreaUpdate:
 L99A1:	LDA $81						; load enemy cached status
 L99A3:	CMP #$01					; comapre to waiting
 L99A5:	BEQ $99B0					; equal? jump ahead and go to CallUpdateEnemyAnim1
 L99A7:	CMP #$03					; 	else, compare to dead
-L99A9:	BEQ $99B5					; 	equal? jump to CallCheckObjectAttribs
+L99A9:	BEQ $99B5					; 	equal? jump to CallCheckObjectAttribs		
+;;jump call for not dead or waiting
 L99AB:	LDA $00						;		else, load temp0
-L99AD:	JMP CallUpdateEnemyAnim0	;		and go to CallUpdateEnemyAnim0
+L99AD:	JMP CallUpdateEnemyAnim0	;		and go to CallUpdateEnemyAnim0	
+;;jump call for waiting state
 L99B0:	LDA $01						; load temp1
 L99B2:	JMP CallUpdateEnemyAnim1	; update enemy anim 1
+;;jump call for dead state
 L99B5:	JMP CallCheckObjectAttribs	; or if we're dead, check object attribs 
 
 Enemy0Update:
@@ -477,14 +485,14 @@ L99BC:	STA $86						; and 86
 L99BE:	LDA EnStatus,X				; get the enemy status
 L99C1:	CMP #$03					; compare to dying
 L99C3:	BEQ PrepEnemyAnimUpdate		; if we're dying, jump ahead
-L99C5:	JSR $801B					; 	else, quick detour
+L99C5:	JSR $801B					; 	else, quick detour to change animation based on distance to home position
 
 PrepEnemyAnimUpdate:
 L99C8:	LDA #$06					; load 6 for enemy anim update 0
 L99CA:	STA $00						; store in temp0
 L99CC:	LDA #$08					; load 1 for enemy anim update 1
 L99CE:	STA $01						; store in temp1
-L99D0:	JMP FinishEnemyAreaUpdate	; jump to section above
+L99D0:	JMP FinishEnemy0to3AreaUpdate	; jump to section above
 
 Enemy1Update:
 L99D3:	LDA #$0F					; load F
@@ -510,44 +518,45 @@ L99F4:	JSR $801B					; else, quick detour - we'll set our desired animation base
 L99F7:	JMP PrepEnemyAnimUpdate		; THEN jump back
 
 Enemy4Update:
-L99FA:	LDA $81						; load cached enemy status
-L99FC:	CMP #$01					; compare with waiting
-L99FE:	BEQ $9A44					; if wating, jump ahead to updating anim 1
-L9A00:	CMP #$03					; compare to dying
-L9A02:	BEQ $9A49					; if dying, go check the anim attributes
-L9A04:	LDA EnCounter,X				; else, get the enemy counter - IE, which index into the movement table we're using
-L9A07:	CMP #$0F					; compare with F - we're looping the last falling speed
-L9A09:	BCC $9A3F					; less than? jump ahead to updateing anim 0
-L9A0B:	CMP #$11					; compare with 11
-L9A0D:	BCS $9A16					; 	greater ot equal? jump ahead
+L99FA:	LDA $81							; load cached enemy status
+L99FC:	CMP #$01						; compare with waiting
+L99FE:	BEQ $9A44						; if wating, jump ahead to updating anim 1
+L9A00:	CMP #$03						; compare to dying
+L9A02:	BEQ $9A49						; if dying, go check the anim attributes
+L9A04:	LDA EnCounter,X					; else, get the enemy counter - IE, which index into the movement table we're using
+L9A07:	CMP #$0F						; compare with F - we're looping the last falling speed
+L9A09:	BCC FinishEnemy4to5AreaUpdate	; less than? jump ahead to updateing anim 0
+L9A0B:	CMP #$11						; compare with 11
+L9A0D:	BCS $9A16						; 	greater ot equal? jump ahead
 
 ;we're on the one frame step at 0F
-L9A0F:	LDA #$3A					; load 3A
-L9A11:	STA $6B01,X					; store in 6B01
-L9A14:	BNE $9A3F					; jump ahead to updating anim 0
+L9A0F:	LDA #$3A						; load 3A
+L9A11:	STA $6B01,X						; store in 6B01
+L9A14:	BNE FinishEnemy4to5AreaUpdate	; jump ahead to updating anim 0
 
 ;we're step 11- 6B01 is the timer before explosion
-L9A16:	DEC $6B01,X					; else, dec 6B01
-L9A19:	BNE $9A3F					;	not 0? jump ahead to anim 0 update
+L9A16:	DEC $6B01,X						; else, dec 6B01
+L9A19:	BNE FinishEnemy4to5AreaUpdate	;	not 0? jump ahead to anim 0 update
 
 ;;load up the expliostion 
-L9A1B:	LDA #$00					; else, load 0
-L9A1D:	STA EnStatus,X				; clear enemy 
-L9A20:	LDY #$0C					;			
-L9A22:	LDA #$0A					;			
-L9A24:	STA EnBurst0Addr,Y			; store 0A into AC
-L9A27:	LDA EnYRoomPos,X			; load enemy y pos
-L9A2A:	STA EnBurstYPosAddr,Y		; store in AD
-L9A2D:	LDA EnXRoomPos,X			; load enemy x pos
-L9A30:	STA EnBurstXPosAddr,Y		; store in AE
-L9A33:	LDA EnNameTable,X			; get enemy name table
-L9A36:	STA EnBurstNTAddr,Y			; store in AF
-L9A39:	DEY 						;			
+L9A1B:	LDA #$00						; else, load 0
+L9A1D:	STA EnStatus,X					; clear enemy 
+L9A20:	LDY #$0C						;			
+L9A22:	LDA #$0A						;			
+L9A24:	STA EnBurst0Addr,Y				; store 0A into AC
+L9A27:	LDA EnYRoomPos,X				; load enemy y pos
+L9A2A:	STA EnBurstYPosAddr,Y			; store in AD
+L9A2D:	LDA EnXRoomPos,X				; load enemy x pos
+L9A30:	STA EnBurstXPosAddr,Y			; store in AE
+L9A33:	LDA EnNameTable,X				; get enemy name table
+L9A36:	STA EnBurstNTAddr,Y				; store in AF
+L9A39:	DEY 							;			
 L9A3A:	DEY 
 L9A3B:	DEY 
-L9A3C:	DEY 						; Sub 4 from Y
-L9A3D:	BPL $9A22					; repeat while positive (4 times)
+L9A3C:	DEY 							; Sub 4 from Y
+L9A3D:	BPL $9A22						; repeat while positive (4 times)
 
+FinishEnemy4to5AreaUpdate:
 L9A3F:	LDA #$02					; 
 L9A41:	JMP CallUpdateEnemyAnim0
 L9A44:	LDA #$08
@@ -577,8 +586,10 @@ L9A74:	JSR ToggleEnHoriRealtionFlag		;		if we are below,
 L9A77:	LDA #$03							;		load 3 (normal to the left)
 L9A79:	STA $040A,X							;		store in orientation
 L9A7C:	BNE $9A84							;	branch always
+
 L9A7E:	JSR $9AE2							;
 L9A81:	JSR $9AA8
+
 L9A84:	JSR $9AC6
 L9A87:	LDA #$03							; load 3
 L9A89:	JSR $800C							; update enemy anim
@@ -650,7 +661,7 @@ L9AFB:	CMP #$03
 L9AFD:	BEQ $9B2A
 L9AFF:	LDA #$80
 L9B01:	STA $6AFE,X
-L9B04:	LDA $0402,X
+L9B04:	LDA EnVertSpeed,X
 L9B07:	BMI $9B25
 L9B09:	LDA $0405,X
 L9B0C:	AND #$10
@@ -662,6 +673,7 @@ L9B17:	BPL $9B1C
 L9B19:	JSR $95C6
 L9B1C:	CMP #$10
 L9B1E:	BCS $9B25
+
 L9B20:	LDA #$00
 L9B22:	STA $6AFE,X
 L9B25:	LDA #$03
@@ -684,10 +696,10 @@ L9B4C:	BCS $9B71
 L9B4E:	LDA #$7F
 L9B50:	STA $6AFE,X
 L9B53:	BNE $9B71
-L9B55:	LDA $0402,X
+L9B55:	LDA EnVertSpeed,X
 L9B58:	BMI $9B71
 L9B5A:	LDA #$00
-L9B5C:	STA $0402,X
+L9B5C:	STA EnVertSpeed,X
 L9B5F:	STA EnCounter,X
 L9B62:	STA $6AFE,X
 L9B65:	LDA $0405,X
@@ -756,7 +768,7 @@ L9BF2:	BNE $9C12
 L9BF4:	JSR $802D
 L9BF7:	LDX PageIndex
 L9BF9:	LDA $00
-L9BFB:	STA $0402,X
+L9BFB:	STA EnVertSpeed,X
 L9BFE:	JSR $8030
 L9C01:	LDX PageIndex
 L9C03:	LDA $00
