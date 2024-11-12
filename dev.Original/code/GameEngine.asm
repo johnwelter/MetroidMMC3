@@ -4532,7 +4532,7 @@ KillEnemyAndDropItem:
 	bmi DefeatMiniBoss			; 	bit 6 was set, defeat the miniboss
 	jsr LoadFromEn968B			; normal enemy - load 968B data
 	sta $00						; cache off in $0
-	jsr $80B0					; load 977B data, MSB moved to carry
+	jsr LoadFrom977B					; load 977B data, MSB moved to carry
 	and #$20					; isolate metroid bit
 	sta EnDataIndex,x			; store off in enemy data index (used to powerup the powerups)
 	lda #$05					; load 5
@@ -4687,7 +4687,7 @@ AddToMaxMissiles:
 	sta $0405,x				;store into 405
 	lda $08					;load the visibility flag
 	beq ++					;if it's not visible, jump ahead (note- not a fan of this kind of intertwining)
-	jmp UnknownDEDE			;else, jump to sprite drawing routine
+	jmp UpdateObjectSprite	;else, jump to sprite drawing routine
 	
 ;----------------------------------------[ Item drop table ]-----------------------------------------
 
@@ -4796,7 +4796,7 @@ DrawFrame:
 	tax				;
 	beq +				;Branch if object is not within the screen boundaries.
 	
-UnknownDEDE:
+UpdateObjectSprite:
 	ldx SpritePagePos		;Load index into next unused sprite RAM segment.
 	jmp DrawSpriteObject		;($DF19)Start drawing object.
 
@@ -5817,7 +5817,7 @@ UpdateScrollY:
 
 *	dec MapIdxY
 *	sec
-*       rts
+*   rts
 
 UpdateRoomNametable:  
 	jsr SetupRoom		; start loading the room, if valid, store final control code into room number 
@@ -6086,28 +6086,28 @@ ScrollRight:
 
 *	dec MapIdxX
 *	sec
-*   rts
+*       rts
 
-Table02:
+TileBoundaryEdgeTable:
 	.byte $07
 	.byte $00
 
 ; check if it's time to update nametable (when scrolling is HORIZONTAL)
 
 UnknownE701:  
-	ldx ScrollDir
-	lda ScrollX
-	and #$07	; keep lower 3 bits
-	cmp Table02-2,x ; compare value = 0 if ScrollDir = right, else 7
-	bne -	   ; exit if not equal (no nametable update)
+	ldx ScrollDir					; load scroll direction into X
+	lda ScrollX						; load horizontal scroll value into A
+	and #$07						; keep lower 3 bits (position within sinlge tile)
+	cmp TileBoundaryEdgeTable-2,x	; compare to either 07 (right/bottom) or 00 (left/top) of tile boundary, based on scroll direction
+	bne -	  						; 	inside tile - can't continue load
 
-UnknownE70C:  
-	ldx ScrollDir
-	cpx TempScrollDir
-	bne -
-	lda ScrollX
-	and #$F8	; keep upper five bits
-	jsr Adiv8       ; / 8 (make 'em lower five)
+UnknownE70C:  						
+	ldx ScrollDir					; was on boundary edge,load scroll direction back into X
+	cpx TempScrollDir				; comp with the cached scroll direction
+	bne -							; 	scroll direction changed at some point where we have a mismatch at this point, don't load 
+	lda ScrollX						; load X scroll back into A
+	and #$F8						; keep upper five bits
+	jsr Adiv8       				; / 8 (make 'em lower five)
 	sta $00
 	lda #$00
 	jmp UnknownE590
@@ -6754,12 +6754,12 @@ EnemyLoop:
 	.word LoadPipeSpawner	;($EC57)Regenerating enemies(such as Zeb).
 
 EndOfRoom:
-	ldx #$F0			;Prepare for PPU attribute table write.
+	ldx #$F0				; Prepare for PPU attribute table write.
 	stx RoomNumber			;
 	lda ScrollDir			;
-	sta TempScrollDir		;Make temp copy of ScrollDir.
-	and #$02			;Check if scrolling left or right.
-	bne +				;
+	sta TempScrollDir		; Make temp copy of ScrollDir.
+	and #$02				; Check if scrolling horizontal
+	bne +					; 	horizontal scrolling, do E70C 
 	jmp UnknownE57C
 *   jmp UnknownE70C
 
@@ -6768,17 +6768,17 @@ LoadEnemy:
 	jmp EnemyLoop			;($EAD4)Do next room object.
 
 GetEnemyData:
-	lda ($00),y			;Get 1st byte again.
-	and #$F0			;Get object slot that enemy will occupy.
-	tax				;
-	jsr IsSlotTaken			;($EB7A)Check if object slot is already in use.
-	bne ++				;Exit if object slot taken.
-	iny				;
-	lda ($00),y			;Get enemy type.
-	jsr SetEnTypeAndAttributes		;($EB28)Load data about enemy.
-	ldy #$02			;
-	lda ($00),y			;Get enemy initial position(%yyyyxxxx).
-	jsr UnknownEB4D
+	lda ($00),y					;Get 1st byte again.
+	and #$F0					;Get object slot that enemy will occupy.
+	tax							;
+	jsr IsSlotTaken				;($EB7A)Check if object slot is already in use.
+	bne ++						;Exit if object slot taken.
+	iny							;
+	lda ($00),y					;Get enemy type.
+	jsr SetEnTypeAndAttributes	;($EB28)Load data about enemy.
+	ldy #$02					;
+	lda ($00),y					;Get enemy initial position(%yyyyxxxx).
+	jsr SpawnEnemyAtLocation
 	pha
 *   pla
 *   lda #$03			;Number of bytes to add to ptr to find next room item.
@@ -6808,16 +6808,16 @@ SetEnTypeAndAttributes:
 	sta EnDataIndex,x		; Store index byte.
 	rts						;
 
-UnknownEB4D:  
-	tay				;Save enemy position data in Y.
-	and #$F0					;Extract Enemy y position.
-	ora #$08			;Add 8 pixels to y position so enemy is always on screen. 
+SpawnEnemyAtLocation:  
+	tay						;Save enemy position data in Y.
+	and #$F0				;Extract Enemy y position.
+	ora #$08				;Add 8 pixels to y position so enemy is always on screen. 
 	sta EnYRoomPos,x		;Store enemy y position.
-	tya				;Restore enemy position data.
-	jsr Amul16			;*16 to extract enemy x position.
-	ora #$0C			;Add 12 pixels to x position so enemy is always on screen.
+	tya						;Restore enemy position data.
+	jsr Amul16				;*16 to extract enemy x position.
+	ora #$0C				;Add 12 pixels to x position so enemy is always on screen.
 	sta EnXRoomPos,x		;Store enemy x position.
-	lda #$01			;
+	lda #$01				;
 	sta EnStatus,x			;Indicate object slot is taken.
 	lda #$00
 	sta $0404,x
@@ -8185,33 +8185,33 @@ EnemyWaitState:
 	jsr PopulateEnemy6B03			; fill in 6B03 with data from 977B
 	lda EnDelay,x					; check the enemy delay timer 
 	beq +							; 	if the delay timer is 0, we aren't waiting for anything, jump ahead and update damage if it got any
-	jsr UnknownF7BA					; else, dec delay timer and do extra for when the timer runs out 
+	jsr UpdateEnDelay					; else, dec delay timer and do extra for when the timer runs out 
 *   jmp ++							; update damage to waiting enemy
 
 ;;update enemy moving state
 EnemyMoveState:  	
-	lda $0405,x					; load enemy status flags
-	asl							; check if the skip update flag is set
-	bmi ++						; 	if set, skip move updates, go straight to damage
-	lda $0405,x					; else, load status flags again
-	and #$20					; check if we have a delay timer to start
-	beq +						;	if not, jump ahead
-	ldy EnDataIndex,x			;	else, load the enemy data index
-	lda EnemyInitDelayTbl,y		;	get the enemy delay time
-	sta EnDelay,x				;	set the enemy delay timer
-	dec EnStatus,x				;	set us back to a delay/wait status
-	bne ++						;		skip move updates for enemy damage
-*   jsr EnemyDirectionToSamus	; for enemies that home in on samus while moving, update it
-	jsr CheckDistanceToSamus	; not sure exactly what this does yet
-	jsr EnemyUnderRoom			; kill enemies that somehow get under the map in horizontal rooms
-*	jsr UpdateEnemyDamage		; if the enemy was shot, update their damage
+	lda $0405,x					;load enemy status flags
+	asl							;check if the skip update flag is set
+	bmi ++						;if set, skip move updates, go straight to damage
+	lda $0405,x					;else, load status flags again
+	and #$20					;check if we have a delay timer to start
+	beq +						;if not, jump ahead
+	ldy EnDataIndex,x			;else, load the enemy data index
+	lda EnemyInitDelayTbl,y		;get the enemy delay time
+	sta EnDelay,x				;set the enemy delay timer
+	dec EnStatus,x				;set us back to a delay/wait status
+	bne ++						;skip move updates for enemy damage
+*   jsr EnemyDirectionToSamus	;for enemies that home in on samus while moving, update it
+	jsr CheckDistanceToSamus	;not sure exactly what this does yet
+	jsr EnemyUnderRoom			;kill enemies that somehow get under the map in horizontal rooms
+*	jsr UpdateEnemyDamage		;if the enemy was shot, update their damage
 
 EnemySpecificUpdate:			
 	jmp AreaEnemySpecificUpdate ; update enemy using area routines
 
-UpdateEnemyAnim0:	
+UpdateEnemyAnimAndMove:	
 	jsr UpdateEnemyAnim				; update the enemy anim frame, loop if need be
-	jsr $8058						; 
+	jsr UpdateEnemyMovement						;
 CheckObjectAttribs:
 	ldx PageIndex					; load enemy index
 	lda EnSpecialAttribs,x			; load special attributes (bit 7 = strong, bit 6 = boss)
@@ -8231,7 +8231,7 @@ ResetEnemyHitStatus:
 	sta $040E,x						; reset hit source
 	rts
 
-UpdateEnemyAnim1:
+UpdateEnemyAnimAndCheckAttr:
   jsr UpdateEnemyAnim
   jmp CheckObjectAttribs
 
@@ -8239,7 +8239,7 @@ EnemyFrozenState:
     jsr UpdateEnemyDamage
 	lda EnStatus,x
 	cmp #$03
-	beq UpdateEnemyAnim0
+	beq UpdateEnemyAnimAndMove
 	bit ObjectCntrl
 	bmi +
 	lda #$A1
@@ -8334,7 +8334,7 @@ EnemyHitState:
 	and #$3F
 	sta EnStatus,x
 	pha
-	jsr $80B0
+	jsr LoadFrom977B
 	and #$20
 	beq +
 	pla
@@ -8383,7 +8383,7 @@ UpdateEnemyDamage:
 ;--------------here's some new damage code for the ice beam to work more like super metroid 
 	
 SuperMetroidIceBeam:
-		jsr $80B0				
+		jsr LoadFrom977B				
         and #$20						
 		bne +				
 		clc
@@ -8405,7 +8405,7 @@ SuperMetroidIceBeam:
 	jsr UnknownF515			; else, jump back up to where we store whatever we ended up with into 040C, I assume a previous status then load 4 into A, and store that in the enemy status- AKA, freeze it
 	lda #$40				; load up #40 frames
 	sta $040D,x				; store in delay timer
-	jsr $80B0				; load the enemy info from the current room, bit shifted left 1
+	jsr LoadFrom977B				; load the enemy info from the current room, bit shifted left 1
 	and #$20				; check metroid bit
 	beq +					; if it's not a metroid, return
 	lda #$01				; 	making this one so the metroid only takes one misile instead of 5
@@ -8414,7 +8414,7 @@ SuperMetroidIceBeam:
 *   rts						; 	then, we're done with freezing and damage updates
 
 PlayInvicibleSFX:
-*	jsr $80B0				; get 977b attributes
+*	jsr LoadFrom977B				; get 977b attributes
 	and #$20				; check if a metroid
 	bne ---- 				; 	added minus - if metroid, play metroid hit sound
 	jsr SFX_Metal			; play metal hit- nothing 
@@ -8448,7 +8448,7 @@ PlaySnd3:
 
 ContinueEnemyDamge1:
 *	ldx PageIndex			; load up the enemy back into x	
-	jsr $80B0				;
+	jsr LoadFrom977B				;
 	and #$20				; if it's *not a metroid*, jump to enemy status check- we can only get here if the metroid is frozen
 	beq +
 	lda $040E,x						;else, load up the damage source
@@ -8462,7 +8462,7 @@ ContinueEnemyDamge1:
 	sta $040C,x						;		then store that in back into the previous state data
 	asl								;		shift the previous state data left- check the 
 	bmi +							;jump down if our multiplication nagated the value
-	jsr $80B0						;
+	jsr LoadFrom977B						;
 	and #$20
 	bne +							; it's a metroid, jump to the load 6 - missles do one hit each, so we treat them like normal lasers
 	ldy $040E,x						; if not set, load the missle type into y
@@ -8538,7 +8538,7 @@ GetPageIndex:
 	rts
 
 PopulateEnemy6B03:  
-	jsr $80B0	;get the enemy data at 977B, MSB in carry everything else shifted left
+	jsr LoadFrom977B	;get the enemy data at 977B, MSB in carry everything else shifted left
 	asl			;
 	asl			;
 	asl			;shift the rest left to move the low nibble to the high nibble
@@ -8721,16 +8721,17 @@ ClearEnStatusFlags:
 	sta $0405,x				;store flags in enemy
 *	rts					
 
-UnknownF7BA:  
+UpdateEnDelay:  
 	dec EnDelay,x			; decrement delay timer
 	bne +					; not equal, return
-	lda $0405,x				; load the enemy staus flags 
-	and #$08				; isolate 0000 1000
-	bne ++					; if it's set, jump below 
-	inc EnDelay,x			; add one to delay timer so this check triggers every frame while we wait
+	lda $0405,x				; timer hit 0 - load the enemy staus flags 
+	and #$08				; check distance trigger
+	bne ++					; 	if it's set, jump below 
+	inc EnDelay,x			; distance trigger not set, delay another frame
 *   rts						; return
 
-*	lda EnDataIndex,x				; load eney data idx - bit 0000 1000 was set on the enemy status flags, so we want to do something with the ended timer
+InitEnemyMovement:
+*	lda EnDataIndex,x				; load eney data idx - delay timer is finished, and samus is in range
 	cmp #$07						; compare to 7 (the zeb style enemy- must be the same in every area)
 	bne +							; 	if it's not a zeb style enemy, jump ahead
 	jsr SFX_OutOfHole				; 	else, play the out of hole sound
@@ -8753,7 +8754,7 @@ UnknownF7BA:
 	iny								; inc Y
 	lda ($00),y						; load second value from table (zeb case 00)
 	sta $0408,x						; store into 0408
-	jsr $80B0						; get 977B data for enemy
+	jsr LoadFrom977B						; get 977B data for enemy
 	bpl ++							; 	acceleration bit for enemy set - clear delay timer and bit we checked to get in here
 	lda #$00						; not an acceleration enemy- load 0
 	sta EnCounter,x					; reset enemy counter
@@ -8817,8 +8818,8 @@ EnemyInitHealth:
 
 LaunchEnProjectile:
 	lda $0405,x							; load enemy status flags
-	and #$10							; get the ??? flag
-	beq -								;	not 0? Return
+	and #$10							; get the samus in range flag
+	beq -								;	0? Return
 	lda $87								; else, load the data in $87 
 	and EnStatus,x						; AND with the current status
 	beq -								; 	not zero? return
@@ -9212,7 +9213,7 @@ DoOneSpawner:
 	jmp KillObject			;($FA18)Free enemy data slot.
 
 UnknownFB7B:  
-	jsr $80B0					;load 977b data, pop out MSB into carry 
+	jsr LoadFrom977B					;load 977b data, pop out MSB into carry 
 	ror $0405,x					;pull onto status flags as the direction to check for samus (horizontal or vertical)
 	lda EnemyInitDelayTbl,y		;Load initial delay for enemy movement.
 	sta EnDelay,x				;
@@ -9220,7 +9221,7 @@ UnknownFB7B:
 Exit13: 
 	rts				;Exit from multiple routines.
 
-UpdateNearHomeAnim:
+UpdateHomeRelativeAnimation:
 	ldx PageIndex					; get current enemy index
 	jsr GetEnemyDirectionDataIndex	; get the enemy directional data index into Y
 	lda $6B01,x						; get 6B01, some kinda home displacement - vertical?

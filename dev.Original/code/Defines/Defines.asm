@@ -440,16 +440,16 @@
 								;|||| |||+-enemy movement direction horizontal (0 = right, 1 = left)
 								;|||| ||+--visibility
 								;|||| |+---enemy movement direction Vertical (0 = up, 1 = down)
-								;|||| +----??
+								;|||| +----trigger to end wait state when samus is within range
 								;|||| 
-								;|||+------??
+								;|||+------trigger set when samus is in range
 								;||+-------delay timer active
 								;|+--------skip state update
 								;+---------check distance to player 1 = Y check, 0 = X check
 								
 .alias EnCounter		$0406	; Counts such things as explosion time.
 ;						$0407	; second counter for other things
-;						$0408
+;						$0408	; movement style
 .alias EnDelay			$0409	;Delay counter between enemy actions.
 .alias EnRotation		$040A	; ^,>,v,<
 .alias EnHitPoints		$040B	;Current hit points of enemy.

@@ -279,8 +279,8 @@ L9607:	.word $0000
 L9609:	.word $0000
 
 ;enemy data tables
-; 0 -
-; 1 -
+; 0 - number jumper (floor)
+; 1 - number jumper (ceiling)
 ; 2 - glider (sin wave guys)
 ; 3 - freezie back and forth guys
 ; 4 - driller guy
@@ -338,7 +338,7 @@ L969B:	.byte $01, $01, $01, $01, $01, $01, $01, $01, $20, $01, $01, $01, $40, $0
 ;0000 0000
 ;|||| ||||
 ;|||| ++++-distance to check
-;+---------switch between which direction trigger was set (less than or greater) ?
+;+---------switch between which wait state delay timer trigger (1) and general distance trigger (0) 
 L96AB:	.byte $00, $00, $06, $00, $83, $00, $88, $00, $00, $00, $00, $00, $00, $00, $00, $00 
 
 EnemyInitDelayTbl:
@@ -348,6 +348,7 @@ L96BB:	.byte $08, $08, $01, $01, $01, $01, $10, $08, $10, $00, $00, $01, $01, $0
 L96CB:	.byte $00, $03, $06, $08, $0A, $10, $0C, $0E, $14, $17, $19, $10, $12, $00, $00, $00
 
 ;enemy movement tables
+;each pair correspond with the two directions of a given movement index 
 L96DB:	.word $97EF, $97F2, $97F5, $97F5, $97F5, $97F5, $97F5, $97F5
 L96EB:	.word $97F5, $97F5, $97F5, $9840, $988B, $988E, $9891, $98A5
 L96FB:	.word $98B9, $98B9, $98B9, $98B9, $98B9, $98B9, $98B9, $98B9
@@ -423,8 +424,8 @@ L98B1:	.byte $04, $6A, $FC												 ; terminal velocity loop
 L98B4:	.byte $00, $01													 ; one frame to set explode delay
 L98B6:	.byte $64, $00, $FB												 ; update nothing for 64 frames, then basically kill velocity updartes 
 
-;;grind fodder movement table- swooper also uses this? probably for keeping track of samus' height- TODO
-;;zeb rises up 1 pixel for 20 frames, waits for 10 frames,  then rises one pixel until we see samus, then goes 1 pixel left or right
+
+;;movement table for swooping enemy
 L98B9:	.byte $14, $11, $0A, $00, $14, $19, $FE
 
 L98C0:	.byte $14, $19, $0A, $00, $14, $11, $FE
@@ -464,46 +465,50 @@ L9983:	.byte $07, $C2, $06, $A2, $05, $92, $05, $12, $06, $22, $07, $42, $50, $7
 L9992:	.byte $05, $C2, $04, $A2, $03, $92, $03, $12, $04, $22, $05, $42, $50, $72, $FF
 
 FinishEnemy0to3AreaUpdate:
-L99A1:	LDA $81						; load enemy cached status
-L99A3:	CMP #$01					; comapre to waiting
-L99A5:	BEQ $99B0					; equal? jump ahead and go to CallUpdateEnemyAnim1
-L99A7:	CMP #$03					; 	else, compare to dead
-L99A9:	BEQ $99B5					; 	equal? jump to CallCheckObjectAttribs		
+L99A1:	LDA $81								; load enemy cached status
+L99A3:	CMP #$01							; comapre to waiting
+L99A5:	BEQ +								; equal? jump ahead and go to CallUpdateEnemyAnimAndCheckAttr
+L99A7:	CMP #$03							; 	else, compare to dead
+L99A9:	BEQ ++								; 	equal? jump to CallCheckObjectAttribs
 ;;jump call for not dead or waiting
-L99AB:	LDA $00						;		else, load temp0
-L99AD:	JMP CallUpdateEnemyAnim0	;		and go to CallUpdateEnemyAnim0	
+L99AB:	LDA $00								;		else, load temp0
+L99AD:	JMP CallUpdateEnemyAnimAndMove		;		and go to CallUpdateEnemyAnimAndMove
 ;;jump call for waiting state
-L99B0:	LDA $01						; load temp1
-L99B2:	JMP CallUpdateEnemyAnim1	; update enemy anim 1
+L99B0:*	LDA $01								; load temp1
+L99B2:	JMP CallUpdateEnemyAnimAndCheckAttr	; update enemy anim 1
 ;;jump call for dead state
-L99B5:	JMP CallCheckObjectAttribs	; or if we're dead, check object attribs 
+L99B5:*	JMP CallCheckObjectAttribs			; or if we're dead, check object attribs 
 
+;;jumping guy upwards
 Enemy0Update:
-L99B8:	LDA #$09					; load 9
-L99BA:	STA $85						; store in 85
-L99BC:	STA $86						; and 86
-L99BE:	LDA EnStatus,X				; get the enemy status
-L99C1:	CMP #$03					; compare to dying
-L99C3:	BEQ PrepEnemyAnimUpdate		; if we're dying, jump ahead
-L99C5:	JSR $801B					; 	else, quick detour to change animation based on distance to home position
+L99B8:	LDA #$09							; load 9 (jumping up animation)
+JumperUpdate:
+L99BA:	STA $85								; store in 85
+L99BC:	STA $86								; and 86
+L99BE:	LDA EnStatus,X						; get the enemy status
+L99C1:	CMP #$03							; compare to dying
+L99C3:	BEQ PrepEnemyAnimUpdate				; if we're dying, jump ahead
+L99C5:	JSR CallUpdateHomeRelativeAnimation	; 	else, quick detour
 
 PrepEnemyAnimUpdate:
-L99C8:	LDA #$06					; load 6 for enemy anim update 0
+L99C8:	LDA #$06					; load frame delay of 6 for enemy anim update with move
 L99CA:	STA $00						; store in temp0
-L99CC:	LDA #$08					; load 1 for enemy anim update 1
+L99CC:	LDA #$08					; load frame delay 1 for enemy anim update no move
 L99CE:	STA $01						; store in temp1
 L99D0:	JMP FinishEnemy0to3AreaUpdate	; jump to section above
 
+;;jumping guy downwards
 Enemy1Update:
-L99D3:	LDA #$0F					; load F
-L99D5:	JMP $99BA					; jump back and do the 0 enemy routine
+L99D3:	LDA #$0F					; load F (jumping down animation)
+L99D5:	JMP JumperUpdate			; jump back and do the 0 enemy routine
 
+;;back and forth freezer guys
 Enemy3Update:
-L99D8:	LDA EnStatus,X				; load enemy status
-L99DB:	CMP #$03					; check if we're dying
-L99DD:	BEQ $99E2					; if so, jump behind to the 0 routine
-L99DF:	JSR $801E					; else, take a detour
-L99E2:	JMP PrepEnemyAnimUpdate		; THEN jump back
+L99D8:	LDA EnStatus,X						; load enemy status
+L99DB:	CMP #$03							; check if we're dying (can this happen?)
+L99DD:	BEQ $99E2							; if so, jump behind to the 0 routine
+L99DF:	JSR CallUpdateEnAnimationDirection	; else, take a detour and update animation direction
+L99E2:	JMP PrepEnemyAnimUpdate				; THEN jump back
 
 ;;sin wave glider
 Enemy2Update:
@@ -514,9 +519,10 @@ L99EB:	STA $86						; store in 86
 L99ED:	LDA EnStatus,X				; load enemy status
 L99F0:	CMP #$03					; check if we're dying
 L99F2:	BEQ $99F7					; if so, jump back to enemy 0 routine
-L99F4:	JSR $801B					; else, quick detour - we'll set our desired animation based on the distance from some "home" position
+L99F4:	JSR CallUpdateHomeRelativeAnimation					; else, quick detour - we'll set our desired animation based on the distance from some "home" position
 L99F7:	JMP PrepEnemyAnimUpdate		; THEN jump back
 
+;;driller
 Enemy4Update:
 L99FA:	LDA $81							; load cached enemy status
 L99FC:	CMP #$01						; compare with waiting
@@ -558,13 +564,14 @@ L9A3D:	BPL $9A22						; repeat while positive (4 times)
 
 FinishEnemy4to5AreaUpdate:
 L9A3F:	LDA #$02					; 
-L9A41:	JMP CallUpdateEnemyAnim0
+L9A41:	JMP CallUpdateEnemyAnimAndMove
 L9A44:	LDA #$08
-L9A46:	JMP CallUpdateEnemyAnim1
+L9A46:	JMP CallUpdateEnemyAnimAndCheckAttr
 L9A49:	JMP CallCheckObjectAttribs
 
+;;update crawlers
 Enemy5Update:
-L9A4C:	JSR $8009							; get random value 
+L9A4C:	JSR GetRandom_EnIdxFrCnt			; get random value 
 L9A4F:	AND #$03							; keep the least 2 bits
 L9A51:	BEQ $9A87							; if it was 0 jump ahead
 L9A53:	LDA $81								; 	else, load cached enemty status
@@ -592,8 +599,9 @@ L9A81:	JSR $9AA8
 
 L9A84:	JSR $9AC6
 L9A87:	LDA #$03							; load 3
-L9A89:	JSR $800C							; update enemy anim
+L9A89:	JSR CallUpdateEnemyAnim				; update enemy anim raw
 L9A8C:	JMP CallCheckObjectAttribs			
+
 L9A8F:	LDA $0405,X
 L9A92:	LSR 
 L9A93:	LDA $040A,X
@@ -601,7 +609,7 @@ L9A96:	AND #$03
 L9A98:	ROL 
 L9A99:	TAY 
 L9A9A:	LDA $9AA0,Y
-L9A9D:	JMP $800F
+L9A9D:	JMP CallResetAnimIndex
 
 L9AA0:	.byte $35, $35, $3E, $38, $3B, $3B, $38, $3E 
 
@@ -622,18 +630,18 @@ L9AC0:	EOR #$01		;flip the horizontal relation bit
 L9AC2:	STA $0405,X		;store the new flags
 L9AC5:	RTS				;return
 
-L9AC6:	JSR $9ADA
+L9AC6:	JSR IncrementEnemyOrientation
 L9AC9:	JSR $9AE2
 
 
 L9ACC:	LDX PageIndex	;load enemy index
 L9ACE:	BCC $9AD9		;
-L9AD0:	JSR $9ADA
+L9AD0:	JSR IncrementEnemyOrientation
 L9AD3:	STA $040A,X
 L9AD6:	JSR $9A8F
 L9AD9:	RTS
 
-
+IncrementEnemyOrientation:
 L9ADA:	LDY $040A,X		;load enemy orientation
 L9ADD:	INY 			;increment orientation
 L9ADE:	TYA 			;put Y into A
@@ -653,84 +661,88 @@ L9AF0:	LDA CornerRotationRoutines,Y		; get previous byte from table
 L9AF3:	PHA 								; push A to stack
 L9AF4:	RTS									; based on rotation and chirality, check for rotation updates
 
+;;swooper enemy
 Enemy6Update:
-L9AF5:	LDA $81
-L9AF7:	CMP #$01
-L9AF9:	BEQ $9B2D
-L9AFB:	CMP #$03
-L9AFD:	BEQ $9B2A
-L9AFF:	LDA #$80
-L9B01:	STA $6AFE,X
+L9AF5:	LDA EnCachedStatus					; load cached status
+L9AF7:	CMP #$01							; compare to waiting
+L9AF9:	BEQ $9B2D							;	waiting? just set the delay timer and update anims
+L9AFB:	CMP #$03							; check dying
+L9AFD:	BEQ $9B2A							; 	dying? check attributes only
+L9AFF:	LDA #$80							; moving - load #80
+L9B01:	STA $6AFE,X							; store into vertical accelleration
 L9B04:	LDA EnVertSpeed,X
-L9B07:	BMI $9B25
-L9B09:	LDA $0405,X
-L9B0C:	AND #$10
-L9B0E:	BEQ $9B25
-L9B10:	LDA EnYRoomPos,X
-L9B13:	SEC 
-L9B14:	SBC $030D
-L9B17:	BPL $9B1C
-L9B19:	JSR $95C6
-L9B1C:	CMP #$10
-L9B1E:	BCS $9B25
+L9B07:	BMI $9B25							; 	negative? jump to calling enemy move
+L9B09:	LDA $0405,X							; positive - load enemy status flag
+L9B0C:	AND #$10							; might always branch- doesn't seem to be a way to make this bit 0 for swoopers
+L9B0E:	BEQ $9B25							;	0? update anim move with delay timer on anims of 3 frames
+L9B10:	LDA EnYRoomPos,X					; not 0 - check Y pos
+L9B13:	SEC 								; set carry
+L9B14:	SBC $030D							; subtract from samus (line toward enemy from samus)
+L9B17:	BPL $9B1C							; 	positive? skip JSR
+L9B19:	JSR TwosCompliment_					;	negative - flip sign 
+L9B1C:	CMP #$10							; check a 2 metatile window above and below samus
+L9B1E:	BCS $9B25							; 	enemy outside window- jump to move update
 
-L9B20:	LDA #$00
-L9B22:	STA $6AFE,X
+L9B20:	LDA #$00							; enemy within window, load 0
+L9B22:	STA $6AFE,X							; clear vertical accelleration
 L9B25:	LDA #$03
-L9B27:	JMP CallUpdateEnemyAnim0
+L9B27:	JMP CallUpdateEnemyAnimAndMove
 L9B2A:	JMP CallCheckObjectAttribs
 L9B2D:	LDA #$08
-L9B2F:	JMP CallUpdateEnemyAnim1
-L9B32:	LDA EnStatus,X
-L9B35:	CMP #$02
-L9B37:	BNE $9B71
-L9B39:	LDA $0403,X
-L9B3C:	BNE $9B71
-L9B3E:	LDA $6AFE,X
-L9B41:	BNE $9B55
-L9B43:	LDA $030D
-L9B46:	SEC 
-L9B47:	SBC EnYRoomPos,X
-L9B4A:	CMP #$40
-L9B4C:	BCS $9B71
-L9B4E:	LDA #$7F
-L9B50:	STA $6AFE,X
-L9B53:	BNE $9B71
+L9B2F:	JMP CallUpdateEnemyAnimAndCheckAttr
+
+Enemy7Update:
+L9B32:	LDA EnStatus,X						; load enemy status
+L9B35:	CMP #$02							; compare to moving	
+L9B37:	BNE $9B71							; 	not moving? jump ahead to check update skip
+L9B39:	LDA $0403,X							; moving, load enemy horizontal speed
+L9B3C:	BNE $9B71							; 	!0, jump ahead to check update skip
+L9B3E:	LDA $6AFE,X							; no hrizontal speed- load vertical accel
+L9B41:	BNE $9B55							;	we have accel- jump ahead
+L9B43:	LDA $030D							; no vertical acelleration- load samusY pos
+L9B46:	SEC 								; set carry
+L9B47:	SBC EnYRoomPos,X					; subtract from enemy room Y pos (line from enemy to samus)
+L9B4A:	CMP #$40							; check 4 meta-tile vertical window between smaus and enem, starting at enemy and going down
+L9B4C:	BCS $9B71							; 	samus is outside the window, check for update skip
+L9B4E:	LDA #$7F							; samus is within the window, start vertical decel
+L9B50:	STA $6AFE,X							; store into vertical acceleration
+L9B53:	BNE $9B71							; 	branch always check update skip
 L9B55:	LDA EnVertSpeed,X
-L9B58:	BMI $9B71
-L9B5A:	LDA #$00
+L9B58:	BMI $9B71							; 	negative (up), jump to check update skip
+L9B5A:	LDA #$00							; positive (down)- load #0
 L9B5C:	STA EnVertSpeed,X
-L9B5F:	STA EnCounter,X
-L9B62:	STA $6AFE,X
-L9B65:	LDA $0405,X
-L9B68:	AND #$01
-L9B6A:	TAY 
-L9B6B:	LDA $9BA0,Y
-L9B6E:	STA $0403,X
-L9B71:	LDA $0405,X
-L9B74:	ASL 
-L9B75:	BMI $9B95
-L9B77:	LDA EnStatus,X
-L9B7A:	CMP #$02
-L9B7C:	BNE $9B95
-L9B7E:	JSR $8036
-L9B81:	PHA 
-L9B82:	JSR $8039
-L9B85:	STA $05
-L9B87:	PLA 
-L9B88:	STA $04
-L9B8A:	JSR $9CA8
-L9B8D:	JSR $8027
-L9B90:	BCC $9B9A
-L9B92:	JSR $9C96
-L9B95:	LDA #$03
-L9B97:	JMP CallUpdateEnemyAnim1
-L9B9A:	LDA #$00
-L9B9C:	STA EnStatus,X
-L9B9F:	RTS
+L9B5F:	STA EnCounter,X						; reset acceleration counter
+L9B62:	STA $6AFE,X							; 0 out vertical acceleration
+L9B65:	LDA $0405,X							; load enemy status flags
+L9B68:	AND #$01							; isloate enemy horizontal direction
+L9B6A:	TAY 								; move direction to Y
+L9B6B:	LDA $9BA0,Y							; load horizontal speed from table below (4 for right, -4 for left)
+L9B6E:	STA $0403,X							; store in enemy horizontal speed
+L9B71:	LDA $0405,X							; load enemy status flags
+L9B74:	ASL 								; get update skip into bit 7
+L9B75:	BMI $9B95							; 	6 was set- jump ahead 
+L9B77:	LDA EnStatus,X						; not skipping update- load en status
+L9B7A:	CMP #$02							; check if moving
+L9B7C:	BNE $9B95							;	not moving, update anims
+L9B7E:	JSR $8036							; moving, update enemy vertical accel 
+L9B81:	PHA 								; store A (enemy vertical speed) into stack
+L9B82:	JSR $8039							; update enemy horizontal acceleration
+L9B85:	STA $05								; store horizontal speed into $5
+L9B87:	PLA 								; pop vertical speed back out
+L9B88:	STA $04								; store vertical speed into $4
+L9B8A:	JSR SaveEnemyPosTo89B				; save out current enemy position into 8, 9, and B
+L9B8D:	JSR CallCalcPotentialPosition		; calc potential position 
+L9B90:	BCC $9B9A							; 	carry clear, enemy now off screen - free enemy slot and leave
+L9B92:	JSR SetEnemyPositionFrom89B			; set enemy position 
+L9B95:	LDA #$03							; load desired anim frame delay 
+L9B97:	JMP CallUpdateEnemyAnimAndCheckAttr	; update anim- apply 3 frame delay on next frame
+L9B9A:	LDA #$00							; 	clear enemy 
+L9B9C:	STA EnStatus,X						;
+L9B9F:	RTS									; 	return
 
 L9BA0:	.byte $04, $FC
 
+Enemy8Update:
 L9BA2:	LDA EnStatus,X
 L9BA5:	CMP #$03
 L9BA7:	BCC $9BC2
@@ -750,6 +762,8 @@ L9BC8:	JSR $9D05
 L9BCB:	LDA #$0A
 L9BCD:	STA $00
 L9BCF:	JMP $99CC
+
+Enemy9Update:
 L9BD2:	LDA $0405,X
 L9BD5:	AND #$02
 L9BD7:	BEQ $9BE0
@@ -778,8 +792,10 @@ L9C0B:	BCS $9C12
 L9C0D:	LDA #$03
 L9C0F:	STA EnStatus,X
 L9C12:	LDA #$01
-L9C14:	JSR $800C
+L9C14:	JSR CallUpdateEnemyAnim
 L9C17:	JMP CallCheckObjectAttribs
+
+Enemy10Update:
 L9C1A:	JMP $9BD2
 L9C1D:	LDX #$50
 L9C1F:	JSR $9C2A
@@ -835,13 +851,15 @@ L9C7C:	TAY
 L9C7D:	LDA $9CBB,Y
 L9C80:	STA $05
 L9C82:	LDX #$00
-L9C84:	JSR $9CA8
-L9C87:	JSR $8027
+L9C84:	JSR SaveEnemyPosTo89B
+L9C87:	JSR CallCalcPotentialPosition
 L9C8A:	LDX PageIndex
 L9C8C:	BCC $9CA7
 L9C8E:	LDA EnStatus,X
-L9C91:	BNE $9C96
+L9C91:	BNE SetEnemyPositionFrom89B
 L9C93:	INC EnStatus,X
+
+SetEnemyPositionFrom89B:
 L9C96:	LDA $08
 L9C98:	STA EnYRoomPos,X
 L9C9B:	LDA $09
@@ -851,6 +869,7 @@ L9CA2:	AND #$01
 L9CA4:	STA EnNameTable,X
 L9CA7:	RTS
 
+SaveEnemyPosTo89B:
 L9CA8:	LDA EnYRoomPos,X
 L9CAB:	STA $08
 L9CAD:	LDA EnXRoomPos,X
@@ -1055,10 +1074,13 @@ L9F40:	.byte $FC, $F8, $FC, $00, $04, $F8, $04, $00
 L9F48:	.byte $F0, $F4, $F0, $FC, $F0, $04, $F8, $F4, $F8, $FC, $F8, $04, $00, $F4, $00, $FC
 L9F58:	.byte $00, $04, $08, $F4, $08, $FC, $08, $04
 
+;upward jumping enemy idle anim positions
 L9F60:	.byte $F8, $F4, $00, $F4, $F8, $FC, $00, $FC, $F4, $FC, $FC, $FC, $F8, $04, $00, $04
 
+;upward jumping enemy jumping anim positions
 L9F70:	.byte $02, $F4, $0A, $F4, $F8, $FC, $00, $FC, $02, $04, $0A, $04
 
+;crawler anim positions
 L9F7C:	.byte $F8, $F8, $F8, $00, $00, $F8, $00, $00
 
 L9F84:	.byte $F4, $FC, $FC, $FC, $04, $FC, $FC, $04, $04, $04, $0C, $FC
@@ -1082,10 +1104,20 @@ L9FD1:	.byte $27, $06, $08, $FC, $04, $00, $D0, $D1, $FF
 
 L9FDA:	.byte $67, $06, $08, $FC, $04, $00, $D0, $D1, $FF
 
-L9FE3:	.byte $25, $08, $0A, $A3, $B3, $A4, $B4, $FE, $FE, $FD, $62, $A3, $B3, $FF
+;upward jumping enemy idle frames
 
+; byte 0: defines base control flags and position table index of sprite info
+; byte 2: Y collision radius for this frame
+; byte 3: X collision radius for this frame
+; any byte below FC - tile Index
+; FC XX XX - change object position 
+; FD XX - override base control flags for next sprites
+; FE - skip current position data
+
+L9FE3:	.byte $25, $08, $0A, $A3, $B3, $A4, $B4, $FE, $FE, $FD, $62, $A3, $B3, $FF
 L9FF1:	.byte $25, $08, $0A, $A5, $B3, $FE, $FE, $A4, $B4, $FD, $62, $A5, $B3, $FF
 
+;upward jumping enemy jumping frame
 L9FFF:	.byte $26, $08, $0A, $B5, $B3, $A4, $B4, $FD, $62, $B5, $B3, $FF
 
 LA00B:	.byte $A5, $08, $0A, $A3, $B3, $A4, $B4, $FE, $FE, $FD, $E2, $A3, $B3, $FF
@@ -1140,9 +1172,13 @@ LA106:	.byte $A7, $08, $08, $CC, $CD, $DC, $DD, $FF
 
 LA10E:	.byte $E7, $08, $08, $CC, $CD, $DC, $DD, $FF
 
+;crawler anims
+
 LA116:	.byte $67, $08, $08, $CA, $CB, $DA, $DB, $FF
 
 LA11E:	.byte $E7, $08, $08, $CA, $CB, $DA, $DB, $FF
+
+
 
 LA126:	.byte $21, $00, $00, $CC, $CD, $DC, $DD, $FF
 

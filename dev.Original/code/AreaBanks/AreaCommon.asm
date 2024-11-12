@@ -35,10 +35,10 @@
 
 ;-----------------------------------------[ Start of code ]------------------------------------------
 
-CallUpdateEnemyAnim0:
-L8000:	JMP UpdateEnemyAnim0 
-CallUpdateEnemyAnim1:
-L8003:	JMP UpdateEnemyAnim1   
+CallUpdateEnemyAnimAndMove:
+L8000:	JMP UpdateEnemyAnimAndMove 
+CallUpdateEnemyAnimAndCheckAttr:
+L8003:	JMP UpdateEnemyAnimAndCheckAttr   
 CallCheckObjectAttribs:
 L8006:	JMP CheckObjectAttribs 
 CallGetRandomEnIdxFrCnt:
@@ -53,8 +53,8 @@ CallEnemyInitHealth:
 L8015:	JMP EnemyInitHealth
 CallQueueEnAnimation:
 L8018:	JMP QueueEnAnimation
-CallUpdateNearHomeAnim:
-L801B:	JMP UpdateNearHomeAnim
+CallUpdateHomeRelativeAnimation:
+L801B:	JMP UpdateHomeRelativeAnimation
 CallUpdateEnAnimationDirection:
 L801E:	JMP UpdateEnAnimationDirection
 CallLaunchEnProjectile:
@@ -63,6 +63,7 @@ L8021:	JMP LaunchEnProjectile
 
 AreaChooseRoutine:
 		JMP ChooseRoutine		;($C27C)
+CallCalcPotentialPosition:
 L8027:	JMP CalcPotentialPosition
 L802A:	JMP UnknownEB6E
 L802D:	JMP $8244
@@ -87,7 +88,7 @@ L8052:	.word $84FD			; counter clockwise from down
 L8054:	.word $83F4			; clockwise from left
 L8056:	.word $83F4			; counter clockwise from left
 
-;;update enemy movement and collision
+UpdateEnemyMovement:
 L8058:	LDX PageIndex				; load enemy index
 L805A:	LDA $0405,X					; load enemy status flags
 L805D:	ASL 						; get bit 6 (skip update flag) into MSB
@@ -127,7 +128,7 @@ L80AB:	DEC $66
 L80AD:	BNE -						; 		loop for each pixel
 L80AF:*	RTS							; return
  
-
+LoadFrom977B:
 L80B0:	LDY EnDataIndex,X	;load enemy index
 L80B3:	LDA $977B,Y			;get the data in  977B
 L80B6:	ASL					;shift the data left, moving MSB to carry flag
@@ -178,7 +179,7 @@ L80FF:	LDA $0405,X
 L8102:	BPL $810A
 L8104:	JSR InvertVertMovement
 L8107:	JMP $812F
-L810A:	JSR $80B0
+L810A:	JSR LoadFrom977B
 L810D:	BPL $8123
 L810F:	LDA $6B03,X					; 6B03 data
 L8112:	BEQ $8104					; 0, invert hori and finish processing
@@ -187,7 +188,7 @@ L8116:	CLC 						; negative, clear carry
 L8117:	ROR EnVertSpeed,X			; halv vert speed, 0 into MSB
 L811A:	ROR EnCounter,X				; halv accel counter, 1 into MSB if odd velocity
 L811D:	JMP $812F					; finish prcoessing collision
-L8120:	JSR $81B1					; positive - clear vert accel and set delay timer
+L8120:	JSR ResetDelayVerticalAcceleration
 L8123:	LDA $977B,Y
 L8126:	LSR 
 L8127:	LSR 
@@ -201,7 +202,7 @@ L8133:	RTS
 ;; process rightward collision, if there was any
 L8134:	LDX PageIndex
 L8136:	BCS $816D
-L8138:	JSR $80B0
+L8138:	JSR LoadFrom977B
 L813B:	BPL $815E
 L813D:	LDA $0405,X
 L8140:	BMI $8148
@@ -228,7 +229,7 @@ L816D:	RTS
 ;;process left collision if there was any
 L816E:	LDX PageIndex
 L8170:	BCS $81B0
-L8172:	JSR $80B0
+L8172:	JSR LoadFrom977B
 L8175:	BPL $81A0
 L8177:	LDA $0405,X
 L817A:	BMI $8182
@@ -246,7 +247,7 @@ L8195:	JMP $81AC
 L8198:	STA $0403,X
 L819B:	STA $0407,X
 L819E:	BEQ $81AC
-L81A0:	JSR $80B0
+L81A0:	JSR LoadFrom977B
 L81A3:	LSR 
 L81A4:	LSR 
 L81A5:	BCC $81AC
@@ -288,7 +289,7 @@ InvertHoriVel:
 ;coming from a method in enemy movement stuff
 L81DA:	JSR IsMovementInvertable			; load flag from enemy table (0010 0000)
 L81DD:	BNE $81F5			; if not 0, return
-L81DF:	JSR $80B0			; else, load 977b enemy date
+L81DF:	JSR LoadFrom977B			; else, load 977b enemy date
 L81E2:	SEC 				; set carry flag 
 L81E3:	BPL $81ED			;	no acceleration, jump ahead
 L81E5:	LDA #$00			; 	using acceleration, invert 407 first
@@ -318,7 +319,7 @@ L820C:	STA $6AFE,X
 InvertVertVel:
 L820F:	JSR IsMovementInvertable	; get data from 968B, masked with 0010 0000 to isloate ? flag
 L8212:	BNE $822A					;	not 0 - return 
-L8214:	JSR $80B0					; 0 - load 977B with accel flag in MSB
+L8214:	JSR LoadFrom977B
 L8217:	SEC 						; set carry
 L8218:	BPL $8222					; 	not accel based motion? just flip the velocity
 L821A:	LDA #$00					; accel based movement- load #0
@@ -349,7 +350,7 @@ L8243:	RTS						;return
 ;it's related actions based on the data in 977B
 
 GetEnVerticalVelocity:
-L8244:	JSR $80B0				; load 977B into A, with the MSB in the carry flag and the 6th bit in the MSB
+L8244:	JSR LoadFrom977B		; load 977B into A, with the MSB in the carry flag and the 6th bit in the MSB
 L8247:	BPL UseMovementTable	; 	6th bit clear - skip over JMP, use movement tables for vert velocity
 L8249:	JMP $833F				; 	6th bit set - jump out to vertical acceleration stuff
 
@@ -481,7 +482,7 @@ L8315:	JMP $82A2			; clear $00
 
 
 GetEnHorizontalVelocity:
-L8318:	JSR $80B0			; load 977B data
+L8318:	JSR LoadFrom977B			; load 977B data
 L831B:	BPL $8320			; 	positive - skip jump and use data table for horizontal velocity
 L831D:	JMP $8395			; 	negative - do horizontal acceleration stuff
 L8320:	LDA $0405,X			; load enemy status flags

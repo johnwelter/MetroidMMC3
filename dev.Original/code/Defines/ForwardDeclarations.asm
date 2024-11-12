@@ -1,5 +1,7 @@
 ;;AreaCommon declares
 .alias AreaRefresh 						$8000
+.alias UpdateEnemyMovement				$8058
+.alias LoadFrom977B						$80B0
 .alias InvertHoriAccel					$81D1
 .alias InvertHoriVel					$81DA
 .alias InvertVertAccel					$8206
