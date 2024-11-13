@@ -203,7 +203,7 @@ L95A8:	.byte $60, $EA, $EA, $60, $EA, $EA, $60, $EA, $EA, $60, $EA, $EA, $60, $E
 L95B8:	.byte $EA, $EA, $60, $EA, $EA, $60, $EA, $EA, $60, $EA, $EA
 
 AreaRoutine:
-L95C3:	JMP $9B48			;Area specific routine.
+L95C3:	JMP $9B48			;Area specific routine - just returns
 
 TwosCompliment_:
 L95C6:	EOR #$FF			;
@@ -370,9 +370,9 @@ L98AA:	BMI $98CA
 L98AC:	LDA $6AF4,X
 L98AF:	CMP #$02
 L98B1:	BNE $98CA
-L98B3:	JSR $8036
+L98B3:	JSR CallEnVerticalAcceleration
 L98B6:	PHA 
-L98B7:	JSR $8039
+L98B7:	JSR CallEnHorizontalAcceleration
 L98BA:	STA $05
 L98BC:	PLA 
 L98BD:	STA $04
@@ -447,7 +447,7 @@ L9955:	JMP $8006
 L9958:	STA $6B02,X
 L995B:	LDA $040B,X
 L995E:	PHA 
-L995F:	JSR $802A
+L995F:	JSR CallResetEnemy
 L9962:	PLA 
 L9963:	STA $040B,X
 L9966:	RTS
@@ -632,7 +632,7 @@ L9AD1:	STA $6B02,X
 L9AD4:	LDA #$01
 L9AD6:	STA $6AF4,X
 L9AD9:	JSR $9AF1
-L9ADC:	JMP $802A
+L9ADC:	JMP CallResetEnemy
 L9ADF:	PHP 
 L9AE0:	SED 
 L9AE1:	LDA $0400,X

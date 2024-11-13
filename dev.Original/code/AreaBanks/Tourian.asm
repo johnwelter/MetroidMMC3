@@ -208,12 +208,13 @@ L95BD:	JMP $A0C6
 L95C0:	JMP $A142
 
 AreaRoutine:
-L95C3:	JMP $9B25			;Area specific routine.
+L95C3:	JMP TourianAreaRoutine		;Area specific routine.
 
 TwosCompliment_:
 L95C6:	EOR #$FF			;
 L95C8:	CLC				;The following routine returns the twos-->
 L95C9:	ADC #$01			;compliment of the value stored in A.
+TwosExit:
 L95CB:	RTS				;
 
 L95CC:	.byte $FF			;Not used.
@@ -504,7 +505,7 @@ L9991:	BEQ $999E
 L9993:	STY $6F
 L9995:	LDY #$04
 L9997:	STY $6E
-L9999:	JSR $8042
+L9999:	JSR CallSubtractHealth
 L999C:	LDY #$01
 L999E:	STY $92
 L99A0:	LDA $6B
@@ -698,12 +699,14 @@ L9B22:	ASL
 L9B23:	ASL 
 L9B24:	RTS
 
+TourianAreaRoutine:
 L9B25:	JSR $9B37
-L9B28:	JSR $9DD4
+L9B28:	JSR UpdateMotherBrain
 L9B2B:	JSR $A1E7
 L9B2E:	JSR $A238
 L9B31:	JSR $A28B
 L9B34:	JMP $A15E
+
 L9B37:	LDX #$78
 L9B39:	JSR $9B44
 L9B3C:	LDA $97
@@ -827,7 +830,7 @@ L9C40:	LDA $6BF7,X
 L9C43:	STA $6BDB
 L9C46:	LDA #$E0
 L9C48:	STA $4B
-L9C4A:	JMP $803C
+L9C4A:	JMP CallUpdateObjectCntrl
 L9C4D:	LDY #$00
 L9C4F:	LDA $6BF6,X
 L9C52:	CMP $FD
@@ -1002,9 +1005,29 @@ L9D9F:	.byte $FD, $03, $02, $01, $FF, $00, $07, $06, $FE, $05, $04, $FE, $05, $0
 L9DAF:	.byte $02, $03, $FC, $04, $05, $06, $05, $FC, $04, $03, $FF, $02, $03, $FC, $04, $03
 L9DBF:	.byte $FF, $06, $05, $FC, $04, $05, $FF, $06, $07, $08, $09, $0A, $0B, $0C, $0D, $09
 
-L9DCF:	.byte $F7, $00, $09, $09, $0B, $A5, $98, $F0, $19, $20, $24, $80, $CB, $95, $22, $9E
-L9DDF:	.byte $36, $9E, $52, $9E, $86, $9E, $02, $9F, $49, $9F, $C0, $9F, $02, $9F, $DA, $9F
-L9DEF:	.byte $CB, $95, $60
+L9DCF:	.byte $F7, $00, $09, $09, $0B
+
+
+UpdateMotherBrain:
+L9DD4:	LDA MotherBrainStatus
+		BEQ + 
+		JSR AreaChooseRoutine 
+		
+MotherBrainRoutines:
+
+		.word TwosExit	; RTS
+		.word $9E22 	; normal state
+		.word $9E36 	; hit state
+		.word $9E52		; dying state
+		.word $9E86		; disappearing state
+		.word $9F02		; mother brain gone state
+		.word $9F49		; time bomb state
+		.word $9FC0		; time bomb exploded state
+		.word $9F02		; initialize state
+		.word $9FDA		;
+		.word TwosExit	; RTS
+		
+l9DF1:*	RTS
 
 L9DF2:	LDA $030C
 L9DF5:	EOR $9D
@@ -1027,7 +1050,7 @@ L9E16:	LDA #$02
 L9E18:	STA $6F
 L9E1A:	LDA #$38
 L9E1C:	STA $030A
-L9E1F:	JMP $8042
+L9E1F:	JMP CallSubtractHealth
 L9E22:	JSR $9DF2
 L9E25:	JSR $9FED
 L9E28:	JSR $A01B
@@ -1167,7 +1190,7 @@ L9F25:	LDA #$00
 L9F27:	STA $4B
 L9F29:	LDA $07A0
 L9F2C:	BNE $9F38
-L9F2E:	JSR $803F
+L9F2E:	JSR CallDrawTileBlast
 L9F31:	BCS $9F38
 L9F33:	INC MotherBrainHits
 L9F35:	RTS
@@ -1231,7 +1254,7 @@ L9FB4:	ORA #$61
 L9FB6:	STA $0509
 L9FB9:	LDA #$00
 L9FBB:	STA $4B
-L9FBD:	JMP $803F
+L9FBD:	JMP CallDrawTileBlast
 L9FC0:	LDA #$10
 L9FC2:	ORA $0680
 L9FC5:	STA $0680
@@ -1313,12 +1336,12 @@ LA051:	STA $04E1
 LA054:	LDY $9C
 LA056:	LDA $A06D,Y
 LA059:	STA $6BD7
-LA05C:	JSR $803C
+LA05C:	JSR CallUpdateObjectCntrl
 LA05F:	LDA $9B
 LA061:	BMI $A06C
 LA063:	LDA $A071
 LA066:	STA $6BD7
-LA069:	JSR $803C
+LA069:	JSR CallUpdateObjectCntrl
 LA06C:	RTS
 
 LA06D:	.byte $13, $14, $15, $16, $17
@@ -1348,7 +1371,7 @@ LA096:	STA $0509
 LA099:	LDA #$00
 LA09B:	STA $0503
 LA09E:	STA $4B
-LA0A0:	JMP $803F
+LA0A0:	JMP CallDrawTileBlast
 
 LA0A3:	.byte $00, $02, $04, $06, $08, $40, $80, $C0, $48, $88, $C8, $FF, $42, $81, $C1, $27
 LA0B3:	.byte $FF, $82, $43, $25, $47, $FF, $C2, $C4, $C6, $FF, $84, $45, $86, $FF, $00, $0C
@@ -1378,7 +1401,7 @@ LA0F3:	STA $0503,X
 LA0F6:	LDA $4B
 LA0F8:	PHA 
 LA0F9:	STX $4B
-LA0FB:	JSR $803F
+LA0FB:	JSR CallDrawTileBlast
 LA0FE:	PLA 
 LA0FF:	STA $4B
 LA101:	BNE $A13E
@@ -1473,7 +1496,7 @@ LA1A3:	STA $6B02,X
 LA1A6:	LDA #$00
 LA1A8:	STA $040F,X
 LA1AB:	STA $0404,X
-LA1AE:	JSR $802A
+LA1AE:	JSR CallResetEnemy
 LA1B1:	LDA #$F7
 LA1B3:	STA $6AF7,X
 LA1B6:	LDY $4B
@@ -1503,12 +1526,12 @@ LA1ED:	LDA $010A
 LA1F0:	STA $03
 LA1F2:	LDA #$01
 LA1F4:	SEC 
-LA1F5:	JSR $8045
+LA1F5:	JSR CallBase10Subtract
 LA1F8:	STA $010A
 LA1FB:	LDA $010B
 LA1FE:	STA $03
 LA200:	LDA #$00
-LA202:	JSR $8045
+LA202:	JSR CallBase10Subtract
 LA205:	STA $010B
 LA208:	LDA $2D
 LA20A:	AND #$1F
@@ -1546,7 +1569,7 @@ LA252:	LDA #$E0
 LA254:	STA $4B
 LA256:	LDA $5B
 LA258:	PHA 
-LA259:	JSR $803C
+LA259:	JSR CallUpdateObjectCntrl
 LA25C:	PLA 
 LA25D:	CMP $5B
 LA25F:	BEQ $A28A
@@ -1608,7 +1631,7 @@ LA2CC:	LDA $07A0
 LA2CF:	BNE $A2DA
 LA2D1:	TXA 
 LA2D2:	PHA 
-LA2D3:	JSR $803F
+LA2D3:	JSR CallDrawTileBlast
 LA2D6:	PLA 
 LA2D7:	TAX 
 LA2D8:	BCC $A2EB

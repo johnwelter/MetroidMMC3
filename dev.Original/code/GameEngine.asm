@@ -6824,10 +6824,10 @@ SpawnEnemyAtLocation:
 	jsr GetNameTable		;($EB85)Get name table to place enemy on.
 	sta EnNameTable,x		;Store name table.
 
-UnknownEB6E:
+ResetEnemy:
 	ldy EnDataIndex,x		; Load y with index to enemy data.
 	asl $0405,x				; pop out the direction check 
-	jsr UnknownFB7B			; shove in the new direction check from 977B
+	jsr InitEnemyCheckDirectionAndDelay			; shove in the new direction check from 977B
 	jmp EnemyInitHealth		
 
 IsSlotTaken:
@@ -9202,9 +9202,9 @@ DoOneSpawner:
 	sta EnStatus,x							; and enemy status (waiting)
 	and ScrollDir							; get positive (0001) or negative(0000) scroll direction
 	asl										; shift left (0010 or 0000)
-	sta $0405,x								; init enemy status flags with flag for 0001 0000 Temporarily shoved one space to the left
+	sta $0405,x								; init enemy status flags with 0000 00x0 - will be shifted right to store facing direction
 	ldy EnDataIndex,x						; load the enemy data index 
-	jsr UnknownFB7B							; init distance check bit, move 0001 0000 flag into place 		
+	jsr InitEnemyCheckDirectionAndDelay		; init distance check bit, move 1000 000x flag into place 		
 	jmp EnemyInitHealth						; init enemy health
 
 *   sta EnDataIndex,x						; store into enemy data index
@@ -9212,8 +9212,8 @@ DoOneSpawner:
 	sta EnDelay,x
 	jmp KillObject			;($FA18)Free enemy data slot.
 
-UnknownFB7B:  
-	jsr LoadFrom977B					;load 977b data, pop out MSB into carry 
+InitEnemyCheckDirectionAndDelay:  
+	jsr LoadFrom977B			;load 977b data, pop out MSB into carry 
 	ror $0405,x					;pull onto status flags as the direction to check for samus (horizontal or vertical)
 	lda EnemyInitDelayTbl,y		;Load initial delay for enemy movement.
 	sta EnDelay,x				;

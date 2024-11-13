@@ -44,7 +44,7 @@ L8006:	JMP CheckObjectAttribs
 CallGetRandomEnIdxFrCnt:
 L8009:	JMP GetRandom_EnIdxFrCnt
 CallUpdateEnemyAnim:
-L800C:	JMP UpdateEnemyAnim		;($E094)
+L800C:	JMP UpdateEnemyAnim		
 CallResetAnimIndex:
 L800F:	JMP ResetAnimIndex 
 CallGetEnemyXDirectionDataIndex:
@@ -59,22 +59,30 @@ CallUpdateEnAnimationDirection:
 L801E:	JMP UpdateEnAnimationDirection
 CallLaunchEnProjectile:
 L8021:	JMP LaunchEnProjectile
-
-
 AreaChooseRoutine:
-		JMP ChooseRoutine		;($C27C)
+L8024:	JMP ChooseRoutine		
 CallCalcPotentialPosition:
 L8027:	JMP CalcPotentialPosition
-L802A:	JMP UnknownEB6E
-L802D:	JMP $8244
-L8030:	JMP GetEnVerticalVelocity
+CallResetEnemy:
+L802A:	JMP ResetEnemy
+CallGetEnVerticalVelocity:
+L802D:	JMP GetEnVerticalVelocity
+CallGetEnHorizontalVelocity:
+L8030:	JMP GetEnHorizontalVelocity
+CallEnemyBGCrashDetection:
 L8033:	JMP EnemyBGCrashDetection
-L8036:	JMP $833F
-L8039:	JMP $8395
+CallEnVerticalAcceleration:
+L8036:	JMP EnVerticalAcceleration
+CallEnHorizontalAcceleration:
+L8039:	JMP EnHorizontalAcceleration
+CallUpdateObjectCntrl:
 L803C:	JMP UpdateObjectCntrl
+CallDrawTileBlast:
 L803F:	JMP DrawTileBlast
-L8042:	JMP SubtractHealth		;($CE92)
-L8045:	JMP Base10Subtract		;($C3FB)
+CallSubtractHealth:
+L8042:	JMP SubtractHealth		
+CallBase10Subtract:
+L8045:	JMP Base10Subtract		
 
 ;use the current rotation and horizontal relation status to pick a given 
 ;rotation collision check routine from below

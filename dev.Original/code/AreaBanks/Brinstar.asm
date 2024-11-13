@@ -211,7 +211,7 @@ L95BD:	.byte $60, $EA, $EA
 L95C0:	.byte $60, $EA, $EA
 
 AreaRoutine:
-L95C3:	JMP $9D35			;Area specific routine.
+L95C3:	JMP $9D35			;Area specific routine - just returns
 
 TwosCompliment_:
 L95C6:	EOR #$FF			;
@@ -724,9 +724,9 @@ L9B75:	BMI $9B95							; 	6 was set- jump ahead
 L9B77:	LDA EnStatus,X						; not skipping update- load en status
 L9B7A:	CMP #$02							; check if moving
 L9B7C:	BNE $9B95							;	not moving, update anims
-L9B7E:	JSR $8036							; moving, update enemy vertical accel 
+L9B7E:	JSR CallEnVerticalAcceleration							; moving, update enemy vertical accel 
 L9B81:	PHA 								; store A (enemy vertical speed) into stack
-L9B82:	JSR $8039							; update enemy horizontal acceleration
+L9B82:	JSR CallEnHorizontalAcceleration							; update enemy horizontal acceleration
 L9B85:	STA $05								; store horizontal speed into $5
 L9B87:	PLA 								; pop vertical speed back out
 L9B88:	STA $04								; store vertical speed into $4
@@ -779,15 +779,15 @@ L9BEB:	BMI $9C12
 L9BED:	LDA EnStatus,X
 L9BF0:	CMP #$02
 L9BF2:	BNE $9C12
-L9BF4:	JSR $802D
+L9BF4:	JSR CallGetEnVerticalVelocity
 L9BF7:	LDX PageIndex
 L9BF9:	LDA $00
 L9BFB:	STA EnVertSpeed,X
-L9BFE:	JSR $8030
+L9BFE:	JSR CallGetEnVerticalVelocity
 L9C01:	LDX PageIndex
 L9C03:	LDA $00
 L9C05:	STA $0403,X
-L9C08:	JSR $8033
+L9C08:	JSR CallEnemyBGCrashDetection
 L9C0B:	BCS $9C12
 L9C0D:	LDA #$03
 L9C0F:	STA EnStatus,X
@@ -829,7 +829,7 @@ L9C53:	BEQ $9C60
 L9C55:	LDA #$00
 L9C57:	STA EnStatus,X
 L9C5A:	STA EnSpecialAttribs,X
-L9C5D:	JSR $802A
+L9C5D:	JSR CallResetEnemy
 L9C60:	LDA $0405
 L9C63:	STA $0405,X
 L9C66:	LSR 
@@ -939,7 +939,9 @@ L9D2F:	LDA #$08
 L9D31:	STA EnDelay,X
 L9D34:	RTS
 
-L9D35:	.byte $60, $22, $FF, $FF, $FF, $FF, $22, $80, $81, $82, $83, $22, $84, $85, $86, $87
+
+L9D35:	RTS 
+l9D36:	.byte $22, $FF, $FF, $FF, $FF, $22, $80, $81, $82, $83, $22, $84, $85, $86, $87
 L9D45:	.byte $22, $88, $89, $8A, $8B, $22, $8C, $8D, $8E, $8F, $22, $94, $95, $96, $97, $22
 L9D55:	.byte $9C, $9D, $9D, $9C, $22, $9E, $9F, $9F, $9E, $22, $90, $91, $92, $93, $32, $4E
 L9D65:	.byte $4E, $4E, $4E, $4E, $4E
