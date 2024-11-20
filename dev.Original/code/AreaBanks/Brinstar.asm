@@ -141,12 +141,21 @@ L9450:	.byte $5E, $2C, $20, $3C, $24, $18, $00, $00, $87, $C3, $42, $42, $42, $6
 L9460:	.byte $00, $00, $00, $00, $0B, $27, $73, $DF, $0A, $0F, $1F, $34, $0B, $07, $11, $18
 L9470:	.byte $00, $00, $00, $00, $00, $8C, $F2, $E0, $40, $E8, $FA, $FF, $60, $80, $30, $00
 L9480:	.byte $00, $00, $1C, $3E, $3E, $3E, $1C, $00, $00, $1C, $26, $69, $55, $53, $32, $1C
-L9490:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-L94A0:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-L94B0:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-L94C0:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-L94D0:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-L94E0:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+
+;adding some tiles for the missing enemy
+L9490:	.byte $00, $00, $00, $00, $18, $3C, $3A, $17, $00, $00, $00, $00, $00, $10, $02, $07
+L94A0:	.byte $00, $00, $08, $00, $00, $81, $81, $DB, $00, $00, $24, $76, $6E, $76, $24, $00
+L94B0:	.byte $00, $00, $00, $18, $3D, $3B, $10, $00, $00, $00, $00, $00, $11, $03, $00, $00
+L94C0:	.byte $18, $18, $98, $98, $64, $18, $7E, $E6, $18, $18, $18, $00, $00, $00, $00, $E6
+L94D0:	.byte $BD, $DB, $18, $24, $3C, $66, $66, $24, $00, $00, $00, $42, $00, $00, $42, $24
+L94E0:	.byte $03, $1A, $3C, $38, $10, $08, $18, $18, $03, $02, $10, $00, $00, $08, $18, $18
+
+;L9490:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+;L94A0:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+;L94B0:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+;L94C0:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+;L94D0:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+;L94E0:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 L94F0:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 L9500:	.byte $1D, $1D, $1D, $1D, $1D, $1D, $1D, $1D, $0F, $0F, $0F, $0F, $0F, $0F, $0F, $0F
 L9510:	.byte $F8, $F8, $F8, $F8, $F8, $F8, $F8, $F8, $A0, $A0, $A0, $A0, $A0, $A0, $A0, $A0
@@ -243,7 +252,7 @@ AreaStartYPos:	.byte $B0			;Samus start verticle screen position.
 ;;byte 7 - ''
 ;;byte 8 - something to do with enemy movement, read in UnknownF991, indexed with y
 ;;byte 9 - ''
-;;byte A - something to do with special and mellow enemies, read in SpecEnemyHandler and UpdateMellowEnemies
+;;byte A - something to do with special and mellow enemies, read in SpecEnemyHandler and UpdateSpecialEnemies
 AreaPaletteToggleValue:	.byte $01 
 Unknown95CB:	.byte $00
 Unknown95DC:	.byte $03
@@ -254,7 +263,7 @@ Unknown95E0: 	.byte $00
 Unknown95E1:	.byte $00 
 Unknown95E2:	.byte $00
 Unknown95E3:	.byte $00
-Unknown95E4:	.byte $69 
+SpecEnAnim:		.byte $69 
 
 AreaEnemySpecificUpdate:
 L95E5:	LDA EnDataIndex, X
@@ -949,7 +958,7 @@ L9D65:	.byte $4E, $4E, $4E, $4E, $4E
 ;-----------------------------------[ Enemy animation data tables ]----------------------------------
 
 EnemyAnimIndexTbl:
-
+			  ;00
 L9D6A:	.byte $00, $01, $FF
 
 L9D6D:	.byte $02, $FF
@@ -959,7 +968,7 @@ L9D6F:	.byte $19, $1A, $FF
 L9D72:	.byte $1A, $1B, $FF
 
 L9D75:	.byte $1C, $1D, $FF
-
+						;10
 L9D78:	.byte $1D, $1E, $FF
 
 L9D7B:	.byte $22, $23, $24, $FF
@@ -971,7 +980,7 @@ L9D83:	.byte $22, $FF
 L9D85:	.byte $1F, $FF
 
 L9D87:	.byte $23, $04, $FF
-
+			  ;20
 L9D8A:	.byte $20, $03, $FF
 
 L9D8D:	.byte $27, $28, $29, $FF
@@ -983,9 +992,9 @@ L9D93:	.byte $38, $FF
 L9D95:	.byte $39, $FF
 
 L9D97:	.byte $3A, $FF
-
+				   ;30
 L9D99:	.byte $3B, $FF
-
+			  
 L9D9B:	.byte $3C, $FF
 
 L9D9D:	.byte $3D, $FF
@@ -995,9 +1004,9 @@ L9D9F:	.byte $58, $59, $FF
 L9DA2:	.byte $5A, $5B, $FF
 
 L9DA5:	.byte $5C, $5D, $FF
-
+						;40
 L9DA8:	.byte $5E, $5F, $FF
-
+			  
 L9DAB:	.byte $60, $FF
 
 L9DAD:	.byte $61, $F7, $62, $F7, $FF
@@ -1007,7 +1016,7 @@ L9DB2:	.byte $63, $64, $FF
 L9DB5:	.byte $65, $FF
 
 L9DB7:	.byte $66, $67, $FF
-
+			  ;50
 L9DBA:	.byte $69, $6A, $FF
 
 L9DBD:	.byte $68, $FF
@@ -1021,15 +1030,16 @@ L9DC3:	.byte $69, $FF
 L9DC5:	.byte $6C, $FF
 
 L9DC7:	.byte $6D, $FF
-
+				   ;60
 L9DC9:	.byte $6F, $70, $71, $6E, $FF
 
 L9DCE:	.byte $73, $74, $75, $72, $FF
 
+;bug enemy flying anim
 L9DD3:	.byte $8F, $90, $FF
 
 L9DD6:	.byte $91, $92, $FF
-
+				   ;70
 L9DD9:	.byte $93, $94, $FF
 
 L9DDC:	.byte $95, $FF
@@ -1092,6 +1102,7 @@ L9FA0:	.byte $F0, $F8, $F8, $F0, $00, $F0, $08, $F0, $08, $F8, $00, $08, $08, $0
 
 L9FB0:	.byte $F8, $FC, $00, $F8, $F4, $F4, $FC, $F4, $00, $00, $F4, $04, $FC, $04
 
+;bug thing positions 
 L9FBE:	.byte $FC, $F8, $FC, $00 
 
 ;Enemy frame drawing data.
@@ -1116,17 +1127,29 @@ L9FDA:	.byte $67, $06, $08, $FC, $04, $00, $D0, $D1, $FF
 ; FD XX - override base control flags for next sprites
 ; FE - skip current position data
 
-L9FE3:	.byte $25, $08, $0A, $A3, $B3, $A4, $B4, $FE, $FE, $FD, $62, $A3, $B3, $FF
-L9FF1:	.byte $25, $08, $0A, $A5, $B3, $FE, $FE, $A4, $B4, $FD, $62, $A5, $B3, $FF
+;ADDITION: changing tile data to match enemy
+L9FE3:	.byte $25, $08, $0A, $F3, $F6, $F4, $F7, $FE, $FE, $FD, $62, $F3, $F6, $FF
+L9FF1:	.byte $25, $08, $0A, $F5, $F6, $FE, $FE, $F4, $F7, $FD, $62, $F5, $F6, $FF
+
+L9FFF:	.byte $26, $08, $0A, $F8, $F6, $F4, $F7, $FD, $62, $F8, $F6, $FF
+
+;L9FE3:	.byte $25, $08, $0A, $A3, $B3, $A4, $B4, $FE, $FE, $FD, $62, $A3, $B3, $FF
+;L9FF1:	.byte $25, $08, $0A, $A5, $B3, $FE, $FE, $A4, $B4, $FD, $62, $A5, $B3, $FF
 
 ;upward jumping enemy jumping frame
-L9FFF:	.byte $26, $08, $0A, $B5, $B3, $A4, $B4, $FD, $62, $B5, $B3, $FF
+;L9FFF:	.byte $26, $08, $0A, $B5, $B3, $A4, $B4, $FD, $62, $B5, $B3, $FF
 
-LA00B:	.byte $A5, $08, $0A, $A3, $B3, $A4, $B4, $FE, $FE, $FD, $E2, $A3, $B3, $FF
+;ADDITION: changing tile data to match enemy
+LA00B:	.byte $A5, $08, $0A, $F3, $F6, $F4, $F7, $FE, $FE, $FD, $E2, $F3, $F6, $FF
+LA019:	.byte $A5, $08, $0A, $F5, $F6, $FE, $FE, $F4, $F7, $FD, $E2, $F5, $F6, $FF
 
-LA019:	.byte $A5, $08, $0A, $A5, $B3, $FE, $FE, $A4, $B4, $FD, $E2, $A5, $B3, $FF
+LA027:	.byte $A6, $08, $0A, $F8, $F6, $F4, $F7, $FD, $E2, $F8, $F6, $FF
 
-LA027:	.byte $A6, $08, $0A, $B5, $B3, $A4, $B4, $FD, $E2, $B5, $B3, $FF
+;LA00B:	.byte $A5, $08, $0A, $A3, $B3, $A4, $B4, $FE, $FE, $FD, $E2, $A3, $B3, $FF
+;LA019:	.byte $A5, $08, $0A, $A5, $B3, $FE, $FE, $A4, $B4, $FD, $E2, $A5, $B3, $FF
+
+;LA027:	.byte $A6, $08, $0A, $B5, $B3, $A4, $B4, $FD, $E2, $B5, $B3, $FF
+
 
 LA033:	.byte $27, $06, $08, $FC, $04, $00, $C0, $C1, $FF
 
@@ -1237,8 +1260,10 @@ LA1FF:	.byte $00, $04, $04, $8A, $FF
 
 LA204:	.byte $00, $04, $04, $8A, $FF
 
+;little bug guys animation
+;uses F position 
+;seems weird to set up a base control on the sprite then override it twice? will have to look into that
 LA209:	.byte $3F, $04, $08, $FD, $03, $EC, $FD, $43, $EC, $FF
-
 LA213:	.byte $3F, $04, $08, $FD, $03, $ED, $FD, $43, $ED, $FF
 
 LA21D:	.byte $22, $10, $0C, $C5, $C6, $C7, $D5, $D6, $D7, $E5, $E6, $E7, $F5, $F6, $F7, $FF

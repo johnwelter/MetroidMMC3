@@ -128,6 +128,7 @@
 .alias SamusScrX			$51		;Samus x position on screen.
 .alias SamusScrY			$52		;Samus y position on screen.
 .alias WalkSoundDelay		$53
+.alias StatuesUp			$54		;combined statue status
 .alias IsSamus				$55	;1=Samus object being accessed, 0=not Samus.
 .alias SamusDoorStatus			$56	;0=Not in door, 1=In right door, 2=In left door, 3=Scroll up-->
 								;4=Scroll down, 5=Exit door, MSB set=Door entered. If value-->
@@ -244,9 +245,9 @@
 .alias CrossDataIndex			$C6	;#$00 thru #$04. Index to find cross sprite data.
 .alias DrawCross				$C7	;#$01=Draw cross on screen during crosshairs routine.
 .alias SpriteLoadPending		$C8	;Set to #$00 after sprite RAM load complete.
-.alias SpareMemC9				$C9	;Written to in title routine, but never accessed.
-.alias SpareMemCB				$CB	;Written to in title routine, but never accessed.
-.alias SpareMemCC				$CC	;Written to in title routine, but never accessed.
+.alias SpareMemC9				$C9	;Written to in title routine, but never accessed.... not so sure abou that any more, seems to be used with item related things
+.alias SpareMemCB				$CB	;Written to in title routine, but never accessed.... not so sure abou that any more, seems to be used with item related things
+.alias SpareMemCC				$CC	;Written to in title routine, but never accessed.... not so sure abou that any more, seems to be used with item related things
 .alias SpareMemCD				$CD	;Written to in title routine, but never accessed.
 .alias SpareMemCE				$CE	;Written to in title routine, but never accessed.
 .alias SpareMemCF				$CF	;Written to in title routine, but never accessed.
@@ -258,6 +259,19 @@
 .alias IntroMusicRestart		$D8	;After all title routines run twice, restarts intro music.
 .alias ABStatus					$F0	;Stores A and B button status in AreaInit. Never used.
 ;								$F7
+
+;alias set for game engine use of B0-C8/9/A/B
+;B0-B7 = special enemy 3
+;B8-BF = special enemy 2
+;C0-C7 = special enemy 1
+;C8-CF = special enemy 0
+.alias SpecEnStatus				$B0
+.alias SpecEnRoomYPos			$B1
+.alias SpecEnRoomXPos			$B2
+.alias SpecEnNameTable			$B3
+.alias SpecEnDirection			$B4
+.alias SpecEnMoveTimer			$B5
+
 
 .alias MirrorCntrl				$FA	;If bit 3 is set, PPU set to horizontal mirroring-->
 									;else if bit 3 is clear, PPU is set to vertical-->
@@ -394,6 +408,17 @@
 .alias PasswordStat00		$0324	;Does not appear to have a function.
 .alias StartContinue		$0325	;0=START selected, 1=CONTINUE selected.
 
+
+.alias StatueTempStatus		$0304 ; add 60, temp status flags for editing status for statues
+.alias StatueHitFlag		$0306
+.alias StatueTargetYPos		$030F
+
+
+.alias StatueInitState	$0360	
+.alias StatueAnimToLoad		$0363
+.alias KraidStatueHitFlag	$0366
+.alias StatueNametable		$036C	;nametabe we're drawing the bridge to tourian on
+
 ;---------------------------------------[ Door related stuff ]---------------------------------------
 
 .alias DoorType				$0307	; this address plus 0x80 -- 0 = red, 1 = blue
@@ -458,6 +483,9 @@
 .alias EnHitSource		$040E	;laser type that hit enemy
 .alias EnSpecialAttribs	$040F	;Bit 7 set=tough version of enemy, bit 6 set=mini boss.
 
+.alias SpecEnSharedYPos	$04F0
+.alias SpecEnSharedXPos	$04F1
+
 ;----------------------------------------------------------------------------------------------------
 
 ;Tile respawning
@@ -469,6 +497,10 @@
 .alias TileWRAMLo				$0508
 .alias TileWRAMHi				$0509
 .alias TileType					$050A
+
+.alias FirstTileAnimFrame		$05C3
+.alias FirstTileWRAMLo			$05C8
+.alias FirstTileWRAMHi			$05C9
 
 ;---------------------------------[Projectile Memory Addresses]--------------------------------------
 
@@ -706,6 +738,8 @@
 .alias RoomRAMA				$6000	;Thru $63FF. Used to load room before it is put into the PPU.
 .alias RoomRAMB				$6400	;Thru $67FF. Used to load room before it is put into the PPU.
 
+.alias StatueStatuses		$681B	; this + 60/61 will get you the kraid and ridley statue statues
+
 .alias EndingType			$6872	;1=worst ending, 5=best ending
 
 .alias SamusDataIndex		$6875	;Index for Samus saved game stats(not used). #$00, #$10, #$20.
@@ -810,6 +844,14 @@
 ;							$6B01	; vertical home dispacement from some home value?
 .alias EnDataIndex			$6B02	; Contains index into enemy data tables.
 ;							$6B03
+
+;special enemies also exist and use 6BEx AS A WHOLE
+
+.alias SpecEnLoaded			$6BE4
+.alias SpecEnResAnimIdx		$6BE9
+.alias SpecEnAnimIdx		$6BEA
+.alias SpecEnSharedNametable	$6BEB
+
 
 ;-------------------------------------[ Intro sprite defines ]---------------------------------------
 .alias IntroStarSpriteMem 	$6DFF

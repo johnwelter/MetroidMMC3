@@ -17,11 +17,12 @@
 
 ;Common Area declares (very different to above)
 
-.alias PaletteColorsPointerTable 						$9560
+.alias PaletteColorsPointerTable 		$9560
 .alias Unknown9561 						$9561
 .alias AreaPointers						$9598
 .alias SpecItmsTable					$9598
 .alias AreaRoutine						$95C3
+.alias SpecEnAnim						$95E4
 .alias AreaEnemySpecificUpdate			$95E5
 .alias EnemyHitPointTbl					$962B
 .alias EnemyInitDelayTbl				$96BB

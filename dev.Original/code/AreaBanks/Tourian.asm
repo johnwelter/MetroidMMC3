@@ -940,9 +940,9 @@ L9D1A:	JSR $9D88
 L9D1D:	STA $6BF7,X
 L9D20:	RTS
  
-L9D21:	LDA #$01
-L9D23:	STA MotherBrainStatus
-L9D25:	JSR $9D88
+L9D21:	LDA #$01				; load #1
+L9D23:	STA MotherBrainStatus	; set mother brain active 
+L9D25:	JSR $9D88				;
 L9D28:	STA $9D
 L9D2A:	EOR #$01
 L9D2C:	TAX 

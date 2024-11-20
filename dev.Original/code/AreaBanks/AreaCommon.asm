@@ -434,11 +434,11 @@ L82B2:	RTS					; return to the address before THAT one
 L82B3:	LDA $6B03,X						;	looks like this has something to do with enemy movemnt direction
 L82B6:	BPL $82BE						; 	positive result, jump ahead
 
-L82B8:	JSR CreateEnemyYRadLowerBound	; negative - try collision in direction
+L82B8:	JSR CheckEnMoveUp	; negative - try collision in direction
 L82BB:	JMP $82C3						;	
 
 L82BE:	BEQ $82D2						; keep looping last table index if 6B03 was 0
-L82C0:	JSR CreateEnemyYRadUpperBound
+L82C0:	JSR CheckEnMoveDown
 
 L82C3:	LDX PageIndex					; load enemy index
 L82C5:	BCS $82D2						; 	keep looping last table index if no collision
@@ -464,11 +464,11 @@ L82E1:	STA EnCounter,X					; go to previous index on velocity table
 L82E4:	LDA $6B03,X						; load 6B03
 L82E7:	BPL $82EF						;	positive, jump ahead
 
-L82E9:	JSR CreateEnemyYRadLowerBound	; negative- do collision check 
+L82E9:	JSR CheckEnMoveUp	; negative- do collision check 
 L82EC:	JMP $82F4					
 
 L82EF:	BEQ $82FB						;
-L82F1:	JSR CreateEnemyYRadUpperBound
+L82F1:	JSR CheckEnMoveDown
 
 L82F4:	LDX PageIndex
 L82F6:	BCC $82FB						;	there was a collision, jump ahead
@@ -611,12 +611,12 @@ L83FB:	SBC EnRadY,X							; subtract radius Y to check locaiton of upper bound o
 L83FE:	AND #$07								; %8 the resulting position to check tile pixel location
 L8400:	SEC 									; set carry again
 L8401:	BNE $8406								; 	result wasn't 0 - skip ahead
-L8403:	JSR CreateEnemyYRadLowerBound			; 	result was 0, we're at the top of a tile
+L8403:	JSR CheckEnMoveUp						; 	result was 0, we're at the top of a tile
 
 L8406:	LDY #$00								; load 0 into Y
 L8408:	STY $00									; cache off into $0
 L840A:	LDX PageIndex							; load enemy index
-L840C:	BCC $844A								; 	check if our carry is clear- if so, return
+L840C:	BCC $844A								; 	check if our carry is clear- if so, return, no collision to process
 L840E:	INC $00									; inc $0
 L8410:	LDY EnYRoomPos,X						; 
 L8413:	BNE $8429
@@ -657,7 +657,7 @@ L8451:	ADC EnRadY,X					; add enemy hitbox radius down
 L8454:	AND #$07						; %8 to get hit box edge location inside tile
 L8456:	SEC 							; set carry
 L8457:	BNE $845C						; 	not 0, jump ahead
-L8459:	JSR CreateEnemyYRadUpperBound	; 	was 0, we're at a tile upper edge
+L8459:	JSR CheckEnMoveDown	; 	was 0, we're at a tile upper edge
 L845C:	LDY #$00
 L845E:	STY $00
 L8460:	LDX PageIndex
@@ -702,7 +702,7 @@ L84AD:	SBC EnRadX,X
 L84B0:	AND #$07
 L84B2:	SEC 
 L84B3:	BNE $84B8
-L84B5:	JSR UnknownE8F1
+L84B5:	JSR CheckEnMoveLeft
 L84B8:	LDY #$00
 L84BA:	STY $00
 L84BC:	LDX PageIndex
@@ -743,7 +743,7 @@ L8504:	ADC EnRadX,X
 L8507:	AND #$07
 L8509:	SEC 
 L850A:	BNE $850F
-L850C:	JSR UnknownE8FC
+L850C:	JSR CheckEnMoveRight
 L850F:	LDY #$00
 L8511:	STY $00
 L8513:	LDX PageIndex
@@ -1664,7 +1664,7 @@ L8C46:	JSR Amul16
 L8C49:	BCC $8C4C
 L8C4B:	DEY 
 L8C4C:	TYA 
-L8C4D:	JSR UnknownDC1E
+L8C4D:	JSR GenerateUniqueItemPosXLoaded
 L8C50:	LDA #$00
 L8C52:	STA $0300,X
 L8C55:	BEQ $8C73

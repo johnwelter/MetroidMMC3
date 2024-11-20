@@ -1250,6 +1250,9 @@ LA2D7:	.word $AED9
 ;#$07=Zeebetite.
 ;#$08=Rinka.
 ;#$09=Door.
+;	x0xf 0000
+;	|||| ||||
+;	|||+----- facing (0 = right, left = 1)
 ;#$0A=Palette change room.
 
 SpecItmsTbl:
