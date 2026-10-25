@@ -34,130 +34,130 @@
 ;behind after it is killed.
 
 RandomNumbers:
-	txa						;put X in the stack	
+	txa						; put X in the stack	
 	pha						;
-	ldx #$05				;load 5 into x
-*	lda RandomNumber1		;load random number 1
+	ldx #$05				; load 5 into x
+*	lda RandomNumber1		; load random number 1
 	clc						;
-	adc #$05				;add 5 to the random number 1 (adds 25 in total per call)
+	adc #$05				; add 5 to the random number 1 (adds 25 in total per call)
 	sta RandomNumber1		;
-	lda RandomNumber2		;load random number 2 			
+	lda RandomNumber2		; load random number 2 			
 	clc						;
-	adc #$13				;add 19 to random number 2 (adds 95 in total per call)
-	sta RandomNumber2		;store in random number 2
-	dex						;dec x, 
-	bne -					;loop until x = 0
-	pla						;restore X from the stack
+	adc #$13				; add 19 to random number 2 (adds 95 in total per call)
+	sta RandomNumber2		; store in random number 2
+	dex						; dec x, 
+	bne -					; loop until x = 0
+	pla						; restore X from the stack
 	tax						;
-	lda RandomNumber1		;leave with random number 1 in the accumulator
+	lda RandomNumber1		; leave with random number 1 in the accumulator
 	rts						;
 
 ;------------------------------------------[ Startup ]----------------------------------------------
 
 Startup:
 	lda #$00				;
-	sta MMC1Reg1 			;Clear bit 0. MMC1 is serial controlled
-	sta MMC1Reg1			;Clear bit 1
-	sta MMC1Reg1			;Clear bit 2
-	sta MMC1Reg1			;Clear bit 3
-	sta MMC1Reg1			;Clear bit 4 
-	sta MMC1Reg2			;Clear bit 0
-	sta MMC1Reg2			;Clear bit 1
-	sta MMC1Reg2			;Clear bit 2
-	sta MMC1Reg2			;Clear bit 3
-	sta MMC1Reg2			;Clear bit 4 
-	jsr MMCWriteReg3		;Swap to PRG bank #0 at $8000
-	dex						;X = $FF
-	txs						;S points to end of stack page
+	sta MMC1Reg1 			; Clear bit 0. MMC1 is serial controlled
+	sta MMC1Reg1			; Clear bit 1
+	sta MMC1Reg1			; Clear bit 2
+	sta MMC1Reg1			; Clear bit 3
+	sta MMC1Reg1			; Clear bit 4 
+	sta MMC1Reg2			; Clear bit 0
+	sta MMC1Reg2			; Clear bit 1
+	sta MMC1Reg2			; Clear bit 2
+	sta MMC1Reg2			; Clear bit 3
+	sta MMC1Reg2			; Clear bit 4 
+	jsr MMCWriteReg3		; Swap to PRG bank #0 at $8000
+	dex						; X = $FF
+	txs						; S points to end of stack page
 
 ;Clear RAM at $000-$7FF.
 ClearRamTo7FF:
-	ldy #$07				;High byte of start address.
+	ldy #$07				; High byte of start address.
 	sty $01					;
-	ldy #$00      			;Low byte of start address.
-	sty $00       			;$0000 = #$0700
-	tya	    				;A = 0
-*	sta ($00),y    			;clear address
+	ldy #$00      			; Low byte of start address.
+	sty $00       			; $0000 = #$0700
+	tya	    				; A = 0
+*	sta ($00),y    			; clear address
 	iny						;
-	bne -	  				;Repeat for entire page.
-	dec $01       			;Decrement high byte of address.
-	bmi +	 				;If $01 < 0, all pages are cleared.
+	bne -	  				; Repeat for entire page.
+	dec $01       			; Decrement high byte of address.
+	bmi +	 				; If $01 < 0, all pages are cleared.
 	ldx $01					;
-	cpx #$01				;Keep looping until ram is cleared.
+	cpx #$01				; Keep looping until ram is cleared.
 	bne -					;
 
 ;Clear cartridge RAM at $6000-$7FFF.
 ClearSRAM:
-*	ldy #$7F				;High byte of start address.
+*	ldy #$7F				; High byte of start address.
 	sty $01					;
-	ldy #$00				;Low byte of start address.
-	sty $00					;$0000 points to $7F00
-	tya	   					;A = 0
+	ldy #$00				; Low byte of start address.
+	sty $00					; $0000 points to $7F00
+	tya	   					; A = 0
 *	sta ($00),y				;
-	iny						;Clears 256 bytes of memory before decrementing to next-->
-	bne -					;256 bytes.
+	iny						; Clears 256 bytes of memory before decrementing to next-->
+	bne -					; 256 bytes.
 	dec $01					;
-	ldx $01					;Is address < $6000?-->
-	cpx #$60     			;If not, do another page.
+	ldx $01					; Is address < $6000?-->
+	cpx #$60     			; If not, do another page.
 	bcs -      				; 
 
-	lda #%00001110			;Verticle mirroring.
-							;H/V mirroring (As opposed to one-screen mirroring).
-							;Switch low PRGROM area during a page switch.
-							;16KB PRGROM switching enabled.
-							;8KB CHRROM switching enabled.
+	lda #%00001110			; Verticle mirroring.
+							; H/V mirroring (As opposed to one-screen mirroring).
+							; Switch low PRGROM area during a page switch.
+							; 16KB PRGROM switching enabled.
+							; 8KB CHRROM switching enabled.
 	sta MMCReg0Cntrl		;
 	
-	lda #$00				;Clear bits 3 and 4 of MMC1 register 3.
+	lda #$00				; Clear bits 3 and 4 of MMC1 register 3.
 	sta SwitchUpperBits		;
 
 	ldy #$00				;
-	sty ScrollX				;ScrollX = 0
-	sty ScrollY     		;ScrollY = 0
-	sty PPUScroll			;Clear hardware scroll x
-	sty PPUScroll			;Clear hardware scroll y
-	iny						;Y = #$01
-	sty GameMode			;Title screen mode
+	sty ScrollX				; ScrollX = 0
+	sty ScrollY     		; ScrollY = 0
+	sty PPUScroll			; Clear hardware scroll x
+	sty PPUScroll			; Clear hardware scroll y
+	iny						; Y = #$01
+	sty GameMode			; Title screen mode
 	jsr ClearNameTables		;
 	jsr EraseAllSprites		;
 
-	lda #%10010000			;NMI = enabled
-							;Sprite size = 8x8
-							;BG pattern table address = $1000
-							;SPR pattern table address = $0000
-							;PPU address increment = 1
-							;Name table address = $2000
+	lda #%10010000			; NMI = enabled
+							; Sprite size = 8x8
+							; BG pattern table address = $1000
+							; SPR pattern table address = $0000
+							; PPU address increment = 1
+							; Name table address = $2000
 	sta PPUControl0			;
 	sta PPUCNT0ZP			;
 
-	lda #%00000010			;Sprites visible = no
-							;Background visible = no
-							;Sprite clipping = yes
-							;Background clipping = no
-							;Display type = color
+	lda #%00000010			; Sprites visible = no
+							; Background visible = no
+							; Sprite clipping = yes
+							; Background clipping = no
+							; Display type = color
 	sta PPUCNT1ZP			;
 
 	lda #$47				;
-	sta MirrorCntrl			;Prepare to set PPU to vertical mirroring.
+	sta MirrorCntrl			; Prepare to set PPU to vertical mirroring.
 	jsr PrepVertMirror		;
 
 	lda #$00				;
-	sta DMCCntrl1			;PCM volume = 0 - disables DMC channel
+	sta DMCCntrl1			; PCM volume = 0 - disables DMC channel
 	lda #$0F				;
-	sta APUCommonCntrl0		;Enable sound channel 0,1,2,3
+	sta APUCommonCntrl0		; Enable sound channel 0,1,2,3
 
 	ldy #$00				;
-	sty TitleRoutine		;Set title routine and and main routine function-->
-	sty MainRoutine			;pointers equal to 0.
+	sty TitleRoutine		; Set title routine and and main routine function-->
+	sty MainRoutine			; pointers equal to 0.
 	lda #$11				;
-	sta RandomNumber1		;Initialize RandomNumber1 to #$11
+	sta RandomNumber1		; Initialize RandomNumber1 to #$11
 	lda #$FF				;
-	sta RandomNumber2		;Initialize RandomNumber2 to #$FF
+	sta RandomNumber2		; Initialize RandomNumber2 to #$FF
 
-	iny						;Y = 1
-	sty SwitchPending		;Prepare to switch page 0 into lower PRGROM.
+	iny						; Y = 1
+	sty SwitchPending		; Prepare to switch page 0 into lower PRGROM.
 	jsr CheckSwitch			;
-	bne WaitNMIEnd			;Branch always
+	bne WaitNMIEnd			; Branch always
 
 ;-----------------------------------------[ Main loop ]----------------------------------------------
 
@@ -1555,7 +1555,7 @@ SamusInit:
 
 ;------------------------------------[ Main game engine ]--------------------------------------------
 
-GameEngine:
+ GameEngine:
 	jsr ScrollDoor			;($E1F1)Scroll doors, if needed. 2 routine calls scrolls-->
 	jsr ScrollDoor			;($E1F1)twice as fast as 1 routine call.
 
@@ -1780,25 +1780,25 @@ UpdateWorld:
 	ldx #$00				;Set start of sprite RAM to $0200.
 	stx SpritePagePos		;
 
-	jsr UpdateEnemies		;($F345)Display of enemies.
-	jsr UpdateProjectiles		;($D4BF)Display of bullets/missiles/bombs.
-	jsr UpdateSamus			;($CC0D)Display/movement of Samus.
-	jsr AreaRoutine			;($95C3)Area specific routine.
-	jsr UpdateElevator		;($D7B3)Display of elevators.
-	jsr UpdateStatues		;($D9D4)Display of Ridley & Kraid statues.
-	jsr EnemyDestruction    ; destruction of enemies
-	jsr UpdateSpecialEnemies ; update of Mellow/Memu enemies
-	jsr UpdateEnProjectiles
-	jsr DestroyGeenSpinner  ; destruction of green spinners
-	jsr SamusEnterDoor		;($8B13)Check if Samus entered a door.
-	jsr DisplayDoors      	; display of doors
-	jsr UpdateTiles 		; tile de/regeneration
-	jsr CrashDetection      ; Samus <--> enemies crash detection
-	jsr DisplayBar			;($E0C1)Display of status bar.
-	jsr UpdatePipeSpawns
-	jsr CheckMissileToggle
-	jsr UpdateItems 		; display of special items
-	jsr UpdateEndTimer
+	jsr UpdateEnemies			; A($F345)Display of enemies.
+	jsr UpdateProjectiles		; B ($D4BF)Display of bullets/missiles/bombs.
+	jsr UpdateSamus				; C ($CC0D)Display/movement of Samus.
+	jsr AreaRoutine				; D ($95C3)Area specific routine.
+	jsr UpdateElevator			; E ($D7B3)Display of elevators.
+	jsr UpdateStatues			; F ($D9D4)Display of Ridley & Kraid statues.
+	jsr EnemyDestruction    	; G destruction of enemies
+	jsr UpdateSpecialEnemies 	; H update of Mellow/Memu enemies
+	jsr UpdateEnProjectiles		; I
+	jsr DestroyGeenSpinner  	; J destruction of green spinners
+	jsr SamusEnterDoor			; K($8B13)Check if Samus entered a door.
+	jsr DisplayDoors      		; L display of doors
+	jsr UpdateTiles 			; M tile de/regeneration
+	jsr CrashDetection      	; N Samus <--> enemies crash detection
+	jsr DisplayBar				; O ($E0C1)Display of status bar.
+	jsr UpdatePipeSpawns		; P
+	jsr CheckMissileToggle		; Q
+	jsr UpdateItems 			; R display of special items
+	jsr UpdateEndTimer			; S
 
 ;Clear remaining sprite RAM
 	ldx SpritePagePos		;sprite page pos starts at 0
@@ -2977,9 +2977,9 @@ InitBullet:
 	sta ObjRadX,y	; 
 	lda #an_Bullet	; load bullet anim
 
-SetProjectileAnim:
+SetObjectAnim:
 	sta AnimResetIndex,x	; 
-PlayProjectileAnim:
+PlayObjectAnim:
 	sta AnimIndex,x
 	lda #$00
 	sta AnimDelay,x
@@ -3453,7 +3453,7 @@ StartProjectileExplosion:
 	cpy #wa_Missile
 	bne +
 	lda #an_MissileExplode
-*       jsr SetProjectileAnim
+*       jsr SetObjectAnim
 	lda #wa_BulletExplode
 *       sta ObjAction,x
 Exit5:  rts
@@ -3518,7 +3518,7 @@ SetCarryIfSpecTile:
 
 LayBomb:
 	lda #an_BombTick
-	jsr SetProjectileAnim
+	jsr SetObjectAnim
 	lda #$18	; fuse length :-)
 	sta $030F,x
 	inc ObjAction,x       ; bomb update handler
@@ -3537,7 +3537,7 @@ UpdateBomb:
 	cpy #$09
 	bne +
 	lda #an_BombExplode
-*   jsr SetProjectileAnim
+*   jsr SetObjectAnim
 	inc ObjAction,x
 	jsr SFX_BombExplode
 *	jmp DrawBomb
@@ -7688,7 +7688,7 @@ FillRoomRAM:
 ; Crash detection
 ; ===============
 CrashDetection:
-  lda #$FF
+	lda #$FF
 	sta $73
 	sta $010F
 ; check for crash with Memus

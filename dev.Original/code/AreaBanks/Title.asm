@@ -2246,35 +2246,35 @@ L92C8:	.byte $48, $50, $58, $60, $68, $70, $80, $88, $90, $98, $A0, $A8
 InitializeGame:
 L92D4:	JSR ClearRAM_33_DF		;($C1D4)Clear RAM.
 L92D7:	JSR ClearSamusStats		;($C578)Reset Samus stats for a new game.
-L92DA:	JSR LoadPasswordData		;($8D12)Load data from password.
-L92DD:	LDY #$00			;
+L92DA:	JSR LoadPasswordData	;($8D12)Load data from password.
+L92DD:	LDY #$00				;
 L92DF:	STY SpritePagePos		;
 L92E1:	STY PageIndex			;Clear object data.
 L92E3:	STY ObjectCntrl			;
 L92E5:	STY ObjectHi			;
 L92E8:	JSR SilenceMusic		;($CB8E)Turn off music.
-L92EB:	LDA #$5A			;
+L92EB:	LDA #$5A				;
 L92ED:	STA AnimFrame			;Set animframe index. changed by initializing routines. 
-L92F0:	LDX #$01			;x is the index into the position tables below.
-L92F2:	LDA InArea			;Load starting area.
-L92F4:	AND #$0F			;
-L92F6:	BNE +				;If in area other than Brinstar, get second item in tables.
-L92F8:	DEX				;Starting in Brinstar. Get forst item in each table.
-L92F9:*	LDA RestartYPosTbl,X		;
-L92FC:	STA ObjectY			;Set Samus restart y position on screen.
-L92FF:	LDA RestartXPosTbl,X		;
-L9302:	STA ObjectX			;Set Samus restart x position on screen.
+L92F0:	LDX #$01				;x is the index into the position tables below.
+L92F2:	LDA InArea				;Load starting area.
+L92F4:	AND #$0F				;
+L92F6:	BNE +					;If in area other than Brinstar, get second item in tables.
+L92F8:	DEX						;Starting in Brinstar. Get forst item in each table.
+L92F9:*	LDA RestartYPosTbl,X	;
+L92FC:	STA ObjectY				;Set Samus restart y position on screen.
+L92FF:	LDA RestartXPosTbl,X	;
+L9302:	STA ObjectX				;Set Samus restart x position on screen.
 L9305:	INC SamusStat02			;The combination of SamusStat02 and 03 keep track of how-->
-L9308:	BNE +				;many times Samus has died and beaten the game as they are-->
+L9308:	BNE +					;many times Samus has died and beaten the game as they are-->
 L930A:	INC SamusStat03			;incremented every time this routine is run, but they are-->
-L930D:*	LDA #$01			;not accessed anywhere else.
+L930D:*	LDA #$01				;not accessed anywhere else.
 L930F:	STA MainRoutine			;Initialize starting area.
 L9311:	JSR ScreenNmiOff		;($C45D)Turn off screen.
 L9314:	JSR LoadSamusGFX		;($C5DC)Load Samus GFX into pattern table.
-L9317:	JSR NmiOn			;($C487)Turn on the non-maskable interrupt.
-L931A:	LDA InArea			;Load area Samus is to start in.
-L931C:	AND #$0F			;
-L931E:	TAY				;
+L9317:	JSR NmiOn				;($C487)Turn on the non-maskable interrupt.
+L931A:	LDA InArea				;Load area Samus is to start in.
+L931C:	AND #$0F				;
+L931E:	TAY						;
 L931F:	LDA BankTable,Y			;Change to proper memory page.
 L9322:	STA SwitchPending		;
 L9324:	RTS 
@@ -7992,21 +7992,21 @@ LBFA6:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 ;----------------------------------------------[ RESET ]--------------------------------------------
 
 AREARESET:
-LBFB0:	SEI				;Disables interrupt.
-LBFB1:	CLD				;Sets processor to binary mode.
-LBFB2:	LDX #$00			;
-LBFB4:	STX PPUControl0			;Clear PPU control registers.
-LBFB7:	STX PPUControl1			;
-LBFBA:*	LDA PPUStatus			;
-LBFBD:	BPL -				;Wait for VBlank.
-LBFBF:*	LDA PPUStatus			;
-LBFC2:	BPL -				;
-LBFC4:	ORA #$FF			;
-LBFC6:	STA MMC1Reg0			;Reset MMC1 chip.-->
-LBFC9:	STA MMC1Reg1			;(MSB is set).
-LBFCC:	STA MMC1Reg2			;
-LBFCF:	STA MMC1Reg3			;
-LBFD2:	JMP Startup			;($C01A)Does preliminry housekeeping.
+LBFB0:	SEI				; Disables interrupt.
+LBFB1:	CLD				; Sets processor to binary mode.
+LBFB2:	LDX #$00		;
+LBFB4:	STX PPUControl0	; Clear PPU control registers.
+LBFB7:	STX PPUControl1	;
+LBFBA:*	LDA PPUStatus	;
+LBFBD:	BPL -			; Wait for VBlank.
+LBFBF:*	LDA PPUStatus	;
+LBFC2:	BPL -			;
+LBFC4:	ORA #$FF		;
+LBFC6:	STA MMC1Reg0	; Reset MMC1 chip.-->
+LBFC9:	STA MMC1Reg1	; (MSB is set).
+LBFCC:	STA MMC1Reg2	;
+LBFCF:	STA MMC1Reg3	;
+LBFD2:	JMP Startup		; Does preliminry housekeeping.
 
 ;Not used.
 LBFD5: 	.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $00, $00, $00, $00, $00

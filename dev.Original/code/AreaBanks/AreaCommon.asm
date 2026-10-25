@@ -29,7 +29,7 @@
 ;.alias TwosCompliment		$C3D4
 ;.alias Base10Subtract		$C3FB
 ;.alias SubtractHealth		$CE92
-;.alias SetProjectileAnim	$D2FA
+;.alias SetObjectAnim	$D2FA
 ;.alias UpdateEnemyAnim		$E094
 ;.alias VerticalRoomCentered	$E21B
 
@@ -1505,188 +1505,208 @@ L8B03:	.byte $0C, $04, $10, $FD, $00, $57, $18, $FD, $40, $18, $57, $FD, $C0, $1
 
 SamusEnterDoor:
 L8B13:	LDA SamusDoorStatus			;The code determines if Samus has entered a door if the-->
-L8B15:	BNE ++++			;door status is 0, but door data information has been-->
-L8B17:	LDY SamusDoorData		;written. If both conditions are met, Samus has just-->
-L8B19:	BEQ ++++			;entered a door.
+L8B15:	BNE ++++					;door status is 0, but door data information has been-->
+L8B17:	LDY SamusDoorData			;written. If both conditions are met, Samus has just-->
+L8B19:	BEQ ++++					;entered a door.
 L8B1B:	STA RoomCurrMissileSpawns	;
 L8B1D:	STA CurrentEnergyPickups	;Reset current missile and energy power-up counters.
-L8B1F:	LDA RandomNumber1		;
-L8B21:	AND #$0F			;Randomly recalculate max missile pickups(16 max, 0 min).
-L8B23:	STA RoomMaxMissileSpawns		;
-L8B25:	ASL				;
-L8B26:	ORA #$40			;*2 for energy pickups and set bit 6(128 max, 64 min).
-L8B28:	STA MaxEnergyPickup		;
-L8B2A:	LDA PPUCNT0ZP			;
-L8B2C:	EOR #$01			;
-L8B2E:	AND #$01			;Erase name table door data for new room.
-L8B30:	TAY				;
-L8B31:	LSR				;
-L8B32:	STA $006C,Y			;
-L8B35:	LDA ScrollDir			;
-L8B37:	AND #$02			;Is Samus scrolling horizontally?-->
-L8B39:	BNE +				;If so, branch.
-L8B3B:	LDX #$04			;Samus currently scrolling vertically.
-L8B3D:	LDA ScrollY			;Is room centered on screen?-->
-L8B3F:	BEQ +++++			;If so, branch.
-L8B41:	LDA $FF				;
-L8B43:	EOR ObjectHi			;Get inverse of Samus' current nametable.
-L8B46:	LSR				;
-L8B47:	BCC +++				;If Samus is on nametable 3, branch.
-L8B49:	BCS ++				;If Samus is on nametable 0, branch to decrement x.
+L8B1F:	LDA RandomNumber1			;
+L8B21:	AND #$0F					;Randomly recalculate max missile pickups(16 max, 0 min).
+L8B23:	STA RoomMaxMissileSpawns	;
+L8B25:	ASL							;
+L8B26:	ORA #$40					;*2 for energy pickups and set bit 6(128 max, 64 min).
+L8B28:	STA MaxEnergyPickup			;
+L8B2A:	LDA PPUCNT0ZP				;
+L8B2C:	EOR #$01					;
+L8B2E:	AND #$01					;Erase name table door data for new room.
+L8B30:	TAY							;
+L8B31:	LSR							;
+L8B32:	STA $006C,Y					;
+L8B35:	LDA ScrollDir				;
+L8B37:	AND #$02					;Is Samus scrolling horizontally?-->
+L8B39:	BNE +						;If so, branch.
+L8B3B:	LDX #$04					;Samus currently scrolling vertically.
+L8B3D:	LDA ScrollY					;Is room centered on screen?-->
+L8B3F:	BEQ +++++					;If so, branch.
+L8B41:	LDA $FF						;
+L8B43:	EOR ObjectHi				;Get inverse of Samus' current nametable.
+L8B46:	LSR							;
+L8B47:	BCC +++						;If Samus is on nametable 3, branch.
+L8B49:	BCS ++						;If Samus is on nametable 0, branch to decrement x.
 
-L8B4B:*	LDX #$02			;Samus is currently scrolling horizontally.
-L8B4D:	LDA ObjectX			;Is Samus entering a left hand door?-->
-L8B50:	BPL ++				;If so, branch.
-L8B52:*	DEX				;
+L8B4B:*	LDX #$02					;Samus is currently scrolling horizontally.
+L8B4D:	LDA ObjectX					;Is Samus entering a left hand door?-->
+L8B50:	BPL ++						;If so, branch.
+L8B52:*	DEX							;
 
 SetDoorEntryInfo:
-L8B53:*	TXA				;X contains door scroll status and is transferred to A.
-L8B54:	STA DoorScrollStatus		;Save door scroll status.
+L8B53:*	TXA						;X contains door scroll status and is transferred to A.
+L8B54:	STA DoorScrollStatus	;Save door scroll status.
 L8B56:	JSR SamusInDoor			;($8B74)Indicate Samus just entered a door.
-L8B59:	LDA #$12			;
+L8B59:	LDA #$12				;
 L8B5B:	STA DoorDelay			;Set DoorDelay to 18 frames(going into door).
 L8B5D:	LDA SamusDoorData		;
-L8B5F:	JSR Amul16			;($C2C5)*16. Move scroll toggle data to upper 4 bits.
+L8B5F:	JSR Amul16				;($C2C5)*16. Move scroll toggle data to upper 4 bits.
 L8B62:	ORA ObjAction			;Keep Samus action so she will appear the same comming-->
 L8B65:	STA SamusDoorData		;out of the door as she did going in.
-L8B67:	LDA #$05			;
+L8B67:	LDA #$05				;
 L8B69:	STA ObjAction			;Indicate Samus is in a door.
-L8B6C:*	RTS				;
+L8B6C:*	RTS						;
 
 L8B6D:*	JSR SetDoorEntryInfo		;($8B53)Save Samus action and set door entry timer.
 L8B70:	JSR VerticalRoomCentered	;($E21B)Room is centered. Toggle scroll.
 
-L8B73:	TXA				;X=#$01 or #$02(depending on which door Samus is in).
+L8B73:	TXA							;X=#$01 or #$02(depending on which door Samus is in).
 
 SamusInDoor:
 L8B74:	ORA #$80			;Set MSB of SamusDoorStatus to indicate Samus has just-->
-L8B76:	STA SamusDoorStatus			;entered a door.
-L8B78:	RTS				;
+L8B76:	STA SamusDoorStatus	;entered a door.
+L8B78:	RTS					;
 
 ;----------------------------------------------------------------------------------------------------
 
-L8B79:	LDX #$B0
-L8B7B:*	JSR $8B87
-L8B7E:	LDA PageIndex
+DisplayDoors:
+L8B79:	LDX #$B0				; load the final door object index
+L8B7B:*	JSR $8B87				; DO the door update routine, WHILE...
+L8B7E:	LDA PageIndex			; load the door index
 L8B80:	SEC 
-L8B81:	SBC #$10
-L8B83:	TAX 
-L8B84:	BMI -
-L8B86:	RTS
+L8B81:	SBC #$10				; go to the previous door
+L8B83:	TAX 					; put it in X
+L8B84:	BMI -					; if we still have doors to go, loop
+L8B86:	RTS						; finish door updates
 
-L8B87:	STX PageIndex
-L8B89:	LDA ObjAction,X
+L8B87:	STX PageIndex			; store the door index
+L8B89:	LDA ObjAction,X			; load the door action state
 L8B8C:	JSR ChooseRoutine		;($C27C)
 
-L8B8F:	.word ExitSub
-L8B91:	.word $8B9D
-L8B93:	.word $8BD5
-L8B95:	.word $8C01
-L8B97:	.word $8C84
-L8B99:	.word $8CC6
-L8B9B:	.word $8CF0
+L8B8F:	.word ExitSub			; door inactive
+L8B91:	.word $8B9D				; initialize door
+L8B93:	.word $8BD5				; door closed
+L8B95:	.word $8C01				; door open
+L8B97:	.word $8C84				; door being entered
+L8B99:	.word $8CC6				; sliding to next room
+L8B9B:	.word $8CF0				; exiting door
 
-L8B9D:	INC $0300,X
-L8BA0:	LDA #$30
-L8BA2:	JSR SetProjectileAnim		;($D2FA)
-L8BA5:	JSR $8CFB
-L8BA8:	LDY $0307,X
-L8BAB:	LDA $8BD1,Y
-L8BAE:	STA $030F,X
-L8BB1:	LDA $0307,X
-L8BB4:	CMP #$03
-L8BB6:	BNE $8BBA
-L8BB8:	LDA #$01
-L8BBA:	ORA #$A0
-L8BBC:	STA $6B
-L8BBE:	LDA #$00
-L8BC0:	STA $030A,X
-L8BC3:	TXA 
-L8BC4:	AND #$10
-L8BC6:	EOR #$10
-L8BC8:	ORA $6B
-L8BCA:	STA $6B
-L8BCC:	LDA #$06
-L8BCE:	JMP AnimDrawObject
+InitializeDoor:
+L8B9D:	INC $0300,X				; increment door status to the next, right off the bat
+L8BA0:	LDA #$30				; load the door closed animation
+L8BA2:	JSR SetObjectAnim		; set door to closed animation
+L8BA5:	JSR $8CFB				; Setup door WRAM position
+L8BA8:	LDY $0307,X				; load the door type into Y
+L8BAB:	LDA $8BD1,Y				; load the door's HP into A
+L8BAE:	STA $030F,X				; store into doors HP
 
+DrawDoor:
+L8BB1:	LDA $0307,X				; load the door type into A (couldn't we just do TYA?) 0 = red, 1 = blue, 2 = yellow 3 = other blue
+L8BB4:	CMP #$03				; 
+L8BB6:	BNE $8BBA				; if we're the final door
+L8BB8:	LDA #$01				; 	load the blue door palette index instead
+L8BBA:	ORA #$A0				; OR door type with A0 (1010 0000), setting the pallete
+L8BBC:	STA $6B					; store in the display control byte
+L8BBE:	LDA #$00				; load 0 into A
+L8BC0:	STA $030A,X				; reset hit flag to 0
+L8BC3:	TXA 					; put the door index into A
+L8BC4:	AND #$10				; 
+L8BC6:	EOR #$10				; get the facing direction of the door (seems like they should just be ordered differently to avoid needing to do this)
+L8BC8:	ORA $6B					; ORA with control byte
+L8BCA:	STA $6B					; store back into the control byte
+L8BCC:	LDA #$06				; load 6 frame delay for animation frame
+L8BCE:	JMP AnimDrawObject		; draw the door
+
+;;hit point totals for doors
 L8BD1:	.byte $05, $01, $0A, $01
 
-L8BD5:	LDA $030A,X
-L8BD8:	AND #$04
-L8BDA:	BEQ $8BB1
-L8BDC:	DEC $030F,X
-L8BDF:	BNE $8BB1
-L8BE1:	LDA #$03
-L8BE3:	CMP $0307,X
-L8BE6:	BNE $8BEE
-L8BE8:	LDY $010B
-L8BEB:	INY 
-L8BEC:	BNE $8BB1
-L8BEE:	STA $0300,X
-L8BF1:	LDA #$50
-L8BF3:	STA $030F,X
-L8BF6:	LDA #$2C
-L8BF8:	STA $0305,X
+UpdateClosedDoor:
+L8BD5:	LDA $030A,X			; load hit flag
+L8BD8:	AND #$04			; check bit 0000 0100
+L8BDA:	BEQ $8BB1			; if it's 0, draw the door and exit
+L8BDC:	DEC $030F,X			; door was hit, update it's HP
+L8BDF:	BNE $8BB1			; if it's not 0, draw the door and exit
+L8BE1:	LDA #$03			; else, door HP is done - load #03, the final door ID
+L8BE3:	CMP $0307,X			; compare to door type
+L8BE6:	BNE $8BEE			; if it's not the special door 3, jump ahead
+L8BE8:	LDY $010B			; 	else, load the ending timer into Y 
+L8BEB:	INY 				; 	increment it
+L8BEC:	BNE $8BB1			; 	if Y is not 0, draw the door and exit - basically, ignore the hit for a delay
+L8BEE:	STA $0300,X			; store #03 into the door state - AKA, door open (clever clever)
+L8BF1:	LDA #$50			; load #50
+L8BF3:	STA $030F,X			; store into the door health/timer
+L8BF6:	LDA #$2C			; load #2C (invalid/blank frame at end of door open. give it the initial blink)
+L8BF8:	STA $0305,X			; store in door's animation reset index
 L8BFB:	SEC 
-L8BFC:	SBC #$03
-L8BFE:	JMP $8C7E
-L8C01:	LDA SamusDoorStatus
-L8C03:	BEQ $8C1D
-L8C05:	LDA $030C
-L8C08:	EOR $030C,X
-L8C0B:	LSR 
-L8C0C:	BCS $8C1D
-L8C0E:	LDA $030E
-L8C11:	EOR $030E,X
-L8C14:	BMI $8C1D
-L8C16:	LDA #$04
-L8C18:	STA $0300,X
-L8C1B:	BNE $8C73
-L8C1D:	LDA $0306,X
-L8C20:	CMP $0305,X
-L8C23:	BCC $8C73
-L8C25:	LDA $030F,X
-L8C28:	CMP #$50
-L8C2A:	BNE $8C57
-L8C2C:	JSR $8CF7
-L8C2F:	LDA $0307,X
-L8C32:	CMP #$01
-L8C34:	BEQ $8C57
-L8C36:	CMP #$03
-L8C38:	BEQ $8C57
-L8C3A:	LDA #$0A
-L8C3C:	STA $09
-L8C3E:	LDA $030C,X
-L8C41:	STA $08
-L8C43:	LDY $50
-L8C45:	TXA 
-L8C46:	JSR Amul16
-L8C49:	BCC $8C4C
-L8C4B:	DEY 
-L8C4C:	TYA 
-L8C4D:	JSR GenerateUniqueItemPosXLoaded
-L8C50:	LDA #$00
-L8C52:	STA $0300,X
-L8C55:	BEQ $8C73
-L8C57:	LDA $2D
-L8C59:	LSR 
-L8C5A:	BCS $8C73
-L8C5C:	DEC $030F,X
-L8C5F:	BNE $8C73
-L8C61:	LDA #$01
-L8C63:	STA $030F,X
-L8C66:	JSR $8CFB
-L8C69:	LDA #$02
-L8C6B:	STA $0300,X
-L8C6E:	JSR $8C76
+L8BFC:	SBC #$03			; subtract 3 from the door animation reset frame (start of door open animation)
+L8BFE:	JMP $8C7E			; start door animation + sound effect
+
+UpdateOpenDoor:
+L8C01:	LDA SamusDoorStatus	; load samus door status
+L8C03:	BEQ $8C1D			; if 0, jump ahead
+L8C05:	LDA $030C			; load samus' name table
+L8C08:	EOR $030C,X			; clear similar bits
+L8C0B:	LSR 				; push out LSB 
+L8C0C:	BCS $8C1D			; 	if LSB between both was different, jump ahead
+L8C0E:	LDA $030E			; load samus' X position
+L8C11:	EOR $030E,X			; clear similar bits
+L8C14:	BMI $8C1D			; 	if the MSB is different between them, jump ahead
+L8C16:	LDA #$04			; 
+L8C18:	STA $0300,X			; set door to entering state
+L8C1B:	BNE $8C73			; always branch - Draw door and exit.
+
+L8C1D:	LDA $0306,X							; load up current anim frame
+L8C20:	CMP $0305,X							; compare to the reset frame
+L8C23:	BCC $8C73							; draw door, leave 
+L8C25:	LDA $030F,X							; load the door timer
+L8C28:	CMP #$50							; compare to #50
+L8C2A:	BNE $8C57							; 	if not equal, jump ahead
+L8C2C:	JSR $8CF7							; timer just started - open door in WRAM
+L8C2F:	LDA $0307,X							; load door type
+L8C32:	CMP #$01							; 	if blue door...
+L8C34:	BEQ $8C57							;	
+L8C36:	CMP #$03							;
+L8C38:	BEQ $8C57							;	... jump ahead
+L8C3A:	LDA #$0A							; 	else, for the red/tourian door, load 10
+L8C3C:	STA $09								; 	store in cached position
+L8C3E:	LDA $030C,X							; 	load door nametable
+L8C41:	STA $08								; 	store cached name table
+L8C43:	LDY $50								; 	load map X position to Y
+L8C45:	TXA 								; 	put door index into A
+L8C46:	JSR Amul16							; 	get door side bit into carry flag
+L8C49:	BCC $8C4C							; 	door on right, skip ahead
+L8C4B:	DEY 								; 		else, dec map position
+L8C4C:	TYA 								; 	move map X position to A
+L8C4D:	JSR GenerateUniqueItemPosXLoaded	; 	update special door data so we can easily open the door again
+L8C50:	LDA #$00							; 	load 0
+L8C52:	STA $0300,X							; 	set the door inactive
+L8C55:	BEQ $8C73							;	draw door and exit
+
+L8C57:	LDA $2D								; for blue doors - load frame count
+L8C59:	LSR 								; get the LSB (set every other frame)
+L8C5A:	BCS $8C73							; 	carry flag set, draw door and leave
+L8C5C:	DEC $030F,X							; decrement the open door timer 
+L8C5F:	BNE $8C73							; 	not zero? draw the door and exit
+L8C61:	LDA #$01							; load 1
+L8C63:	STA $030F,X							; store into door health
+L8C66:	JSR $8CFB							; close door in WRAM
+L8C69:	LDA #$02							; load closed door routine index
+L8C6B:	STA $0300,X							; set door state to closed
+L8C6E:	JSR $8C76							; start closing door anim
+
+LoadAndDrawDoor:
 L8C71:	LDX PageIndex
+
+DrawDoorAndExit:
 L8C73:	JMP $8BB1
+
+StartClosingDoorAnim:
 L8C76:	LDA #$30
 L8C78:	STA $0305,X
 L8C7B:	SEC 
 L8C7C:	SBC #$02
-L8C7E:	JSR PlayProjectileAnim
+
+StartDoorAnimation:
+L8C7E:	JSR PlayObjectAnim
 L8C81:	JMP SFX_Door
+
+UpdateEnteringDoor:
 L8C84:	LDA SamusDoorStatus
 L8C86:	CMP #$05
 L8C88:	BCS $8CC3
@@ -1717,6 +1737,8 @@ L8CBB:	JSR TourianMusic
 L8CBE:	BNE $8CC3
 L8CC0:	JSR MotherBrainMusic
 L8CC3:	JMP $8C71
+
+UpdateRoomSlide:
 L8CC6:	LDA SamusDoorStatus
 L8CC8:	CMP #$05
 L8CCA:	BNE $8CED
@@ -1729,54 +1751,67 @@ L8CD5:	LDA #$2C
 L8CD7:	STA $0305,X
 L8CDA:	SEC 
 L8CDB:	SBC #$03
-L8CDD:	JSR PlayProjectileAnim
+L8CDD:	JSR PlayObjectAnim
 L8CE0:	JSR SFX_Door
 L8CE3:	JSR SelectSamusPal
 L8CE6:	LDX PageIndex
 L8CE8:	LDA #$02
 L8CEA:	STA $0300,X
 L8CED:	JMP $8BB1
+
+UpdateDoorExit:
 L8CF0:	LDA SamusDoorStatus
 L8CF2:	BNE $8CED
 L8CF4:	JMP $8C61
+
+OpenDoorInWRAM:
 L8CF7:	LDA #$FF
 L8CF9:	BNE $8CFD
-L8CFB:	LDA #$4E
-L8CFD:	PHA 
-L8CFE:	LDA #$50
-L8D00:	STA $02
-L8D02:	TXA 
-L8D03:	JSR Adiv16
-L8D06:	AND #$01
-L8D08:	TAY 
-L8D09:	LDA Unknown8D3A,Y
-L8D0C:	STA $03
-L8D0E:	LDA $030C,X
-L8D11:	STA $0B
-L8D13:	JSR MakeWRAMPtr
-L8D16:	LDY #$00
-L8D18:	PLA 
-L8D19:	STA ($04),Y
-L8D1B:	TAX 
-L8D1C:	TYA 
-L8D1D:	CLC 
-L8D1E:	ADC #$20
-L8D20:	TAY 
-L8D21:	TXA 
-L8D22:	CPY #$C0
-L8D24:	BNE $8D19
-L8D26:	LDX PageIndex
-L8D28:	TXA 
-L8D29:	JSR Adiv8
-L8D2C:	AND #$06
-L8D2E:	TAY 
-L8D2F:	LDA $04
-L8D31:	STA $005C,Y
-L8D34:	LDA $05
-L8D36:	STA $005D,Y
-L8D39:	RTS
 
-Unknown8D3A:
-L8D3A:	.byte $E8, $10, $60, $AD, $91, $69, $8D, $78, $68, $AD, $92, $69, $8D, $79, $68, $A9 
+CloseDoorInWRAM:
+L8CFB:	LDA #$4E								; load #4E
+
+SetDoorWRAM:
+L8CFD:	PHA 									; push to stack
+L8CFE:	LDA #$50								; load #50
+L8D00:	STA $02									; store in cached object Y pos
+L8D02:	TXA 									; move object index into A
+L8D03:	JSR Adiv16								; move index into lower nibble
+L8D06:	AND #$01								; get the even/oddness of the door (left door or right door)
+L8D08:	TAY 									; move to Y
+L8D09:	LDA DoorWRAMHorizontalPositionTable,Y	; load left/right screen position from table below
+L8D0C:	STA $03									; store in cached object X pos
+L8D0E:	LDA $030C,X								; load door's nametable
+L8D11:	STA $0B									; store in cached object name table 
+L8D13:	JSR MakeWRAMPtr							; get door position for WRAM loaded into 04
+L8D16:	LDY #$00								; load 0 into Y
+L8D18:	PLA 									; restore desired barrier type (open, closed)
+
+SetDoorBarrier:			;
+L8D19:	STA ($04),Y		; store #4E at the screen position
+L8D1B:	TAX 			; put 4E into X
+L8D1C:	TYA 			; put Y into A
+L8D1D:	CLC 			;
+L8D1E:	ADC #$20		; go a row of tiles down
+L8D20:	TAY 			; put that back into Y
+L8D21:	TXA				; put 4E back into A 
+L8D22:	CPY #$C0		;
+L8D24:	BNE $8D19		; loop down to draw the rest of the barrier
+
+L8D26:	LDX PageIndex	; load the door index into X
+L8D28:	TXA 			; transfer into A
+L8D29:	JSR Adiv8		; move the lower two bits of the high nibble to the middle of the lower nibble
+L8D2C:	AND #$06		; isolate those two bits
+L8D2E:	TAY 			; and move into Y- this will index our door position pointers
+L8D2F:	LDA $04			;
+L8D31:	STA $005C,Y		;
+L8D34:	LDA $05			;
+L8D36:	STA $005D,Y		; store the door WRAM screen position into the cached door WRAM 
+L8D39:	RTS				; return
+
+DoorWRAMHorizontalPositionTable:
+L8D3A:	.byte $E8, $10 
+
+L8D3C:	.byte $60, $AD, $91, $69, $8D, $78, $68, $AD, $92, $69, $8D, $79, $68, $A9 
 L8D4A:	.byte $00, $85, $00, $85, $02, $AD, $97, $69, $29, $80, $F0, $06, $A5, $00, $09, $80
 L8D5A:	.byte $85, $00, $AD, $97, $69, $29

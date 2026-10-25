@@ -159,7 +159,10 @@
 .alias TempX				$69
 .alias TempY				$6A
 .alias ObjectCntrl			$6B	;Controls object properties such as mirroring and color-->
-								;bits. Bit 4 controls object mirroring.
+								;bits. 
+								;...M..PP
+								;M - left/right mirroring
+								;PP - palette
 
 .alias DoorOnNameTable3		$6C	;The following two addresses are used to keep track of the-->
 .alias DoorOnNameTable0		$6D	;doors loaded on the name tables. The information is used-->
@@ -177,6 +180,7 @@
 .alias SamusBlink			$70
 .alias UpdatingProjectile	$71	;#$01=Projectile update in process. #$00=not in process.
 .alias DamagePushDirection	$72	;#$00=Push Samus left when hit, #$01=Push right, #$FF=No push. 
+						;	$73 ; something to do with collision detection
 .alias InArea				$74	;#$10(or #$00)=Brinstar, #$11=Norfair, #$12=Kraid hideout,-->
 								;#$13=Tourian, #$14=Ridley hideout.
 
@@ -421,13 +425,17 @@
 
 ;---------------------------------------[ Door related stuff ]---------------------------------------
 
-.alias DoorType				$0307	; this address plus 0x80 -- 0 = red, 1 = blue
+						;	$0305 	; 
+						;	$0306	;
+.alias DoorType				$0307	; this address plus 0x80 -- 0 = red, 1 = blue 2 = yellow 3 = other blue
+						;	$030A	; door hit flag
+						; 	$030C	; door nametable
+						;   $030F	; door's HP
 ;0366/7 something to do with door stuff
-;0387 something to do with door stuff
 ;038A something to do with door stuff
 ;0380 - door statuses
 ; 0 = inactive
-; 1 = ?
+; 1 = initialize
 ; 2 = closed
 ; 3 = open
 ; 4 = entering
