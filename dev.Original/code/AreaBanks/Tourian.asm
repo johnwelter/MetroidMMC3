@@ -289,7 +289,8 @@ L971B:	.word $97D5, $97D5, $97D5, $97D5
 
 L9723:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $18, $30, $00, $C0, $D0, $00, $00, $7F
 L9733:	.byte $80, $58, $54, $70, $00, $00, $00, $00, $00, $00, $00, $00, $18, $30, $00, $00
-L9743:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+L9743:	.byte $00, $00, $00, $00, $00, $00, $00, $00 
+L974B:  .byte $00, $00, $00, $00, $00, $00, $00, $00
 L9753:	.byte $00, $00, $00, $04, $02, $00, $00, $00, $0C, $FC, $FC, $00, $00, $00, $00, $00
 L9763:	.byte $00, $00, $00, $00, $00, $00, $00, $02, $02, $00, $00, $00, $02, $02, $02, $02
 L9773:	.byte $00, $00, $00, $00, $00, $00, $00, $00
@@ -299,9 +300,14 @@ L977B:	.byte $50, $50, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $0
 L978B:	.byte $00, $00, $26, $26, $26, $26, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
 L979B:	.byte $0C, $F4, $00, $00, $00, $00, $00, $00, $F4, $00, $00, $00
 
-L97A7:	.word $97D5, $97D5, $97D8, $97DB, $A32B, $A330, $A337, $A348
+L97A7:	.word $97D5, $97D5, $97D8, $97DB
+; tile animations - all empty
+L97AF:  .word $A32B, $A330, $A337, $A348
 L97B7:	.word $A359, $A36A, $A37B, $A388, $A391, $A3A2, $A3B3, $A3C4
-L97C7:	.word $A3D5, $A3DE, $A3E7, $A3F0, $A3F9
+;table for Zeebetite frames
+L97C7:	.word $A3D5, $A3DE, $A3E7, $A3F0
+;door frame that spawns after motherbrain dies  
+L97CF:  .word $A3F9
 
 L97D1:	.byte $00, $00, $00, $01
 
@@ -702,7 +708,7 @@ L9B24:	RTS
 TourianAreaRoutine:
 L9B25:	JSR $9B37
 L9B28:	JSR UpdateMotherBrain
-L9B2B:	JSR $A1E7
+L9B2B:	JSR UpdateEndTimer
 L9B2E:	JSR $A238
 L9B31:	JSR $A28B
 L9B34:	JMP $A15E
@@ -890,7 +896,7 @@ L9CBA:	EOR $02
 L9CBC:	LSR 
 L9CBD:	BCS $9CC3
 L9CBF:	LDA #$00
-L9CC1:	STA MotherBrainStatus
+L9CC1:	STA MotherBrainStatus	; disable
 L9CC3:	LDA $010D
 L9CC6:	BEQ $9CD5
 L9CC8:	LDA $010C
@@ -943,11 +949,11 @@ L9D20:	RTS
 L9D21:	LDA #$01				; load #1
 L9D23:	STA MotherBrainStatus	; set mother brain active 
 L9D25:	JSR $9D88				;
-L9D28:	STA $9D
-L9D2A:	EOR #$01
-L9D2C:	TAX 
-L9D2D:	LDA $9D3C
-L9D30:	ORA $6C,X
+L9D28:	STA $9D					; store out current nametable 
+L9D2A:	EOR #$01				; get opposite nametable
+L9D2C:	TAX 					; set to X
+L9D2D:	LDA $9D3C				; load 1 (??)
+L9D30:	ORA $6C,X				; 
 L9D32:	STA $6C,X
 L9D34:	LDA #$20
 L9D36:	STA $9A
@@ -995,7 +1001,7 @@ L9D83:	STA $8C,X
 L9D85:	LDA #$FF
 L9D87:	RTS
 
-L9D88:	LDA $FF
+L9D88:	LDA $FF		
 L9D8A:	EOR $49
 L9D8C:	AND #$01
 L9D8E:	RTS
@@ -1051,6 +1057,8 @@ L9E18:	STA $6F
 L9E1A:	LDA #$38
 L9E1C:	STA $030A
 L9E1F:	JMP CallSubtractHealth
+
+;Mother brain normal update
 L9E22:	JSR $9DF2
 L9E25:	JSR $9FED
 L9E28:	JSR $A01B
@@ -1060,23 +1068,26 @@ L9E31:	LDA #$00
 L9E33:	STA $9E
 L9E35:	RTS
 
+;Mother brain hit state
 L9E36:	JSR $9E43
 L9E39:	LDA $9E41,Y
 L9E3C:	STA $1C
 L9E3E:	JMP $9E31
 
+;table for hit state
 L9E41:	.byte $08, $07
 
 L9E43:	DEC $9F
 L9E45:	BNE $9E4B
-L9E47:	LDA #$01
-L9E49:	STA MotherBrainStatus
+L9E47:	LDA #$01				; normal state
+L9E49:	STA MotherBrainStatus	; active
 L9E4B:	LDA $9F
 L9E4D:	AND #$02
 L9E4F:	LSR 
 L9E50:	TAY 
 L9E51:	RTS
 
+;mother brain dying state
 L9E52:	JSR $9E43
 L9E55:	LDA $9E41,Y
 L9E58:	STA $1C
@@ -1095,14 +1106,16 @@ L9E69:	STA $6AF4,X
 L9E6C:	JSR $9EF9
 L9E6F:	CPX #$C0
 L9E71:	BNE $9E68
-L9E73:	LDA #$04
-L9E75:	STA MotherBrainStatus
+L9E73:	LDA #$04				;disappaering
+L9E75:	STA MotherBrainStatus	; disappearing
 L9E77:	LDA #$28
 L9E79:	STA $9F
 L9E7B:	LDA $0680
 L9E7E:	ORA #$01
 L9E80:	STA $0680
 L9E83:	JMP $9E2E
+
+;Mother brain disappearing state 
 L9E86:	LDA #$10
 L9E88:	ORA $0680
 L9E8B:	STA $0680
@@ -1124,10 +1137,10 @@ L9EB0:	LDA $9F00,Y
 L9EB3:	STA $1C
 L9EB5:	LDY MotherBrainStatus
 L9EB7:	DEY 
-L9EB8:	BNE $9ED5
+L9EB8:	BNE $9ED5				; if in normal mode, leave
 L9EBA:	STY $9A
-L9EBC:	LDA #$04
-L9EBE:	STA MotherBrainStatus
+L9EBC:	LDA #$04				; disappering state
+L9EBE:	STA MotherBrainStatus	; disappearing
 L9EC0:	LDA #$1C
 L9EC2:	STA $9F
 L9EC4:	LDY MotherBrainHits
@@ -1144,7 +1157,7 @@ L9ED6:	LDA $0685
 L9ED9:	ORA #$04
 L9EDB:	STA $0685
 L9EDE:	LDA #$05
-L9EE0:	STA MotherBrainStatus
+L9EE0:	STA MotherBrainStatus	; gone
 L9EE2:	LDA #$80
 L9EE4:	STA MotherBrainHits
 L9EE6:	RTS
@@ -1167,9 +1180,13 @@ L9EFE:	RTS
 
 L9EFF:	.byte $60
 
-L9F00:	ORA #$0A
+;I think this is a table, not instructions
+;L9F00:	ORA #$0A
+L9F00: .byte $09, $0A
+
+;Mother brain gone state
 L9F02:	LDA MotherBrainHits
-L9F04:	BMI $9F33
+L9F04:	BMI $9F33			
 L9F06:	CMP #$08
 L9F08:	BEQ $9F36
 L9F0A:	TAY 
@@ -1190,22 +1207,23 @@ L9F25:	LDA #$00
 L9F27:	STA $4B
 L9F29:	LDA $07A0
 L9F2C:	BNE $9F38
-L9F2E:	JSR CallDrawTileBlast
+L9F2E:	JSR CallDrawTileFrame
 L9F31:	BCS $9F38
-L9F33:	INC MotherBrainHits
+L9F33:	INC MotherBrainHits		
 L9F35:	RTS
 
 L9F36:	INC MotherBrainStatus
 L9F38:	RTS
 
-L9F39:	.byte $00, $40, $08, $48, $80, $C0, $88, $C8, $08, $02, $09, $03, $0A, $04, $0B
+L9F39:	.byte $00, $40, $08, $48, $80, $C0, $88, $C8 
+L9F41:	.byte $08, $02, $09, $03, $0A, $04, $0B, $05
 
-L9F48:	ORA $20
-L9F4A:	ADC #$9F
+;start end timer
+L9F49:	JSR $9F69
 L9F4C:	BCS $9F64
 L9F4E:	LDA #$00
-L9F50:	STA MotherBrainStatus
-L9F52:	LDA #$99
+L9F50:	STA MotherBrainStatus	; disable
+L9F52:	LDA #$99				;load 99 into the upper and lower end timer bytes
 L9F54:	STA $010A
 L9F57:	STA $010B
 L9F5A:	LDA #$01
@@ -1214,39 +1232,43 @@ L9F5F:	LDA $9D
 L9F61:	STA $010C
 L9F64:	RTS 
 
+;table of door offsets
 L9F65:	.byte $80, $B0, $A0, $90
 
-L9F69:	LDA $50 
-L9F6B:	CLC
-L9F6C:	ADC $4F
-L9F6E:	SEC 
-L9F6F:	ROL 
-L9F70:	AND #$03
+;set up end doors- isn't there just one?
+; this first amount of setup seems odd- since we only really care about the 0th bit of the room positions, we're basically doing an EOR. cycle saver?
+; then we're setting the incoming bit explicitly, so even though the table is 4 bytes, we only access two of them
+L9F69:	LDA $50 		; load current room X position
+L9F6B:	CLC				; 
+L9F6C:	ADC $4F			; add current room Y position 
+L9F6E:	SEC 			; set the carry bit 
+L9F6F:	ROL 			; and roll it into bit 0, doubling the rest
+L9F70:	AND #$03		; then take out the bottom two bits, giving us either 1 or 3 
 L9F72:	TAY 
-L9F73:	LDX $9F65,Y
-L9F76:	LDA #$01
-L9F78:	STA $030F,X
-L9F7B:	LDA #$01
-L9F7D:	STA $0307,X
-L9F80:	LDA #$03
-L9F82:	STA $0300,X
+L9F73:	LDX $9F65,Y		; load door index offset
+L9F76:	LDA #$01		;
+L9F78:	STA $030F,X		; set door HP to 1
+L9F7B:	LDA #$01		; 
+L9F7D:	STA $0307,X		; set door to blue
+L9F80:	LDA #$03			
+L9F82:	STA $0300,X		; set door to open
 L9F85:	LDA $9D
-L9F87:	STA $030C,X
+L9F87:	STA $030C,X		; set door nametable from 9D
 L9F8A:	LDA #$10
-L9F8C:	STA $030E,X
+L9F8C:	STA $030E,X		; 
 L9F8F:	LDA #$68
-L9F91:	STA $030D,X
+L9F91:	STA $030D,X		; 
 L9F94:	LDA #$55
-L9F96:	STA $0305,X
-L9F99:	STA $0306,X
+L9F96:	STA $0305,X		; 
+L9F99:	STA $0306,X		;
 L9F9C:	LDA #$00
-L9F9E:	STA $0304,X
+L9F9E:	STA $0304,X		; 
 L9FA1:	LDA #$F7
-L9FA3:	STA $0303,X
-L9FA6:	LDA #$10
-L9FA8:	STA $0503
-L9FAB:	LDA #$40
-L9FAD:	STA $0508
+L9FA3:	STA $0303,X		; 
+L9FA6:	LDA #$10		
+L9FA8:	STA $0503		; set anim frame for 1st destructable tile
+L9FAB:	LDA #$40		; 
+L9FAD:	STA $0508		; set anim delay for 1st destruictable tile
 L9FB0:	LDA $9D
 L9FB2:	ASL 
 L9FB3:	ASL 
@@ -1254,28 +1276,31 @@ L9FB4:	ORA #$61
 L9FB6:	STA $0509
 L9FB9:	LDA #$00
 L9FBB:	STA $4B
-L9FBD:	JMP CallDrawTileBlast
-L9FC0:	LDA #$10
+L9FBD:	JMP CallDrawTileFrame
+
+;time bomb exploded
+L9FC0:	LDA #$10				; set noise FX flag for BOOM sound
 L9FC2:	ORA $0680
-L9FC5:	STA $0680
-L9FC8:	LDA $2C
-L9FCA:	BNE $9FD9
+L9FC5:	STA $0680				; 
+L9FC8:	LDA $2C					; load timer 3
+L9FCA:	BNE $9FD9				; not 0? return - 
 L9FCC:	LDA #$08
-L9FCE:	STA $0300
+L9FCE:	STA $0300				; samus dies in a firey blast
 L9FD1:	LDA #$0A
-L9FD3:	STA MotherBrainStatus
+L9FD3:	STA MotherBrainStatus	; no more updates 
 L9FD5:	LDA #$01
-L9FD7:	STA $1C
+L9FD7:	STA $1C					; set paldata pending flag - gonna white out the screen
 L9FD9:	RTS
 
-L9FDA:	JSR $9F69
-L9FDD:	BCS $9FEC
+;
+L9FDA:	JSR $9F69				; spawn door and disable mother brain... why tho
+L9FDD:	BCS $9FEC				; 
 L9FDF:	LDA $9D
 L9FE1:	STA $010C
 L9FE4:	LDY #$01
 L9FE6:	STY $010D
 L9FE9:	DEY 
-L9FEA:	STY MotherBrainStatus
+L9FEA:	STY MotherBrainStatus	; disable
 L9FEC:	RTS
 
 L9FED:	LDA $9E
@@ -1286,16 +1311,16 @@ L9FF6:	STA $0684
 L9FF9:	INC MotherBrainHits
 L9FFB:	LDA MotherBrainHits
 L9FFD:	CMP #$20
-L9FFF:	LDY #$02
+L9FFF:	LDY #$02		; mother brain hit state
 LA001:	LDA #$10
-LA003:	BCC $A016
+LA003:	BCC $A016	
 LA005:	LDX #$00
 LA007:	LDA #$00
 LA009:	STA $0500,X
 LA00C:	JSR $9EF9
 LA00F:	CMP #$D0
 LA011:	BNE $A007
-LA013:	INY 
+LA013:	INY 			; mother brain dying state
 LA014:	LDA #$80
 LA016:	STY MotherBrainStatus
 LA018:	STA $9F
@@ -1371,7 +1396,7 @@ LA096:	STA $0509
 LA099:	LDA #$00
 LA09B:	STA $0503
 LA09E:	STA $4B
-LA0A0:	JMP CallDrawTileBlast
+LA0A0:	JMP CallDrawTileFrame
 
 LA0A3:	.byte $00, $02, $04, $06, $08, $40, $80, $C0, $48, $88, $C8, $FF, $42, $81, $C1, $27
 LA0B3:	.byte $FF, $82, $43, $25, $47, $FF, $C2, $C4, $C6, $FF, $84, $45, $86, $FF, $00, $0C
@@ -1401,7 +1426,7 @@ LA0F3:	STA $0503,X
 LA0F6:	LDA $4B
 LA0F8:	PHA 
 LA0F9:	STX $4B
-LA0FB:	JSR CallDrawTileBlast
+LA0FB:	JSR CallDrawTileFrame
 LA0FE:	PLA 
 LA0FF:	STA $4B
 LA101:	BNE $A13E
@@ -1519,40 +1544,42 @@ LA1DA:	RTS
 
 LA1DB:	.byte $22, $2A, $2A, $BA, $B2, $2A, $C4, $2A, $C8, $BA, $BA, $BA
 
-LA1E7:	LDY $010B
-LA1EA:	INY 
-LA1EB:	BEQ $A237
-LA1ED:	LDA $010A
-LA1F0:	STA $03
-LA1F2:	LDA #$01
-LA1F4:	SEC 
+;update end timer 
+UpdateEndTimer:
+LA1E7:	LDY $010B	; load copy of timer hi byte
+LA1EA:	INY 		; add 1 to it 
+LA1EB:	BEQ $A237	; leave if timer was -1 (inactive)
+LA1ED:	LDA $010A	; 
+LA1F0:	STA $03		; cache off copy of 010B
+LA1F2:	LDA #$01				; sub 1 from timer
+LA1F4:	SEC 				
 LA1F5:	JSR CallBase10Subtract
 LA1F8:	STA $010A
 LA1FB:	LDA $010B
 LA1FE:	STA $03
 LA200:	LDA #$00
 LA202:	JSR CallBase10Subtract
-LA205:	STA $010B
-LA208:	LDA $2D
-LA20A:	AND #$1F
-LA20C:	BNE $A216
-LA20E:	LDA $0681
-LA211:	ORA #$08
-LA213:	STA $0681
-LA216:	LDA $010A
-LA219:	ORA $010B
-LA21C:	BNE $A237
-LA21E:	DEC $010B
-LA221:	STA MotherBrainHits
-LA223:	LDA #$07
-LA225:	STA MotherBrainStatus
-LA227:	LDA $0680
+LA205:	STA $010B				
+LA208:	LDA $2D					; load frame count
+LA20A:	AND #$1F				; 
+LA20C:	BNE $A216				; every 16 frames...
+LA20E:	LDA $0681				; set 3rd bit of SQ1 sfx flag
+LA211:	ORA #$08				; 
+LA213:	STA $0681				; 
+LA216:	LDA $010A				; check if both timer bytes are 0
+LA219:	ORA $010B				; 
+LA21C:	BNE $A237				; 
+LA21E:	DEC $010B				; 
+LA221:	STA MotherBrainHits		; set mother brain hits to FF	
+LA223:	LDA #$07				; 
+LA225:	STA MotherBrainStatus	; bomb exploded
+LA227:	LDA $0680				; set 0th bit of Noise sfx flag
 LA22A:	ORA #$01
 LA22C:	STA $0680
-LA22F:	LDA #$0C
-LA231:	STA $2C
+LA22F:	LDA #$0C				;
+LA231:	STA $2C					; 12 to timer 3
 LA233:	LDA #$0B
-LA235:	STA $1C
+LA235:	STA $1C					; 12 pal data pending (12 - 1 = 11)
 LA237:	RTS
 
 LA238:	LDA $010D
@@ -1631,7 +1658,7 @@ LA2CC:	LDA $07A0
 LA2CF:	BNE $A2DA
 LA2D1:	TXA 
 LA2D2:	PHA 
-LA2D3:	JSR CallDrawTileBlast
+LA2D3:	JSR CallDrawTileFrame
 LA2D6:	PLA 
 LA2D7:	TAX 
 LA2D8:	BCC $A2EB
@@ -1710,6 +1737,7 @@ LA3C3:	.byte $FF
 LA3C4:	.byte $28, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
 LA3D4:	.byte $FF
 
+;;Zeebetite display strings
 LA3D5:	.byte $42, $90, $91, $90, $91, $90, $91, $90, $91
 
 LA3DE:	.byte $42, $92, $93, $92, $93, $92, $93, $92, $93

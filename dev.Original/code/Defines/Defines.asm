@@ -229,6 +229,8 @@
 									;#$09, #$0A=Mother brain already dead.
 .alias MotherBrainHits			$99	;Number of times mother brain has been hit. Dies at #$20.
 
+
+
 .alias SpareMemB7				$B7	;Written to in title routine and accessed by unsed routine.
 .alias SpareMemB8				$B8	;Written to in title routine and accessed by unsed routine.
 .alias SpareMemBB				$BB	;Written to in title routine, but never accessed.
@@ -275,6 +277,7 @@
 .alias SpecEnNameTable			$B3
 .alias SpecEnDirection			$B4
 .alias SpecEnMoveTimer			$B5
+.alias SpecEnColStatus			$B6
 
 
 .alias MirrorCntrl				$FA	;If bit 3 is set, PPU set to horizontal mirroring-->
@@ -399,10 +402,19 @@
 
 ;Elevator RAM.
 .alias ElevatorDirectionNoOffset $030F ;elevator direction that can be accesed with X addressing
-.alias ElevatorStatus			 $0320	
+.alias ElevatorStatus			 $0320
+.alias ElevatorFrame			 $0323
+.alias ElevatorYPosHi			 $032C
+.alias ElevatorYPos				 $032D	
+.alias ElevatorXPos				 $032E	
 .alias ElevatorDirection		 $032F
 ;Power-up item RAM.
 
+.alias TempInteractableFrame 	$0343
+.alias TempInteractableYPosHi 	$034C
+.alias TempInteractableYPos		$034D
+.alias TempInteractableXPos		$034E
+ 
 
 ;-------------------------------------[ Title routine specific ]-------------------------------------
 
@@ -486,7 +498,7 @@
 .alias EnDelay			$0409	;Delay counter between enemy actions.
 .alias EnRotation		$040A	; ^,>,v,<
 .alias EnHitPoints		$040B	;Current hit points of enemy.
-;						$040C
+;						$040C	; bits 0-> 5 = return state (what to go to next after current state is finished); bits 6 + 7 match up to special enemy attributes when frozen
 .alias EnHoldTimer		$040D	;some kinda delay timer?
 .alias EnHitSource		$040E	;laser type that hit enemy
 .alias EnSpecialAttribs	$040F	;Bit 7 set=tough version of enemy, bit 6 set=mini boss.
@@ -836,7 +848,14 @@
 
 ;---------------------------------------[ More enemy RAM ]-------------------------------------------
 
-.alias Enstatus				$6AF4	;Keeps track of enemy statuses.
+.alias Enstatus				$6AF4	;Keeps track of enemy statuses.							
+	;#$00= Enemy slot not in use
+	;#$01= waiting
+	;#$02= plain moving
+	;#$03= dying
+	;#$04= Enemy frozen.
+	;#$05= power up state
+	;#$06= enemy hit
 .alias EnRadY				$6AF5	;Distance in pixels from middle of enemy to top or botom.
 .alias EnRadX				$6AF6	;Distance in pixels from middle of enemy to left or right.
 .alias EnAnimFrame			$6AF7	;Index into enemy animation frame data.

@@ -328,6 +328,7 @@ L967B:	.byte $00, $00, $00, $80, $00, $00, $00, $00, $00, $00, $00, $00, $80, $0
 
 ;I know it contains SFX data in 0000 xx000
 ;I know we do soemthing with 0000 00x0 related to enemy movement and waiting
+;something related to collision as well for 000x 0000
 ;AreaCommon uses something with 00x0 0000
 ;0000 0000
 ;|||| ||||
@@ -368,7 +369,9 @@ L9723:	.byte $00, $00, $00, $00, $00, $00, $00, $00
 L972B:	.byte $7F, $40, $30, $C0, $D0, $00, $00, $7F
 L9733:	.byte $80, $00, $54, $70, $00, $00, $00, $00, $00, $00, $00, $00
 l973F:	.byte $00, $00, $00, $00
-L9743:	.byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
+L9743:	.byte $00, $00, $00, $00, $00, $00, $00, $00 
+;;samus collision checks do something here, but it looks like we always just return 0?
+L974B:  .byte $00, $00, $00, $00, $00, $00, $00, $00
 L9753:	.byte $F6, $FC, $FE, $04, $02, $00, $00, $00, $0C, $FC, $FC, $00, $00, $00, $00, $00
 L9763:	.byte $00, $00, $00, $00, $00, $02, $02, $02, $02, $00, $00, $00, $02, $00, $02, $02
 L9773:	.byte $00, $00, $00, $00, $00, $00, $00, $00

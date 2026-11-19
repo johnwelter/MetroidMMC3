@@ -77,8 +77,8 @@ CallEnHorizontalAcceleration:
 L8039:	JMP EnHorizontalAcceleration
 CallUpdateObjectCntrl:
 L803C:	JMP UpdateObjectCntrl
-CallDrawTileBlast:
-L803F:	JMP DrawTileBlast
+CallDrawTileFrame:
+L803F:	JMP DrawTileFrame
 CallSubtractHealth:
 L8042:	JMP SubtractHealth		
 CallBase10Subtract:

@@ -25,10 +25,13 @@
 .alias SpecEnAnim						$95E4
 .alias AreaEnemySpecificUpdate			$95E5
 .alias EnemyHitPointTbl					$962B
+;.alias EnemyTODOTbl					$968B
 .alias EnemyInitDelayTbl				$96BB
 .alias AreaEnemyMovementTable			$96DB
 .alias AreaProjectileMovementTable 		$97A7
 
+.alias AreaTileAnimTbl					$97AF
+			
 .alias nmiscreenwrite 					$9A07
 .alias soundengine 						$B3B4
 .alias decspriteycoord 					$988A
